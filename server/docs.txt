@@ -7,3 +7,5 @@ created the app.js
 Initialized Express server with dotenv configuration and basic route
 
 Add MongoDB connection setup and integrate with Express server
+
+ Add User model schema with validation and default values
