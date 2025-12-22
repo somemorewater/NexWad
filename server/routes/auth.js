@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const auth = require("../middleware/auth");
 
 router.post("/signup", async (req, res) => {
   try {
@@ -70,27 +71,21 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/upgrade/seller", async (req, res) => {
-  try {
-    const { userId, nin } = req.body;
+router.post("/upgrade/seller", auth, async (req, res) => {
+  const { nin } = req.body;
 
-    if (!nin)
-      return res
-        .status(400)
-        .json({ message: "NIN is required to become a seller" });
+  if (!nin)
+    return res
+      .status(400)
+      .json({ message: "NIN is required to become a seller" });
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+  const user = req.user;
+  user.role = "seller";
+  user.nin = nin;
 
-    user.role = "seller";
-    user.nin = nin;
+  await user.save();
 
-    await user.save();
-
-    res.json({ message: "Account upgraded to seller", user });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  res.json({ message: "Account upgraded to seller", user });
 });
 
 module.exports = router;
