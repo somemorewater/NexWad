@@ -73,13 +73,21 @@ router.post("/login", async (req, res) => {
 
 router.post("/upgrade/seller", auth, async (req, res) => {
   const { nin } = req.body;
+  const user = req.user;
+
+  if (!user.isVerified) {
+    return res
+      .status(403)
+      .json({
+        message: "You must verify your account before becoming a seller",
+      });
+  }
 
   if (!nin)
     return res
       .status(400)
       .json({ message: "NIN is required to become a seller" });
 
-  const user = req.user;
   user.role = "seller";
   user.nin = nin;
 

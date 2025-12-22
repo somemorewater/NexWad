@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
     },
     unique: true,
   },
+  isVerified: { type: Boolean, default: false },
   badges: [String],
   xp: { type: Number, default: 0 },
   profilePic: { type: String },

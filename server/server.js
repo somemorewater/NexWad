@@ -8,6 +8,7 @@ const otpRoutes = require("./routes/otp");
 dotenv.config();
 const app = express();
 connectDB();
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
@@ -16,4 +17,4 @@ app.use("/api/otp", otpRoutes);
 
 app.get("/", (_, res) => res.send("BlueBase API running"));
 
-app.listen(process.env.PORT || 5000, () => console.log("Server up"));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
