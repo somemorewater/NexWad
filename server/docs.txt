@@ -1,0 +1,9 @@
+Installed the dependancies and dev depandancies
+
+created the document structure
+
+created the app.js
+
+Initialized Express server with dotenv configuration and basic route
+
+Add MongoDB connection setup and integrate with Express server
