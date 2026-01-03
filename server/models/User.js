@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
   badges: [String],
   xp: { type: Number, default: 0 },
   profilePic: { type: String },
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model("User", userSchema);
