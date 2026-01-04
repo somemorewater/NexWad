@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Bluebase</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
+
+<style>
+:root {
+  --blue: #1d9bf0;
+  --bg: #f6f8fa;
+  --card: #ffffff;
+  --text: #0f1419;
+  --sub: #657786;
+  --border: #e6e9ec;
+  --shadow: 0 12px 30px rgba(0,0,0,0.06);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ================= HEADER ================= */
+
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  z-index: 1000;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--blue);
+}
+
+.header-icons i {
+  margin-left: 20px;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+/* ================= LAYOUT ================= */
+
+.container {
+  max-width: 1280px;
+  margin: 96px auto 0;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+  gap: 28px;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= SIDEBAR ================= */
+
+/* ================= SIDEBAR ================= */
+
+.sidebar {
+  position: sticky;
+  top: 88px; /* below header */
+  align-self: flex-start;
+  height: calc(100vh - 110px);
+}
+
+.side-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* NAV ITEM */
+.side-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.side-item i {
+  color: var(--sub);
+  transition: color 0.2s ease;
+}
+
+/* LEFT INDICATOR (THE UNDER YOU MENTIONED) */
+.side-item::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 0;
+  background: var(--blue);
+  border-radius: 4px;
+  transition: height 0.2s ease;
+}
+
+/* ACTIVE */
+.side-item.active {
+  background: #eef6fd;
+  color: var(--blue);
+}
+
+.side-item.active i {
+  color: var(--blue);
+}
+
+.side-item.active::before {
+  height: 22px;
+}
+
+/* HOVER */
+.side-item:hover {
+  background: #f3f4f6;
+}
+
+.side-item:hover::before {
+  height: 14px;
+}
+
+/* ================= FEED ================= */
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.post-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #cfd9df, #e2ebf0);
+}
+
+.name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.username {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.post-text {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ================= REACTIONS ================= */
+
+.reactions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.react {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.react i {
+  width: 18px;
+  height: 18px;
+}
+
+.react:hover {
+  color: var(--blue);
+}
+
+/* ================= AD ================= */
+
+.ad img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin: 12px 0;
+}
+
+.sponsored {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--blue);
+}
+
+/* ================= RIGHT BAR ================= */
+
+.rightbar {
+  position: sticky;
+  top: 96px;
+}
+
+.widget {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 22px;
+}
+
+.widget h4 {
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trend {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.trend span {
+  display: block;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+/* ================= MOBILE NAV ================= */
+
+nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar,
+  .rightbar {
+    display: none;
+  }
+
+  nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 64px;
+    background: white;
+    border-top: 1px solid var(--border);
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  nav i {
+    color: var(--sub);
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Bluebase</div>
+  <div class="header-icons">
+    <i data-feather="search"></i>
+    <i data-feather="bell"></i>
+    <i data-feather="user"></i>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-card">
+      <div class="side-item active"><i data-feather="home"></i> Home</div>
+      <div class="side-item"><i data-feather="shopping-bag"></i> Marketplace</div>
+      <div class="side-item"><i data-feather="alert-circle"></i> Lost & Found</div>
+      <div class="side-item"><i data-feather="bookmark"></i> Saved</div>
+      <div class="side-item"><i data-feather="log-out"></i> Logout</div>
+    </div>
+  </aside>
+
+  <!-- FEED -->
+  <main class="feed">
+
+    <div class="card">
+      <div class="post-header">
+        <div class="avatar"></div>
+        <div>
+          <div class="name">Daz</div>
+          <div class="username">@dazzmond</div>
+        </div>
+      </div>
+      <div class="post-text">
+        Selling PHY 106 textbooks — clean copies, student price only.
+      </div>
+      <div class="reactions">
+        <div class="react"><i data-feather="message-circle"></i> Comment</div>
+        <div class="react"><i data-feather="heart"></i> Like</div>
+        <div class="react"><i data-feather="share"></i> Share</div>
+      </div>
+    </div>
+
+    <div class="card ad">
+      <div class="sponsored">Sponsored</div>
+      <img src="https://picsum.photos/800/500" />
+      <div class="name">Scientific Calculator</div>
+      <div class="price">₦6,000</div>
+    </div>
+
+  </main>
+
+  <!-- RIGHT -->
+  <aside class="rightbar">
+    <div class="widget">
+      <h4>Trending</h4>
+      <div class="trend">📘 PHY 106 Textbooks <span>12 listings</span></div>
+      <div class="trend">📱 Used Phones <span>8 listings</span></div>
+      <div class="trend">🎧 Headphones <span>5 listings</span></div>
+    </div>
+
+    <div class="widget">
+      <h4>Top Sellers</h4>
+      <div class="trend">Campus Bookstore <span>4.9 rating</span></div>
+      <div class="trend">Tech Hub AFA <span>Trusted</span></div>
+    </div>
+  </aside>
+
+</div>
+
+<nav>
+  <i data-feather="home"></i>
+  <i data-feather="shopping-bag"></i>
+  <i data-feather="plus-circle"></i>
+  <i data-feather="user"></i>
+</nav>
+
+<script>
+  feather.replace();
+</script>
+
+</body>
+</html>

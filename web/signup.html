@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign up – Bluebase</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --blue:#1d9bf0;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e5e7eb;
+  --soft:#f8fafc;
+  --error:#ef4444;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  background:#fff;
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+/* NAV */
+nav{
+  padding:16px 22px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+nav h1{
+  color:var(--blue);
+  font-size:1.1rem;
+  font-weight:800;
+}
+
+nav a{
+  text-decoration:none;
+  font-size:.9rem;
+  font-weight:600;
+  color:var(--text);
+}
+
+/* LAYOUT */
+.container{
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  max-width:1100px;
+  width:100%;
+  margin:auto;
+}
+
+/* LEFT */
+.left{
+  padding:80px 40px;
+}
+
+.badge{
+  display:inline-block;
+  background:#eaf4ff;
+  color:var(--blue);
+  font-size:.75rem;
+  font-weight:700;
+  padding:6px 14px;
+  border-radius:999px;
+  margin-bottom:16px;
+}
+
+.left h2{
+  font-size:2.5rem;
+  font-weight:800;
+  line-height:1.1;
+}
+
+.left p{
+  margin-top:14px;
+  font-size:1.05rem;
+  color:var(--muted);
+  max-width:420px;
+}
+
+/* RIGHT (FORM) */
+.right{
+  padding:80px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.form-box{
+  width:100%;
+  max-width:420px;
+}
+
+.form-box h3{
+  font-size:1.6rem;
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.form-box p{
+  font-size:.95rem;
+  color:var(--muted);
+  margin-bottom:24px;
+}
+
+/* INPUTS */
+.field{
+  margin-bottom:16px;
+}
+
+label{
+  display:block;
+  font-size:.85rem;
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+input{
+  width:100%;
+  padding:14px 16px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  font-size:.95rem;
+}
+
+input:focus{
+  outline:none;
+  border-color:var(--blue);
+}
+
+/* SELECT */
+select{
+  width:100%;
+  padding:14px 16px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  font-size:.95rem;
+  background:#fff;
+}
+
+/* BUTTON */
+button{
+  width:100%;
+  margin-top:10px;
+  padding:14px;
+  border:none;
+  border-radius:999px;
+  background:var(--blue);
+  color:#fff;
+  font-size:.95rem;
+  font-weight:700;
+  cursor:pointer;
+}
+
+/* FOOT */
+.form-foot{
+  margin-top:16px;
+  font-size:.85rem;
+  color:var(--muted);
+  text-align:center;
+}
+
+.form-foot a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:600;
+}
+
+/* MOBILE */
+@media(max-width:900px){
+  .container{
+    grid-template-columns:1fr;
+  }
+
+  .left{
+    padding:50px 22px 30px;
+  }
+
+  .right{
+    padding:20px 22px 60px;
+  }
+
+  .left h2{
+    font-size:2rem;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <h1>Bluebase</h1>
+  <a href="join.html">← Back</a>
+</nav>
+
+<div class="container">
+
+  <!-- LEFT INFO -->
+  <div class="left">
+    <span class="badge">WEB VERSION</span>
+    <h2>Join Bluebase<br/>for Students</h2>
+    <p>
+      Create your Bluebase account to buy & sell items,
+      find lost properties, and access student jobs —
+      all within AFIT.
+    </p>
+  </div>
+
+  <!-- RIGHT FORM -->
+  <div class="right">
+    <div class="form-box">
+      <h3>Create account</h3>
+      <p>Only AFIT students are allowed.</p>
+
+      <form>
+        <div class="field">
+          <label>Full name</label>
+          <input type="text" placeholder="John Doe">
+        </div>
+
+        <div class="field">
+          <label>Email address</label>
+          <input type="email" placeholder="student@afit.edu.ng">
+        </div>
+
+        <div class="field">
+          <label>Matric / Service Number</label>
+          <input type="text" placeholder="AFIT/ICE/20/001">
+        </div>
+
+        <div class="field">
+          <label>Department</label>
+          <select>
+            <option>Select department</option>
+            <option>ICE</option>
+            <option>Aerospace Engineering</option>
+            <option>Computer Engineering</option>
+            <option>Electrical Engineering</option>
+            <option>Others</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Password</label>
+          <input type="password" placeholder="Create a password">
+        </div>
+
+     <a href="/Dashboard.html"> <button type="submit">Create account</button></a>  
+      </form>
+      <div class="sellers">Sellers accounts can only be accessed through the app <a href="/Download.html">Download app</a></div>
+
+      <div class="form-foot">
+        Already have an account?
+        <a href="login.html">Login</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

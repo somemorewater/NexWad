@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Bluebase for iOS</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --blue:#1d9bf0;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e5e7eb;
+  --soft:#f8fafc;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  background:#fff;
+  color:var(--text);
+}
+
+/* NAV */
+nav{
+  padding:16px 22px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+nav h1{
+  color:var(--blue);
+  font-size:1.1rem;
+  font-weight:800;
+}
+
+nav a{
+  text-decoration:none;
+  font-size:.9rem;
+  font-weight:600;
+  color:var(--text);
+}
+
+/* HERO */
+.hero{
+  max-width:900px;
+  margin:auto;
+  padding:80px 22px 40px;
+}
+
+.badge{
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:999px;
+  background:#f1f5f9;
+  color:#000;
+  font-size:.75rem;
+  font-weight:700;
+  margin-bottom:16px;
+}
+
+.hero h2{
+  font-size:2.7rem;
+  font-weight:800;
+  line-height:1.1;
+}
+
+.hero p{
+  margin-top:16px;
+  color:var(--muted);
+  max-width:520px;
+  font-size:1.05rem;
+}
+
+/* DOWNLOAD */
+.download-box{
+  margin-top:30px;
+  background:var(--soft);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:26px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+}
+
+.download-btn{
+  background:#000;
+  color:#fff;
+  padding:14px 28px;
+  border-radius:999px;
+  font-weight:700;
+  text-decoration:none;
+  font-size:.95rem;
+}
+
+/* INFO */
+.info{
+  max-width:900px;
+  margin:50px auto;
+  padding:0 22px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:24px;
+}
+
+.card{
+  border-top:1px solid var(--border);
+  padding-top:16px;
+}
+
+.card h4{
+  font-size:1rem;
+  font-weight:700;
+}
+
+.card p{
+  font-size:.9rem;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+/* FOOTER */
+footer{
+  padding:30px 22px;
+  text-align:center;
+  font-size:.85rem;
+  color:var(--muted);
+}
+
+@media(max-width:600px){
+  .hero h2{
+    font-size:2.1rem;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <h1>Bluebase</h1>
+  <a href="join.html">← Back</a>
+</nav>
+
+<section class="hero">
+  <span class="badge">iOS APP</span>
+  <h2>Download Bluebase<br/>for iPhone</h2>
+
+  <p>
+    Bluebase on iOS gives AFIT students a secure way to
+    buy & sell items, recover lost properties, and discover jobs.
+  </p>
+
+  <div class="download-box">
+    <div>
+      Requires iOS 14+ <br/>
+      Available on the App Store
+    </div>
+    <a href="#" class="download-btn">View on App Store</a>
+  </div>
+</section>
+
+<section class="info">
+  <div class="card">
+    <h4>Optimized for iOS</h4>
+    <p>Smooth performance on iPhone devices.</p>
+  </div>
+
+  <div class="card">
+    <h4>Privacy First</h4>
+    <p>Student data is protected and secure.</p>
+  </div>
+
+  <div class="card">
+    <h4>Campus Focused</h4>
+    <p>Built specifically for AFIT students.</p>
+  </div>
+</section>
+
+<footer>
+  © 2026 Bluebase · iOS
+</footer>
+
+</body>
+</html>

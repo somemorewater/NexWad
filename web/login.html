@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in – Bluebase</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --blue:#1d9bf0;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e5e7eb;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  color:var(--text);
+}
+
+/* NAV */
+nav{
+  padding:16px 22px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+}
+
+nav h1{
+  color:var(--blue);
+  font-size:1.1rem;
+  font-weight:800;
+}
+
+nav a{
+  text-decoration:none;
+  font-size:.9rem;
+  font-weight:600;
+  color:var(--text);
+}
+
+/* LAYOUT */
+.container{
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  max-width:1100px;
+  margin:auto;
+  width:100%;
+}
+
+/* LEFT */
+.left{
+  padding:80px 40px;
+}
+
+.left h2{
+  font-size:2.5rem;
+  font-weight:800;
+  line-height:1.1;
+}
+
+.left p{
+  margin-top:14px;
+  color:var(--muted);
+  font-size:1.05rem;
+  max-width:420px;
+}
+
+/* RIGHT */
+.right{
+  padding:80px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.form{
+  width:100%;
+  max-width:420px;
+}
+
+.form h3{
+  font-size:1.6rem;
+  font-weight:800;
+}
+
+.form p{
+  color:var(--muted);
+  font-size:.95rem;
+  margin:6px 0 24px;
+}
+
+/* INPUT */
+.field{
+  margin-bottom:16px;
+}
+
+label{
+  font-size:.85rem;
+  font-weight:600;
+  display:block;
+  margin-bottom:6px;
+}
+
+input{
+  width:100%;
+  padding:14px 16px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  font-size:.95rem;
+}
+
+input:focus{
+  outline:none;
+  border-color:var(--blue);
+}
+
+/* BUTTON */
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:999px;
+  background:var(--blue);
+  color:#fff;
+  font-weight:700;
+  font-size:.95rem;
+  cursor:pointer;
+}
+
+/* FOOT */
+.foot{
+  margin-top:16px;
+  text-align:center;
+  font-size:.85rem;
+  color:var(--muted);
+}
+
+.foot a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:600;
+}
+
+/* MOBILE */
+@media(max-width:900px){
+  .container{
+    grid-template-columns:1fr;
+  }
+
+  .left{
+    padding:50px 22px 20px;
+  }
+
+  .right{
+    padding:20px 22px 60px;
+  }
+
+  .left h2{
+    font-size:2rem;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <h1>Bluebase</h1>
+  <a href="signup.html">Create account</a>
+</nav>
+
+<div class="container">
+  <div class="left">
+    <h2>Welcome back<br/>to Bluebase</h2>
+    <p>
+      Sign in to continue buying & selling,
+      finding lost items, and accessing student jobs.
+    </p>
+  </div>
+
+  <div class="right">
+    <div class="form">
+      <h3>Sign in</h3>
+      <p>AFIT students only</p>
+
+      <form>
+        <div class="field">
+          <label>Email or Matric number</label>
+          <input type="text" placeholder="student@afit.edu.ng">
+        </div>
+
+        <div class="field">
+          <label>Password</label>
+          <input type="password" placeholder="Your password">
+        </div>
+
+      <a href="/Dashboard.html"><button type="submit">Sign in</button></a> 
+      </form>
+
+      <div class="foot">
+        Don’t have an account?
+        <a href="signup.html">Sign up</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
