@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bluebase · Cart</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
+
+<style>
+:root{
+  --blue:#1877f2;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#050505;
+  --sub:#65676b;
+  --border:#dddfe2;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* HEADER */
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:56px;
+  background:white;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  z-index:1000;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--blue);
+  text-decoration:none;
+}
+
+.header-right a{
+  margin-left:18px;
+  color:#1c1e21;
+}
+
+/* LAYOUT */
+.container{
+  max-width:1100px;
+  margin:72px auto 0;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:16px;
+}
+
+@media(max-width:800px){
+  .sidebar{display:none;}
+  .container{grid-template-columns:1fr;}
+}
+
+/* SIDEBAR */
+.sidebar{
+  position:sticky;
+  top:72px;
+}
+
+.side-card{
+  background:white;
+  border-radius:8px;
+  padding:8px;
+}
+
+.side-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+  color:#050505;
+  text-decoration:none;
+}
+
+.side-item i{width:20px;color:var(--blue);}
+.side-item:hover{background:#f2f2f2;}
+
+/* MAIN */
+.title{
+  font-size:20px;
+  font-weight:800;
+  margin-bottom:14px;
+}
+
+/* CART ITEM */
+.cart-item{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+  display:flex;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.thumb{
+  width:120px;
+  height:90px;
+  background:#e4e6eb;
+  border-radius:6px;
+}
+
+.cart-info{
+  flex:1;
+}
+
+.cart-info h4{
+  font-size:15px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.cart-info span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+.price{
+  font-weight:800;
+  margin-top:6px;
+}
+
+/* ACTIONS */
+.cart-actions{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+
+.btn{
+  padding:6px 10px;
+  font-size:13px;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:700;
+}
+
+.primary{
+  background:var(--blue);
+  color:white;
+}
+
+.outline{
+  border:1px solid var(--border);
+  color:#050505;
+}
+
+/* SUMMARY */
+.summary{
+  background:white;
+  border-radius:8px;
+  padding:14px;
+  margin-top:16px;
+}
+
+.summary-row{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin-bottom:8px;
+}
+
+.summary-total{
+  font-size:16px;
+  font-weight:800;
+}
+
+/* EMPTY */
+.empty{
+  background:white;
+  border-radius:8px;
+  padding:40px;
+  text-align:center;
+  color:var(--sub);
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="index.html" class="logo">Bluebase</a>
+  <div class="header-right">
+    <a href="search.html"><i data-feather="search"></i></a>
+    <a href="notifications.html"><i data-feather="bell"></i></a>
+    <a href="profile.html"><i data-feather="user"></i></a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-card">
+      <a href="Dashboard.html" class="side-item"><i data-feather="home"></i> Home</a>
+      <a href="marketplace.html" class="side-item"><i data-feather="shopping-bag"></i> Marketplace</a>
+      <a href="lost-found.html" class="side-item"><i data-feather="alert-circle"></i> Lost & Found</a>
+     <a href="cart.html" class="side-item"><i data-feather="shopping-cart"></i> Cart</a>
+      <a href="profile.html" class="side-item active"><i data-feather="user"></i> Profile</a>
+    </div>
+  </aside>
+  <!-- MAIN -->
+  <main>
+
+    <div class="title">Your Cart</div>
+
+    <!-- ITEM -->
+    <div class="cart-item">
+      <div class="thumb"></div>
+      <div class="cart-info">
+        <h4>PHY 106 Textbook</h4>
+        <span>Seller: <a href="profile.html">Daz</a></span>
+        <div class="price">₦12,000</div>
+
+        <div class="cart-actions">
+          <a href="product.html" class="btn primary">View</a>
+          <a href="message.html" class="btn outline">Message Seller</a>
+          <a href="#" class="btn outline">Remove</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEM -->
+    <div class="cart-item">
+      <div class="thumb"></div>
+      <div class="cart-info">
+        <h4>Scientific Calculator</h4>
+        <span>Seller: <a href="profile.html">Tech Hub AFA</a></span>
+        <div class="price">₦6,000</div>
+
+        <div class="cart-actions">
+          <a href="product.html" class="btn primary">View</a>
+          <a href="message.html" class="btn outline">Message Seller</a>
+          <a href="#" class="btn outline">Remove</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="summary">
+      <div class="summary-row">
+        <span>Total Items</span>
+        <span>2</span>
+      </div>
+      <div class="summary-row summary-total">
+        <span>Total</span>
+        <span>₦18,000</span>
+      </div>
+
+      <div class="cart-actions" style="margin-top:12px;">
+        <a href="checkout.html" class="btn primary" style="flex:1;text-align:center;">Proceed to Checkout</a>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE (use later) -->
+    <!--
+    <div class="empty">
+      Your cart is empty.
+    </div>
+    -->
+
+  </main>
+
+</div>
+
+<script>
+feather.replace();
+</script>
+
+</body>
+</html>

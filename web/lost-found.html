@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bluebase · Lost & Found</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
+
+<style>
+:root{
+  --blue:#1877f2;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#050505;
+  --sub:#65676b;
+  --border:#dddfe2;
+  --lost:#e5533d;
+  --found:#2dbf64;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* HEADER */
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:56px;
+  background:white;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  z-index:1000;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--blue);
+  text-decoration:none;
+}
+
+.header-right a{
+  margin-left:18px;
+  color:#1c1e21;
+}
+
+/* LAYOUT */
+.container{
+  max-width:1280px;
+  margin:72px auto 0;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns:260px 1fr 300px;
+  gap:16px;
+}
+
+@media(max-width:1100px){
+  .rightbar{display:none;}
+  .container{grid-template-columns:260px 1fr;}
+}
+@media(max-width:800px){
+  .sidebar{display:none;}
+  .container{grid-template-columns:1fr;}
+}
+
+/* SIDEBAR */
+.sidebar{
+  position:sticky;
+  top:72px;
+}
+
+.side-card{
+  background:white;
+  border-radius:8px;
+  padding:8px;
+}
+
+.side-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+  color:#050505;
+  text-decoration:none;
+}
+
+.side-item i{
+  width:20px;
+  color:var(--blue);
+}
+
+.side-item.active,
+.side-item:hover{
+  background:#f2f2f2;
+}
+
+/* MAIN */
+.main{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+/* HEADER CARD */
+.lf-header{
+  background:white;
+  border-radius:8px;
+  padding:14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.lf-title{
+  font-size:18px;
+  font-weight:800;
+}
+
+.lf-actions a{
+  text-decoration:none;
+  font-size:14px;
+  font-weight:600;
+  padding:8px 14px;
+  border-radius:6px;
+  margin-left:8px;
+}
+
+.report-lost{
+  background:var(--lost);
+  color:white;
+}
+
+.report-found{
+  background:var(--found);
+  color:white;
+}
+
+/* FILTERS */
+.filters{
+  display:flex;
+  gap:10px;
+}
+
+.filter{
+  padding:8px 14px;
+  background:white;
+  border-radius:20px;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  color:#050505;
+}
+
+.filter.active{
+  background:var(--blue);
+  color:white;
+}
+
+/* CARD */
+.card{
+  background:white;
+  border-radius:8px;
+  padding:14px;
+}
+
+/* LIST */
+.item{
+  display:flex;
+  gap:14px;
+  padding:12px 0;
+  border-bottom:1px solid var(--border);
+  text-decoration:none;
+  color:inherit;
+}
+
+.item:last-child{
+  border-bottom:none;
+}
+
+.thumb{
+  width:64px;
+  height:64px;
+  border-radius:8px;
+  background:#d8dadf;
+  flex-shrink:0;
+}
+
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:8px;
+}
+
+.item-meta{
+  flex:1;
+}
+
+.item-title{
+  font-size:14px;
+  font-weight:700;
+}
+
+.badge{
+  display:inline-block;
+  font-size:11px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:20px;
+  margin-left:6px;
+}
+
+.badge.lost{
+  background:#fdecea;
+  color:var(--lost);
+}
+
+.badge.found{
+  background:#eafaf1;
+  color:var(--found);
+}
+
+.item-desc{
+  font-size:13px;
+  color:var(--sub);
+  margin-top:4px;
+}
+
+.item-time{
+  font-size:12px;
+  color:var(--sub);
+}
+
+/* RIGHT */
+.rightbar{
+  position:sticky;
+  top:72px;
+}
+
+.rb-card{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+  margin-bottom:12px;
+}
+
+.rb-title{
+  font-weight:700;
+  font-size:14px;
+  margin-bottom:10px;
+}
+
+.rb-link{
+  display:block;
+  padding:6px 0;
+  font-size:14px;
+  text-decoration:none;
+  color:#050505;
+}
+
+.rb-link:hover{
+  color:var(--blue);
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="index.html" class="logo">Bluebase</a>
+  <div class="header-right">
+    <a href="search.html"><i data-feather="search"></i></a>
+    <a href="notifications.html"><i data-feather="bell"></i></a>
+    <a href="profile.html"><i data-feather="user"></i></a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- SIDEBAR -->
+   <aside class="sidebar">
+    <div class="side-card">
+      <a href="Dashboard.html" class="side-item"><i data-feather="home"></i> Home</a>
+      <a href="marketplace.html" class="side-item"><i data-feather="shopping-bag"></i> Marketplace</a>
+      <a href="lost-found.html" class="side-item"><i data-feather="alert-circle"></i> Lost & Found</a>
+     <a href="cart.html" class="side-item"><i data-feather="shopping-cart"></i> Cart</a>
+      <a href="profile.html" class="side-item active"><i data-feather="user"></i> Profile</a>
+    </div>
+  </aside>
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- HEADER -->
+    <div class="lf-header">
+      <div class="lf-title">Lost & Found</div>
+      <div class="lf-actions">
+        <a href="report-item.html" class="report-lost">Report Lost</a>
+        <a href="report-item.html" class="report-found">Report Found</a>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+      <a href="lost-found.html" class="filter active">All</a>
+      <a href="lost.html" class="filter">Lost</a>
+      <a href="found.html" class="filter">Found</a>
+    </div>
+
+    <!-- LIST -->
+    <div class="card">
+
+      <a href="lf-item-charger.html" class="item">
+        <div class="thumb"></div>
+        <div class="item-meta">
+          <div class="item-title">
+            HP Laptop Charger
+            <span class="badge lost">Lost</span>
+          </div>
+          <div class="item-desc">Lost around Hostel B, near common room.</div>
+          <div class="item-time">2 hours ago</div>
+        </div>
+      </a>
+
+      <a href="lf-item-airpods.html" class="item">
+        <div class="thumb"></div>
+        <div class="item-meta">
+          <div class="item-title">
+            Apple AirPods
+            <span class="badge found">Found</span>
+          </div>
+          <div class="item-desc">Found near Engineering Block.</div>
+          <div class="item-time">Yesterday</div>
+        </div>
+      </a>
+
+      <a href="lf-item-idcard.html" class="item">
+        <div class="thumb"></div>
+        <div class="item-meta">
+          <div class="item-title">
+            Student ID Card
+            <span class="badge lost">Lost</span>
+          </div>
+          <div class="item-desc">Name: Ahmed Musa, Dept of Physics.</div>
+          <div class="item-time">2 days ago</div>
+        </div>
+      </a>
+
+    </div>
+
+  </main>
+
+  <!-- RIGHT -->
+  <aside class="rightbar">
+    <div class="rb-card">
+      <div class="rb-title">Quick Actions</div>
+      <a href="report-item.html" class="rb-link">Report Lost Item</a>
+      <a href="report-item.html" class="rb-link">Report Found Item</a>
+    </div>
+
+    <div class="rb-card">
+      <div class="rb-title">Guidelines</div>
+      <a href="lf-rules.html" class="rb-link">Posting Rules</a>
+      <a href="safety.html" class="rb-link">Safety Tips</a>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+feather.replace();
+</script>
+
+</body>
+</html>

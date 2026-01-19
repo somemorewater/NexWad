@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bluebase · New Listing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
+
+<style>
+:root{
+  --blue:#1877f2;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#050505;
+  --sub:#65676b;
+  --border:#dddfe2;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif;}
+
+body{background:var(--bg);}
+
+/* HEADER */
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:56px;
+  background:white;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  z-index:1000;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--blue);
+  text-decoration:none;
+}
+
+/* PAGE */
+.page{
+  margin-top:72px;
+  display:flex;
+  justify-content:center;
+  padding:0 16px;
+}
+
+.form-card{
+  width:100%;
+  max-width:720px;
+  background:white;
+  border-radius:8px;
+  padding:20px;
+}
+
+.form-card h2{
+  font-size:20px;
+  margin-bottom:16px;
+}
+
+/* FORM */
+.group{
+  margin-bottom:14px;
+}
+
+label{
+  display:block;
+  font-size:13px;
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+input, select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  font-size:14px;
+}
+
+textarea{
+  resize:vertical;
+  min-height:100px;
+}
+
+.upload{
+  border:2px dashed var(--border);
+  padding:24px;
+  text-align:center;
+  border-radius:8px;
+  font-size:14px;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+.actions{
+  display:flex;
+  gap:12px;
+  margin-top:20px;
+}
+
+.actions a{
+  flex:1;
+  text-align:center;
+  padding:12px;
+  border-radius:6px;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.primary{background:var(--blue);color:white;}
+.outline{border:1px solid var(--border);color:#050505;}
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="marketplace.html" class="logo">Bluebase</a>
+</header>
+
+<div class="page">
+  <form class="form-card">
+
+    <h2>Create New Listing</h2>
+
+    <div class="group">
+      <label>Listing Type</label>
+      <select>
+        <option>Marketplace</option>
+        <option>Lost & Found</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <label>Title</label>
+      <input placeholder="e.g. Scientific Calculator">
+    </div>
+
+    <div class="group">
+      <label>Category</label>
+      <select>
+        <option>Books</option>
+        <option>Electronics</option>
+        <option>Accessories</option>
+        <option>Services</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <label>Price (₦)</label>
+      <input type="number" placeholder="6000">
+    </div>
+
+    <div class="group">
+      <label>Description</label>
+      <textarea placeholder="Describe the item clearly..."></textarea>
+    </div>
+
+    <div class="group">
+      <label>Photos</label>
+      <div class="upload">Click to upload images</div>
+    </div>
+
+    <div class="actions">
+      <a href="marketplace.html" class="outline">Cancel</a>
+      <a href="marketplace.html" class="primary">Publish Listing</a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+feather.replace();
+</script>
+
+</body>
+</html>

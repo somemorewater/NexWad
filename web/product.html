@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bluebase · Product</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
+
+<style>
+:root{
+  --blue:#1877f2;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#050505;
+  --sub:#65676b;
+  --border:#dddfe2;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* HEADER */
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:56px;
+  background:white;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  z-index:1000;
+}
+
+.logo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--blue);
+  text-decoration:none;
+}
+
+.header-right a{
+  margin-left:18px;
+  color:#1c1e21;
+}
+
+/* LAYOUT */
+.container{
+  max-width:1200px;
+  margin:72px auto 0;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns:1fr 380px;
+  gap:16px;
+}
+
+@media(max-width:900px){
+  .container{grid-template-columns:1fr;}
+}
+
+/* LEFT */
+.gallery{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+}
+
+.main-img{
+  width:100%;
+  height:420px;
+  background:#e4e6eb;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  color:var(--sub);
+}
+
+.thumbs{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+
+.thumb{
+  width:80px;
+  height:60px;
+  background:#e4e6eb;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* RIGHT */
+.card{
+  background:white;
+  border-radius:8px;
+  padding:16px;
+}
+
+.price{
+  font-size:24px;
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.title{
+  font-size:18px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.meta{
+  font-size:13px;
+  color:var(--sub);
+  margin-bottom:12px;
+}
+
+.actions{
+  display:flex;
+  gap:10px;
+  margin:14px 0;
+}
+
+.btn{
+  flex:1;
+  padding:10px;
+  border-radius:6px;
+  font-size:14px;
+  font-weight:700;
+  text-align:center;
+  text-decoration:none;
+}
+
+.primary{
+  background:var(--blue);
+  color:white;
+}
+
+.outline{
+  border:1px solid var(--border);
+  color:#050505;
+}
+
+/* SELLER */
+.seller{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:16px;
+}
+
+.avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:#d8dadf;
+}
+
+.seller-info{
+  font-size:14px;
+}
+
+.seller-info span{
+  font-size:12px;
+  color:var(--sub);
+}
+
+/* DETAILS */
+.section{
+  margin-top:16px;
+}
+
+.section h4{
+  font-size:14px;
+  font-weight:700;
+  margin-bottom:6px;
+}
+
+.section p{
+  font-size:14px;
+  line-height:1.5;
+  color:#1c1e21;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <a href="index.html" class="logo">Bluebase</a>
+  <div class="header-right">
+    <a href="search.html"><i data-feather="search"></i></a>
+    <a href="notifications.html"><i data-feather="bell"></i></a>
+    <a href="profile.html"><i data-feather="user"></i></a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LEFT -->
+  <div class="gallery">
+    <div class="main-img">Product Image</div>
+    <div class="thumbs">
+      <div class="thumb"></div>
+      <div class="thumb"></div>
+      <div class="thumb"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="card">
+
+    <div class="price">₦12,000</div>
+    <div class="title">PHY 106 Textbook (Original)</div>
+    <div class="meta">Condition: Used · Category: Books</div>
+
+    <div class="actions">
+      <a href="message.html" class="btn primary">Message Seller</a>
+      <a href="cart.html" class="btn outline">Add to cart</a>
+    </div>
+
+    <div class="seller">
+      <div class="avatar"></div>
+      <div class="seller-info">
+        <strong><a href="profile.html" style="text-decoration:none;color:#050505;">Daz</a></strong><br>
+        <span>Student Seller · 4.9 ★</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h4>Description</h4>
+      <p>
+        Original PHY 106 textbook in very good condition. 
+        No torn pages, minimal markings. Ideal for exams.
+      </p>
+    </div>
+
+    <div class="section">
+      <h4>Pickup Location</h4>
+      <p>AFIT Campus · Hostel B</p>
+    </div>
+
+    <div class="section">
+      <h4>Posted</h4>
+      <p>2 days ago</p>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+feather.replace();
+</script>
+
+</body>
+</html>

@@ -1,323 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bluebase Marketplace</title>
+<meta charset="UTF-8">
+<title>Bluebase Marketplace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://unpkg.com/feather-icons"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/feather-icons"></script>
 
-  <style>
-    :root {
-      --blue: #1D9BF0;
-      --bg: #f6f7f9;
-      --card: #ffffff;
-      --text: #111;
-      --sub: #6b7280;
-      --border: #e5e7eb;
-      --shadow: 0 8px 24px rgba(0,0,0,0.04);
-      --radius: 18px;
-    }
+<style>
+:root{
+  --blue:#1877f2;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#050505;
+  --sub:#65676b;
+  --border:#dddfe2;
+}
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Inter,system-ui,sans-serif;
+}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-    }
+body{
+  background:var(--bg);
+  color:var(--text);
+}
 
-    /* ================= HEADER ================= */
+/* HEADER */
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  height:56px;
+  background:white;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  z-index:1000;
+}
 
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+.logo{
+  font-size:22px;
+  font-weight:800;
+  color:var(--blue);
+  text-decoration:none;
+}
 
-    header h1 {
-      font-size: 20px;
-      font-weight: 800;
-    }
+.header-right a{
+  margin-left:18px;
+  color:#1c1e21;
+}
 
-    header .actions {
-      display: flex;
-      gap: 16px;
-    }
+/* LAYOUT */
+.container{
+  max-width:1280px;
+  margin:72px auto 0;
+  padding:0 16px;
+  display:grid;
+  grid-template-columns:260px 1fr 300px;
+  gap:16px;
+}
 
-    /* ================= LAYOUT ================= */
+@media(max-width:1100px){
+  .rightbar{display:none;}
+  .container{grid-template-columns:260px 1fr;}
+}
+@media(max-width:800px){
+  .sidebar{display:none;}
+  .container{grid-template-columns:1fr;}
+}
 
-    .layout {
-      max-width: 1300px;
-      margin: 24px auto;
-      padding: 0 20px;
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      gap: 24px;
-    }
+/* SIDEBAR */
+.sidebar{
+  position:sticky;
+  top:72px;
+}
 
-    /* ================= SIDEBAR ================= */
+.side-card{
+  background:white;
+  border-radius:8px;
+  padding:8px;
+}
 
-    .sidebar {
-      position: sticky;
-      top: 90px;
-      height: fit-content;
-    }
+.side-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+  color:#050505;
+  text-decoration:none;
+}
 
-    .side-card {
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 12px;
-    }
+.side-item i{
+  width:20px;
+  color:var(--blue);
+}
 
-    .side-item {
-      padding: 12px 16px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
+.side-item.active,
+.side-item:hover{
+  background:#f2f2f2;
+}
 
-    .side-item.active {
-      background: #eef6fd;
-      color: var(--blue);
-    }
+/* MARKETPLACE FILTERS */
+.filter-card{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+  margin-top:12px;
+}
 
-    .side-item:hover {
-      background: #f3f4f6;
-    }
+.filter-title{
+  font-weight:700;
+  font-size:14px;
+  margin-bottom:8px;
+}
 
-    /* ================= MARKET ================= */
+.filter-link{
+  display:block;
+  padding:6px 0;
+  font-size:14px;
+  color:#050505;
+  text-decoration:none;
+}
 
-    .market-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-    }
+.filter-link:hover{
+  color:var(--blue);
+}
 
-    .market-header h2 {
-      font-size: 22px;
-      font-weight: 800;
-    }
+/* MAIN */
+.main{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
 
-    .segment {
-      display: flex;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 4px;
-    }
+/* SEARCH */
+.market-search{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+}
 
-    .segment button {
-      border: none;
-      background: transparent;
-      padding: 8px 18px;
-      font-weight: 600;
-      border-radius: 999px;
-      cursor: pointer;
-    }
+.market-search input{
+  width:100%;
+  border:none;
+  background:#f0f2f5;
+  padding:12px 14px;
+  border-radius:20px;
+  outline:none;
+}
 
-    .segment button.active {
-      background: var(--blue);
-      color: white;
-    }
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:16px;
+}
 
-    /* ================= FILTER BAR ================= */
+/* PRODUCT CARD */
+.product{
+  background:white;
+  border-radius:8px;
+  overflow:hidden;
+  text-decoration:none;
+  color:inherit;
+}
 
-    .filters {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
+.product img{
+  width:100%;
+  height:150px;
+  object-fit:cover;
+}
 
-    .filter {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-    }
+.product-body{
+  padding:10px;
+}
 
-    /* ================= GRID ================= */
+.price{
+  font-weight:700;
+  color:var(--blue);
+}
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 18px;
-    }
+.title{
+  font-size:14px;
+  margin:4px 0;
+}
 
-    .product {
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      transition: transform 0.2s ease;
-    }
+.location{
+  font-size:12px;
+  color:var(--sub);
+}
 
-    .product:hover {
-      transform: translateY(-4px);
-    }
+/* RIGHT BAR */
+.rightbar{
+  position:sticky;
+  top:72px;
+}
 
-    .product img {
-      width: 100%;
-      height: 160px;
-      object-fit: cover;
-    }
+.rb-card{
+  background:white;
+  border-radius:8px;
+  padding:12px;
+  margin-bottom:12px;
+}
 
-    .product-body {
-      padding: 14px;
-    }
+.rb-title{
+  font-weight:700;
+  font-size:14px;
+  margin-bottom:10px;
+}
 
-    .badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
-      margin-bottom: 6px;
-    }
+.rb-link{
+  display:block;
+  font-size:14px;
+  padding:6px 0;
+  text-decoration:none;
+  color:#050505;
+}
 
-    .badge.market {
-      background: #eef6fd;
-      color: var(--blue);
-    }
-
-    .badge.lost {
-      background: #fff3cd;
-      color: #b45309;
-    }
-
-    .product-title {
-      font-weight: 700;
-      font-size: 15px;
-      margin-bottom: 4px;
-    }
-
-    .price {
-      color: var(--blue);
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .meta {
-      font-size: 12px;
-      color: var(--sub);
-    }
-
-    /* ================= MOBILE ================= */
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-      .sidebar {
-        display: none;
-      }
-    }
-  </style>
+.rb-link:hover{
+  color:var(--blue);
+}
+</style>
 </head>
+
 <body>
 
 <header>
-  <h1>Marketplace</h1>
-  <div class="actions">
-    <i data-feather="shopping-cart"></i>
-    <i data-feather="user"></i>
+  <a href="index.html" class="logo">Bluebase</a>
+  <div class="header-right">
+    <a href="search.html"><i data-feather="search"></i></a>
+    <a href="notifications.html"><i data-feather="bell"></i></a>
+    <a href="profile.html"><i data-feather="user"></i></a>
   </div>
 </header>
 
-<div class="layout">
+<div class="container">
 
-  <!-- SIDEBAR -->
+  <!-- LEFT -->
   <aside class="sidebar">
     <div class="side-card">
-      <div class="side-item active">All</div>
-      <div class="side-item">Books</div>
-      <div class="side-item">Gadgets</div>
-      <div class="side-item">Food</div>
-      <div class="side-item">Services</div>
-      <div class="side-item">Lost & Found</div>
+      <a href="Dashboard.html" class="side-item"><i data-feather="home"></i> Home</a>
+      <a href="marketplace.html" class="side-item"><i data-feather="shopping-bag"></i> Marketplace</a>
+      <a href="lost-found.html" class="side-item"><i data-feather="alert-circle"></i> Lost & Found</a>
+     <a href="cart.html" class="side-item"><i data-feather="shopping-cart"></i> Cart</a>
+      <a href="profile.html" class="side-item active"><i data-feather="user"></i> Profile</a>
+    </div>
+  
+    <div class="filter-card">
+      <div class="filter-title">Categories</div>
+      <a href="category-books.html" class="filter-link">Books</a>
+      <a href="category-phones.html" class="filter-link">Phones</a>
+      <a href="category-electronics.html" class="filter-link">Electronics</a>
+      <a href="category-hostel.html" class="filter-link">Hostel Items</a>
     </div>
   </aside>
 
-  <!-- MARKET -->
-  <main>
-    <div class="market-header">
-      <h2>Campus Marketplace</h2>
+  <!-- MAIN -->
+  <main class="main">
 
-      <div class="segment">
-        <button class="active">Market</button>
-        <button>Lost & Found</button>
-      </div>
+    <div class="market-search">
+      <input placeholder="Search Marketplace">
     </div>
 
-    <!-- FILTERS -->
-    <div class="filters">
-      <div class="filter">Category</div>
-      <div class="filter">Price</div>
-      <div class="filter">Condition</div>
-      <div class="filter">Location</div>
-    </div>
-
-    <!-- GRID -->
     <div class="grid">
 
-      <!-- MARKET ITEM -->
-      <div class="product">
-        <img src="https://picsum.photos/400?1">
+      <a href="product.html" class="product">
+        <img src="https://picsum.photos/400/300?1">
         <div class="product-body">
-          <span class="badge market">Trusted Seller</span>
-          <div class="product-title">Physics Textbook</div>
-          <div class="price">₦3,500</div>
-          <div class="meta">Campus Bookstore</div>
+          <div class="price">₦6,000</div>
+          <div class="title">PHY 106 Textbook</div>
+          <div class="location">AFA Kaduna</div>
         </div>
-      </div>
+      </a>
 
-      <!-- LOST ITEM -->
-      <div class="product">
-        <img src="https://picsum.photos/400?2">
+      <a href="product.html" class="product">
+        <img src="https://picsum.photos/400/300?2">
         <div class="product-body">
-          <span class="badge lost">Lost Item</span>
-          <div class="product-title">Black Wristwatch</div>
-          <div class="meta">Last seen: Hostel C · Yesterday</div>
+          <div class="price">₦220,000</div>
+          <div class="title">iPhone 11</div>
+          <div class="location">Hostel C</div>
         </div>
-      </div>
+      </a>
 
-      <!-- FOUND ITEM -->
-      <div class="product">
-        <img src="https://picsum.photos/400?3">
+      <a href="product.html" class="product">
+        <img src="https://picsum.photos/400/300?3">
         <div class="product-body">
-          <span class="badge lost">Found Item</span>
-          <div class="product-title">Student ID Card</div>
-          <div class="meta">Found near Library</div>
+          <div class="price">₦8,500</div>
+          <div class="title">Scientific Calculator</div>
+          <div class="location">Engineering Block</div>
         </div>
-      </div>
+      </a>
+
+      <a href="product.html" class="product">
+        <img src="https://picsum.photos/400/300?4">
+        <div class="product-body">
+          <div class="price">₦15,000</div>
+          <div class="title">Wireless Headphones</div>
+          <div class="location">Tech Hub</div>
+        </div>
+      </a>
 
     </div>
+
   </main>
+
+  <!-- RIGHT -->
+  <aside class="rightbar">
+    <div class="rb-card">
+      <div class="rb-title">Sell on Bluebase</div>
+      <a href="create-listing.html" class="rb-link">Create New Listing</a>
+      <a href="my-listings.html" class="rb-link">My Listings</a>
+    </div>
+
+    <div class="rb-card">
+      <div class="rb-title">Marketplace Help</div>
+      <a href="market-rules.html" class="rb-link">Rules</a>
+      <a href="safety.html" class="rb-link">Safety Tips</a>
+    </div>
+  </aside>
 
 </div>
 
 <script>
-  feather.replace();
+feather.replace();
 </script>
 
 </body>
