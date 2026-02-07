@@ -15,6 +15,5 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 
-app.get("/", (_, res) => res.send("BlueBase API running"));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
