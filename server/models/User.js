@@ -89,8 +89,6 @@ userSchema.methods.checkSubscription = function () {
 }
 
 // Indexes
-userSchema.index({ email: 1 })
-userSchema.index({ matricNumber: 1 })
 userSchema.index({ name: 'text', bio: 'text' })
 userSchema.index({ createdAt: -1 })
 

@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const bcrypt = require('bcryptjs')
 const { totp } = require('otplib')
 const User = require('../models/User')
 const { protect } = require('../middleware/auth')
@@ -38,20 +39,28 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
       if (existing && existing.verified) {
         return res.status(409).json({ error: 'Account already exists' })
       }
+      if (existing && existing.email !== email) {
+        return res.status(409).json({ error: 'Matric number already in use' })
+      }
 
       // Generate 6-digit OTP
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       await storeOTP(email, code)
       await sendEmail(email, 'otp', { name, otp: code })
 
-      // Upsert unverified user
-      await User.findOneAndUpdate(
-        { email },
-        { name, email, password, matricNumber, department, level, phone, verified: false },
-        { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
-      )
+      // Create/update pending user through document save so password hashing hooks run.
+      const pendingUser = existing && existing.email === email ? existing : new User({ email })
+      pendingUser.name = name
+      pendingUser.email = email
+      pendingUser.password = password
+      pendingUser.matricNumber = matricNumber
+      pendingUser.department = department
+      pendingUser.level = level
+      pendingUser.phone = phone
+      pendingUser.verified = false
+      await pendingUser.save()
 
-      return res.status(200).json({ message: 'OTP sent to your AFIT email', email })
+      return res.status(200).json({ message: 'OTP sent to your email', email })
     }
 
     // Step 2: verify OTP and activate
@@ -96,7 +105,18 @@ router.post('/login', loginRules, validate, async (req, res, next) => {
     if (user.banned) return res.status(403).json({ error: 'Account suspended. Contact support.' })
     if (!user.verified) return res.status(403).json({ error: 'Please verify your email first' })
 
-    const match = await user.comparePassword(password)
+    let match = false
+    if (user.password?.startsWith?.('$2')) {
+      match = await user.comparePassword(password)
+    } else if (user.password === password) {
+      // Legacy fix: upgrade accidentally stored plaintext passwords.
+      const hashed = await bcrypt.hash(password, 12)
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { password: hashed, lastPasswordChange: new Date() } }
+      )
+      match = true
+    }
     if (!match) return res.status(401).json({ error: 'Invalid credentials' })
 
     const token = signToken(user._id)

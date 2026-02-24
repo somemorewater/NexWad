@@ -6,6 +6,11 @@ let isConnected = false
 async function connectDB() {
   if (isConnected) return
 
+  if (!process.env.MONGODB_URI) {
+    logger.error('MongoDB connection failed: MONGODB_URI is not set')
+    process.exit(1)
+  }
+
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
@@ -14,7 +19,7 @@ async function connectDB() {
     isConnected = true
     logger.info(`MongoDB connected: ${conn.connection.host}`)
   } catch (err) {
-    logger.error('MongoDB connection failed:', err.message)
+    logger.error(`MongoDB connection failed: ${err.message}`)
     process.exit(1)
   }
 }

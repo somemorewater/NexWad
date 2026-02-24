@@ -15,11 +15,7 @@ function validate(req, res, next) {
 // ─── Auth validators ──────────────────────────
 const signupRules = [
   body('name').trim().notEmpty().withMessage('Name required').isLength({ max: 100 }),
-  body('email').isEmail().withMessage('Valid email required').normalizeEmail()
-    .custom(v => {
-      if (!v.endsWith('@afit.edu.ng')) throw new Error('Must be an AFIT email (@afit.edu.ng)')
-      return true
-    }),
+  body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('matricNumber').optional().trim().notEmpty(),
   body('department').optional().trim(),
