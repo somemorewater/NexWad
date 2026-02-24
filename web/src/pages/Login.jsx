@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from?.pathname || '/dashboard'
+  const requestedPath = location.state?.from?.pathname
+  const from = requestedPath && requestedPath !== '/login' ? requestedPath : '/dashboard'
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate(from, { replace: true })
+    }
+  }, [authLoading, isAuthenticated, from, navigate])
 
   const validate = () => {
     const e = {}
@@ -77,7 +84,7 @@ export default function Login() {
       <div className="auth-right">
         <div className="auth-form-wrap animate-fade-in">
           <h2>Sign in</h2>
-          <p>AFIT students only · Use your school email</p>
+          <p>Use your email or matric number</p>
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -85,7 +92,7 @@ export default function Login() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="student@afit.edu.ng"
+                placeholder="you@example.com"
                 value={form.email}
                 onChange={set('email')}
                 autoComplete="username"

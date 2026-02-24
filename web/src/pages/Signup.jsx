@@ -24,6 +24,14 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
 
+  const getErrorMessage = (err, fallback) => {
+    if (err?.error) return err.error
+    if (Array.isArray(err?.details) && err.details.length > 0) {
+      return err.details[0]?.message || fallback
+    }
+    return err?.message || fallback
+  }
+
   const set = (field) => (e) => {
     setForm(f => ({ ...f, [field]: e.target.value }))
     setErrors(er => ({ ...er, [field]: '' }))
@@ -32,7 +40,7 @@ export default function Signup() {
   const validateStep1 = () => {
     const e = {}
     if (!form.name.trim()) e.name = 'Full name required'
-    if (!form.email.includes('@afit.edu.ng')) e.email = 'Must be an AFIT email (@afit.edu.ng)'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address'
     if (form.password.length < 8) e.password = 'Password must be at least 8 characters'
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match'
     return e
@@ -59,12 +67,11 @@ export default function Signup() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      // The backend sends OTP to AFIT email
       await signup({ ...form, _step: 'initiate' })
       setStep(3)
-      toast.success('OTP sent to your AFIT email')
+      toast.success('OTP sent to your email')
     } catch (err) {
-      toast.error(err?.message || 'Registration failed')
+      toast.error(getErrorMessage(err, 'Registration failed'))
     } finally {
       setLoading(false)
     }
@@ -79,7 +86,7 @@ export default function Signup() {
       toast.success('Account created! Welcome to NexWAD 🎉')
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err?.message || 'Invalid OTP')
+      toast.error(getErrorMessage(err, 'Invalid OTP'))
     } finally {
       setLoading(false)
     }
@@ -125,7 +132,7 @@ export default function Signup() {
           {step === 1 && (
             <>
               <h2>Create account</h2>
-              <p>Only AFIT students with a valid school email</p>
+              <p>Use your email to create an account</p>
               <form className="auth-form" onSubmit={handleStep1}>
                 <div className="form-group">
                   <label className="form-label">Full Name</label>
@@ -133,8 +140,8 @@ export default function Signup() {
                   {errors.name && <span className="form-error">{errors.name}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">AFIT Email</label>
-                  <input type="email" className="form-input" placeholder="student@afit.edu.ng" value={form.email} onChange={set('email')} />
+                  <label className="form-label">Email</label>
+                  <input type="email" className="form-input" placeholder="you@example.com" value={form.email} onChange={set('email')} />
                   {errors.email && <span className="form-error">{errors.email}</span>}
                 </div>
                 <div className="form-group">
@@ -176,7 +183,7 @@ export default function Signup() {
                   <label className="form-label">Level</label>
                   <select className="form-select" value={form.level} onChange={set('level')}>
                     <option value="">Select level</option>
-                    {LEVELS.map(l => <option key={l}>{l}L</option>)}
+                    {LEVELS.map(l => <option key={l} value={l}>{l}L</option>)}
                   </select>
                   {errors.level && <span className="form-error">{errors.level}</span>}
                 </div>

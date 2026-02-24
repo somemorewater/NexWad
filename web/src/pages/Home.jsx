@@ -141,7 +141,7 @@ export default function Home() {
               Join 2,400+ AFIT students
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.0625rem', marginBottom: 'var(--space-10)', maxWidth: 460, margin: '0 auto var(--space-10)' }}>
-              Sign up with your AFIT email and start buying, selling, and connecting today.
+              Sign up with any valid email and start buying, selling, and connecting today.
             </p>
             <Link to="/signup" className="btn btn-primary btn-lg">
               Create Free Account

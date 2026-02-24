@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { SocketContext } from '../context/SocketContext'
 import NotificationPanel from './Notification'
+import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 
 function SearchIcon() {
   return (
@@ -73,7 +74,7 @@ export default function Navbar() {
       <div className="navbar__inner">
         {/* Logo */}
         <Link to={isAuthenticated ? '/dashboard' : '/'} className="navbar__logo">
-          NexWAD<span className="navbar__logo-dot" />
+          <img src={nexwadLogo} alt="NexWAD" className="navbar__logo-img" />
         </Link>
 
         {/* Search (only when authenticated) */}

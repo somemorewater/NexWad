@@ -39,6 +39,13 @@
   gap: var(--space-2);
 }
 
+.navbar__logo-img {
+  height: auto;
+  width: 240px;
+  max-width: 280px;
+  object-fit: contain;
+}
+
 .navbar__logo-dot {
   width: 8px;
   height: 8px;
@@ -114,6 +121,15 @@
   background: var(--nw-accent);
   border-radius: 50%;
   border: 2px solid var(--nw-surface);
+}
+
+@media (max-width: 768px) {
+  .navbar__logo-img {
+    height: auto;
+    width: 180px;
+    max-width: 180px;
+    margin-left: -30px;
+  }
 }
 
 /* ============================================
