@@ -4,7 +4,7 @@ const { Chat, Message } = require('../models/Chat')
 const { protect } = require('../middleware/auth')
 const { handleUpload, uploadChatMedia } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
-const { emitToChat } = require('../socket')
+const { emitToUser } = require('../socket')
 const { notifyNewMessage } = require('../utils/notifications')
 
 // ─── GET /api/chat ────────────────────────────
@@ -15,6 +15,7 @@ router.get('/', protect, async (req, res, next) => {
       deletedBy: { $ne: req.user._id },
     })
       .populate('participants', 'name avatar online lastSeen')
+      .populate('listing', 'title description price images category')
       .populate({ path: 'lastMessage', select: 'text media createdAt sender' })
       .sort({ lastActivity: -1 })
 
@@ -41,14 +42,18 @@ router.post('/start', protect,
       let chat = await Chat.findOne({
         participants: { $all: [req.user._id, sellerId] },
         ...(listingId ? { listing: listingId } : {}),
-      }).populate('participants', 'name avatar online lastSeen')
+      })
+        .populate('participants', 'name avatar online lastSeen')
+        .populate('listing', 'title description price images category')
 
       if (!chat) {
         chat = await Chat.create({
           participants: [req.user._id, sellerId],
           ...(listingId ? { listing: listingId } : {}),
         })
-        chat = await chat.populate('participants', 'name avatar online lastSeen')
+        chat = await chat
+          .populate('participants', 'name avatar online lastSeen')
+          .populate('listing', 'title description price images category')
       }
 
       res.status(201).json({ chat })
@@ -129,10 +134,15 @@ router.post('/:chatId/messages', protect, handleUpload(uploadChatMedia), async (
       ...unreadUpdateFields,
     })
 
-    // Emit real-time to all in the chat room
-    emitToChat(req.params.chatId, 'new_message', {
+    const payload = {
       ...populated.toObject(),
       chatId: req.params.chatId,
+    }
+
+    // Emit real-time to each recipient's personal room.
+    // This works even if they have not joined the specific chat room yet.
+    chat.participants.forEach(pid => {
+      emitToUser(pid.toString(), 'new_message', payload)
     })
 
     // Notify other participants

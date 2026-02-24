@@ -61,6 +61,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
   const [showNotifs, setShowNotifs] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(() =>
@@ -71,7 +72,10 @@ export default function Navbar() {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    if (searchQuery.trim()) navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`)
+    if (searchQuery.trim()) {
+      navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`)
+      setShowMobileSearch(false)
+    }
   }
 
   // Close dropdowns on outside click
@@ -89,6 +93,10 @@ export default function Navbar() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    setShowMobileSearch(false)
+  }, [location.pathname])
 
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -160,6 +168,17 @@ export default function Navbar() {
               >
                 <PlusIcon /> Sell
               </button>
+
+              {/* Messages */}
+              {isMobile && (
+                <button
+                  className="navbar__icon-btn"
+                  onClick={() => setShowMobileSearch(v => !v)}
+                  aria-label="Search"
+                >
+                  <SearchIcon />
+                </button>
+              )}
 
               {/* Messages */}
               <button
@@ -271,6 +290,22 @@ export default function Navbar() {
           )}
         </div>
       </div>
+      {isAuthenticated && isMobile && showMobileSearch && (
+        <div className="navbar__search-mobile">
+          <span className="navbar__search-icon">
+            <SearchIcon />
+          </span>
+          <form onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="Search marketplace, people…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+          </form>
+        </div>
+      )}
     </nav>
   )
 }

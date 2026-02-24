@@ -11,10 +11,39 @@ const { buildListingFeed } = require('../utils/feedAlgorithm')
 router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) => {
   try {
     const { page = 1, limit = 12, category, sort, q, mine, saved, seller } = req.query
+    const parsedPage = parseInt(page)
+    const parsedLimit = parseInt(limit)
+
+    // Explicit seller filter must always return that seller's listings
+    // (including for authenticated users, bypassing personalized feed ranking).
+    if (seller) {
+      const query = { status: 'active', seller }
+      if (category && category !== 'All') query.category = category
+      if (q) query.$text = { $search: q }
+
+      const skip = (parsedPage - 1) * parsedLimit
+      const [listings, total] = await Promise.all([
+        Listing.find(query)
+          .populate('seller', 'name avatar subscription')
+          .sort({ isPremium: -1, createdAt: -1 })
+          .skip(skip)
+          .limit(parsedLimit)
+          .lean(),
+        Listing.countDocuments(query),
+      ])
+
+      const savedIds = req.user?.savedListings?.map(s => s.toString()) || []
+      const result = listings.map(l => ({
+        ...l,
+        isSaved: savedIds.includes(l._id.toString()),
+      }))
+
+      return res.json({ listings: result, hasMore: total > skip + result.length, page: parsedPage })
+    }
 
     if (req.user) {
       const result = await buildListingFeed(req.user, {
-        page: parseInt(page), limit: parseInt(limit), category, sort, q,
+        page: parsedPage, limit: parsedLimit, category, sort, q,
         mine: mine === 'true', saved: saved === 'true',
       })
       return res.json(result)
@@ -26,15 +55,15 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     if (seller) query.seller = seller
     if (q) query.$text = { $search: q }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit)
+    const skip = (parsedPage - 1) * parsedLimit
     const [listings, total] = await Promise.all([
       Listing.find(query)
         .populate('seller', 'name avatar subscription')
         .sort({ isPremium: -1, createdAt: -1 })
-        .skip(skip).limit(parseInt(limit)),
+        .skip(skip).limit(parsedLimit),
       Listing.countDocuments(query),
     ])
-    res.json({ listings, hasMore: total > skip + listings.length, page: parseInt(page) })
+    res.json({ listings, hasMore: total > skip + listings.length, page: parsedPage })
   } catch (err) { next(err) }
 })
 

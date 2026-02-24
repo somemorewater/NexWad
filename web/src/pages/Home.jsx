@@ -5,25 +5,25 @@ import { Navigate } from 'react-router-dom'
 
 const features = [
   {
-    icon: '🛒',
+    iconClass: 'fa-solid fa-cart-shopping',
     title: 'Student Marketplace',
     desc: 'Buy and sell textbooks, electronics, hostel essentials — all within AFIT.',
     color: 'var(--nw-primary-light)',
   },
   {
-    icon: '💬',
+    iconClass: 'fa-solid fa-comments',
     title: 'Social Feed',
     desc: 'Share campus moments, connect with coursemates, and discover campus news.',
     color: 'var(--nw-accent-light)',
   },
   {
-    icon: '🔍',
+    iconClass: 'fa-solid fa-magnifying-glass',
     title: 'Lost & Found',
     desc: 'Report a lost item or help someone find theirs. Real-time alerts.',
     color: 'var(--nw-green-light)',
   },
   {
-    icon: '⚡',
+    iconClass: 'fa-solid fa-bolt',
     title: 'Real-time Chat',
     desc: 'Message sellers directly. Negotiate, confirm, and transact safely.',
     color: 'var(--nw-gold-light)',
@@ -49,7 +49,7 @@ export default function Home() {
         <section className="hero">
           <div className="container">
             <div className="hero__eyebrow animate-fade-in">
-              <span>🎓</span> AFIT Kaduna's Student Platform
+              <span><i className="fa-solid fa-graduation-cap" aria-hidden="true" /></span> AFIT Kaduna's Student Platform
             </div>
             <h1 className="hero__title animate-fade-in delay-1">
               Your campus.<br />
@@ -109,7 +109,7 @@ export default function Home() {
                     fontSize: '1.5rem',
                     flexShrink: 0,
                   }}>
-                    {f.icon}
+                    <i className={f.iconClass} aria-hidden="true" />
                   </div>
                   <div>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.0625rem', marginBottom: 'var(--space-2)' }}>

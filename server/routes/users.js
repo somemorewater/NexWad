@@ -83,26 +83,49 @@ router.post('/:id/follow', protect, async (req, res, next) => {
       return res.status(400).json({ error: 'You cannot follow yourself' })
     }
     const target = await User.findById(req.params.id)
-    if (!target) return res.status(404).json({ error: 'User not found' })
+    if (!target || target.banned) return res.status(404).json({ error: 'User not found' })
 
-    const alreadyFollowing = target.followers.includes(req.user._id)
+    const alreadyFollowing = target.followers.some(f => f.toString() === req.user._id.toString())
     if (alreadyFollowing) return res.status(409).json({ error: 'Already following' })
 
-    await User.findByIdAndUpdate(req.params.id, { $addToSet: { followers: req.user._id } })
-    await User.findByIdAndUpdate(req.user._id, { $addToSet: { following: req.params.id } })
+    await Promise.all([
+      User.findByIdAndUpdate(req.params.id, { $addToSet: { followers: req.user._id } }),
+      User.findByIdAndUpdate(req.user._id, { $addToSet: { following: req.params.id } }),
+    ])
 
     notifyNewFollower(req.params.id, req.user.name, req.user._id)
 
-    res.json({ message: 'Following' })
+    const updated = await User.findById(req.params.id)
+      .select('_id followers following')
+      .lean()
+
+    res.json({
+      message: 'Following',
+      isFollowing: true,
+      followerCount: updated?.followers?.length || 0,
+      followingCount: updated?.following?.length || 0,
+    })
   } catch (err) { next(err) }
 })
 
 // ─── DELETE /api/users/:id/follow ────────────
 router.delete('/:id/follow', protect, async (req, res, next) => {
   try {
-    await User.findByIdAndUpdate(req.params.id, { $pull: { followers: req.user._id } })
-    await User.findByIdAndUpdate(req.user._id, { $pull: { following: req.params.id } })
-    res.json({ message: 'Unfollowed' })
+    await Promise.all([
+      User.findByIdAndUpdate(req.params.id, { $pull: { followers: req.user._id } }),
+      User.findByIdAndUpdate(req.user._id, { $pull: { following: req.params.id } }),
+    ])
+
+    const updated = await User.findById(req.params.id)
+      .select('_id followers following')
+      .lean()
+
+    res.json({
+      message: 'Unfollowed',
+      isFollowing: false,
+      followerCount: updated?.followers?.length || 0,
+      followingCount: updated?.following?.length || 0,
+    })
   } catch (err) { next(err) }
 })
 

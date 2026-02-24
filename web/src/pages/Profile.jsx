@@ -4,14 +4,15 @@ import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { ListingCard } from '../components/Card'
 import { useAuth } from '../hooks/useAuth'
-import { usersAPI, listingsAPI, subscriptionsAPI } from '../api/endpoints'
+import { usersAPI, listingsAPI, subscriptionsAPI, chatAPI } from '../api/endpoints'
 import Modal from '../components/Modal'
 import toast from 'react-hot-toast'
+import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
 
 const PLAN_INFO = {
   basic: { name: 'Basic', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
   silver: { name: 'Silver', color: '#64748b', bg: '#f1f5f9' },
-  gold: { name: 'Gold ⭐', color: '#92400e', bg: 'var(--nw-gold-light)' },
+  gold: { name: 'Gold', color: '#92400e', bg: 'var(--nw-gold-light)' },
   premium: { name: 'Premium', color: 'var(--nw-primary)', bg: 'var(--nw-primary-light)' },
 }
 
@@ -29,6 +30,8 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [savingEdit, setSavingEdit] = useState(false)
+  const [followingAction, setFollowingAction] = useState(false)
+  const [messagingAction, setMessagingAction] = useState(false)
 
   useEffect(() => {
     if (!isOwn && userId) {
@@ -45,16 +48,60 @@ export default function Profile() {
     }
   }, [userId, isOwn])
 
+  useEffect(() => {
+    if (!profile && !currentUser) return
+    const p = profile || currentUser
+    if (!p?._id) return
+
+    setSocialMeta({
+      title: `${p.name} - NexWAD Profile`,
+      description: p.bio || `${p.name}'s profile on NexWAD`,
+      image: p.avatar || '/nexwad-social.png',
+      url: `/profile/${p._id}`,
+      type: 'profile',
+    })
+    return () => resetSocialMeta()
+  }, [profile, currentUser])
+
   const handleFollow = async () => {
+    if (!profile?._id || followingAction) return
+    setFollowingAction(true)
     try {
       if (profile.isFollowing) {
-        await usersAPI.unfollow(profile._id)
-        setProfile(p => ({ ...p, isFollowing: false, followerCount: p.followerCount - 1 }))
+        const { data } = await usersAPI.unfollow(profile._id)
+        setProfile(p => ({
+          ...p,
+          isFollowing: data.isFollowing,
+          followerCount: data.followerCount,
+          followingCount: data.followingCount,
+        }))
+        toast.success('Unfollowed')
       } else {
-        await usersAPI.follow(profile._id)
-        setProfile(p => ({ ...p, isFollowing: true, followerCount: p.followerCount + 1 }))
+        const { data } = await usersAPI.follow(profile._id)
+        setProfile(p => ({
+          ...p,
+          isFollowing: data.isFollowing,
+          followerCount: data.followerCount,
+          followingCount: data.followingCount,
+        }))
+        toast.success('Following')
       }
-    } catch { toast.error('Action failed') }
+    } catch (err) { toast.error(err?.error || err?.message || 'Action failed') }
+    finally { setFollowingAction(false) }
+  }
+
+  const handleMessageUser = async () => {
+    const targetId = (profile || currentUser)?._id
+    if (!targetId || messagingAction) return
+    setMessagingAction(true)
+    try {
+      const { data } = await chatAPI.getOrCreate(null, targetId)
+      navigate(`/chat/${data.chat._id}`)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not open chat')
+    } finally {
+      setMessagingAction(false)
+    }
   }
 
   const handleSaveEdit = async () => {
@@ -67,6 +114,22 @@ export default function Profile() {
       toast.success('Profile updated')
     } catch { toast.error('Failed to update') }
     finally { setSavingEdit(false) }
+  }
+
+  const handleShareProfile = async () => {
+    const p = profile || currentUser
+    if (!p?._id) return
+    try {
+      const mode = await shareLink({
+        title: `${p.name} - NexWAD`,
+        text: `Check out ${p.name}'s profile on NexWAD`,
+        url: `/profile/${p._id}`,
+      })
+      if (mode === 'copied') toast.success('Profile link copied')
+      if (mode === 'unsupported') toast.error('Sharing not supported on this device')
+    } catch {
+      toast.error('Could not share profile')
+    }
   }
 
   if (loading) return (
@@ -110,14 +173,24 @@ export default function Profile() {
                     <button className="btn btn-secondary btn-sm" onClick={() => { setEditMode(true); setEditForm({ name: p.name, bio: p.bio || '', phone: p.phone || '' }) }}>
                       Edit Profile
                     </button>
+                    <button className="btn btn-ghost btn-sm" onClick={handleShareProfile}>
+                      Share Profile
+                    </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setShowSubModal(true)}>
-                      {p?.subscription?.plan ? 'Manage Plan' : '⭐ Go Premium'}
+                      {p?.subscription?.plan ? 'Manage Plan' : <><i className="fa-solid fa-star" aria-hidden="true" /> Go Premium</>}
                     </button>
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-primary btn-sm" onClick={() => navigate(`/chat?seller=${p._id}`)}>Message</button>
-                    <button className={`btn btn-sm ${profile?.isFollowing ? 'btn-secondary' : 'btn-primary'}`} onClick={handleFollow}>
+                    <button className="btn btn-primary btn-sm" onClick={handleMessageUser} disabled={messagingAction}>
+                      {messagingAction ? 'Opening...' : 'Message'}
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={handleShareProfile}>Share</button>
+                    <button
+                      className={`btn btn-sm ${profile?.isFollowing ? 'btn-secondary' : 'btn-primary'}`}
+                      onClick={handleFollow}
+                      disabled={followingAction}
+                    >
                       {profile?.isFollowing ? 'Unfollow' : 'Follow'}
                     </button>
                   </>
@@ -138,7 +211,7 @@ export default function Profile() {
           {activeTab === 'listings' && (
             listings.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state__icon" style={{ fontSize: '2rem' }}>📦</div>
+                <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-box-open" aria-hidden="true" /></div>
                 <div className="empty-state__title">No listings yet</div>
               </div>
             ) : (
@@ -157,7 +230,7 @@ export default function Profile() {
                   ['Level', p?.level ? `${p.level}L` : null],
                   ['Matric Number', p?.matricNumber],
                   ['Member Since', p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long' }) : null],
-                  ['Rating', p?.rating ? `${p.rating}/5 ⭐` : 'No ratings yet'],
+                  ['Rating', p?.rating ? `${p.rating}/5` : 'No ratings yet'],
                 ].filter(([, v]) => v).map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--nw-gray-100)', paddingBottom: 'var(--space-3)' }}>
                     <span style={{ color: 'var(--nw-gray-500)' }}>{label}</span>

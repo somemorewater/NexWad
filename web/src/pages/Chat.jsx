@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useContext } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useContext, useCallback } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { SocketContext } from '../context/SocketContext'
 import { useAuth } from '../hooks/useAuth'
@@ -17,6 +17,7 @@ function AttachIcon() {
 
 export default function Chat() {
   const { chatId: paramChatId } = useParams()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const { emit, on } = useContext(SocketContext)
   const navigate = useNavigate()
@@ -31,14 +32,45 @@ export default function Chat() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const messagesEndRef = useRef(null)
   const fileRef = useRef(null)
+  const handledQueryStartRef = useRef(false)
+  const appendMessage = useCallback((msg) => {
+    setMessages(prev => prev.some(m => m._id === msg._id) ? prev : [...prev, msg])
+  }, [])
+
+  const loadChats = useCallback(async () => {
+    try {
+      const { data } = await chatAPI.getChats()
+      setChats(data.chats || [])
+    } catch {
+      // silent
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   // Load chat list
   useEffect(() => {
-    chatAPI.getChats()
-      .then(({ data }) => setChats(data.chats || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+    loadChats()
+  }, [loadChats])
+
+  // Start chat from query params if present (e.g. /chat?seller=<id>&listing=<id>)
+  useEffect(() => {
+    if (handledQueryStartRef.current) return
+    if (paramChatId) return
+    const sellerId = searchParams.get('seller')
+    if (!sellerId) return
+    handledQueryStartRef.current = true
+
+    const listingId = searchParams.get('listing')
+    chatAPI.getOrCreate(listingId || null, sellerId)
+      .then(({ data }) => {
+        setActiveChatId(data.chat._id)
+        navigate(`/chat/${data.chat._id}`, { replace: true })
+      })
+      .catch((err) => {
+        toast.error(err?.error || err?.message || 'Could not open chat')
+      })
+  }, [paramChatId, searchParams, navigate])
 
   // Load messages when active chat changes
   useEffect(() => {
@@ -48,34 +80,44 @@ export default function Chat() {
     setHasMoreMessages(true)
     chatAPI.getMessages(activeChatId, { page: 1, limit: 30 })
       .then(({ data }) => {
-        setMessages(data.messages.reverse()) // oldest first
+        setMessages(data.messages) // oldest first
         setHasMoreMessages(data.hasMore)
         chatAPI.markRead(activeChatId).catch(() => {})
       })
       .catch(() => toast.error('Failed to load messages'))
   }, [activeChatId])
 
-  // Socket: join room, listen for messages
+  // Socket: join/leave active room
   useEffect(() => {
     if (!activeChatId) return
     emit('join_chat', { chatId: activeChatId })
 
-    const unsub = on('new_message', (msg) => {
-      if (msg.chatId === activeChatId) {
-        setMessages(prev => [...prev, msg])
-        // Update preview in chat list
-        setChats(prev => prev.map(c => c._id === activeChatId ? { ...c, lastMessage: msg, unreadCount: 0 } : c))
-      } else {
-        // Increment unread for other chats
-        setChats(prev => prev.map(c => c._id === msg.chatId ? { ...c, lastMessage: msg, unreadCount: (c.unreadCount || 0) + 1 } : c))
-      }
-    })
-
     return () => {
       emit('leave_chat', { chatId: activeChatId })
-      unsub?.()
     }
-  }, [activeChatId, emit, on])
+  }, [activeChatId, emit])
+
+  // Socket: listen for new messages globally
+  useEffect(() => {
+    const unsub = on('new_message', (msg) => {
+      let chatExists = false
+      setChats(prev => {
+        chatExists = prev.some(c => c._id === msg.chatId)
+        if (!chatExists) return prev
+        if (msg.chatId === activeChatId) {
+          return prev.map(c => c._id === activeChatId ? { ...c, lastMessage: msg, unreadCount: 0 } : c)
+        }
+        return prev.map(c => c._id === msg.chatId ? { ...c, lastMessage: msg, unreadCount: (c.unreadCount || 0) + 1 } : c)
+      })
+
+      if (!chatExists) loadChats()
+
+      if (msg.chatId === activeChatId) {
+        appendMessage(msg)
+      }
+    })
+    return () => unsub?.()
+  }, [on, activeChatId, loadChats, appendMessage])
 
   // Auto-scroll
   useEffect(() => {
@@ -91,7 +133,7 @@ export default function Chat() {
       if (text.trim()) fd.append('text', text.trim())
       if (file) fd.append('media', file)
       const { data } = await chatAPI.sendMessage(activeChatId, fd)
-      setMessages(prev => [...prev, data.message])
+      appendMessage(data.message)
       setInput('')
       // Update chat list preview
       setChats(prev => prev.map(c => c._id === activeChatId ? { ...c, lastMessage: data.message } : c))
@@ -147,7 +189,7 @@ export default function Chat() {
                   <div className="chat-item__info">
                     <div className="chat-item__name">{other?.name}</div>
                     <div className="chat-item__preview">
-                      {chat.lastMessage?.text || chat.lastMessage?.media ? '📎 Media' : 'No messages yet'}
+                      {chat.lastMessage?.text || chat.lastMessage?.media ? <><i className="fa-solid fa-paperclip" aria-hidden="true" /> Media</> : 'No messages yet'}
                     </div>
                   </div>
                   <div className="chat-item__meta">
@@ -170,7 +212,7 @@ export default function Chat() {
         <div className="chat-window">
           {!activeChatId ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, color: 'var(--nw-gray-400)' }}>
-              <div style={{ fontSize: '3rem' }}>💬</div>
+              <div style={{ fontSize: '3rem' }}><i className="fa-solid fa-comments" aria-hidden="true" /></div>
               <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--nw-gray-500)' }}>Select a conversation</div>
               <div style={{ fontSize: '0.875rem' }}>Or contact a seller from the Marketplace</div>
             </div>
@@ -193,6 +235,28 @@ export default function Chat() {
                   )
                 })()}
               </div>
+
+              {activeChat?.listing && (
+                <div style={{
+                  margin: '10px 16px 0',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--nw-gray-100)',
+                  background: 'var(--nw-gray-50)',
+                }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 2 }}>
+                    {activeChat.listing.title}
+                    {activeChat.listing.price ? ` - N${activeChat.listing.price.toLocaleString()}` : ''}
+                  </div>
+                  {activeChat.listing.description && (
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>
+                      {activeChat.listing.description.length > 120
+                        ? `${activeChat.listing.description.slice(0, 120)}...`
+                        : activeChat.listing.description}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Messages */}
               <div className="chat-window__messages">

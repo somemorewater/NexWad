@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { io } from 'socket.io-client'
 import { AuthContext } from './AuthContext'
 import { getStoredToken } from '../utils/tokenStore'
@@ -49,29 +49,33 @@ export function SocketProvider({ children }) {
     }
   }, [isAuthenticated, user?._id])
 
-  const emit = (event, data, cb) => {
+  const emit = useCallback((event, data, cb) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit(event, data, cb)
     }
-  }
+  }, [])
 
-  const on = (event, handler) => {
-    socketRef.current?.on(event, handler)
-    return () => socketRef.current?.off(event, handler)
-  }
+  const on = useCallback((event, handler) => {
+    const socket = socketRef.current
+    if (!socket) return () => {}
+    socket.on(event, handler)
+    return () => socket.off(event, handler)
+  }, [])
 
-  const markNotificationsRead = () => setUnreadCount(0)
+  const markNotificationsRead = useCallback(() => setUnreadCount(0), [])
+
+  const value = useMemo(() => ({
+    socket: socketRef.current,
+    connected,
+    emit,
+    on,
+    notifications,
+    unreadCount,
+    markNotificationsRead,
+  }), [connected, emit, on, notifications, unreadCount, markNotificationsRead])
 
   return (
-    <SocketContext.Provider value={{
-      socket: socketRef.current,
-      connected,
-      emit,
-      on,
-      notifications,
-      unreadCount,
-      markNotificationsRead,
-    }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   )

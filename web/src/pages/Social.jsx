@@ -101,7 +101,7 @@ export default function Social() {
                       <button
                         onClick={() => { setPostImage(null); setImagePreview(null) }}
                         style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
-                      >✕</button>
+                      ><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid var(--nw-gray-100)', paddingTop: 12 }}>
@@ -110,7 +110,7 @@ export default function Social() {
                         className="btn btn-ghost btn-sm"
                         onClick={() => fileRef.current?.click()}
                       >
-                        📷 Photo
+                        <i className="fa-solid fa-camera" aria-hidden="true" /> Photo
                       </button>
                       <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImagePick} />
                     </div>
@@ -152,7 +152,7 @@ export default function Social() {
                 )}
                 {!hasMore && posts.length > 0 && (
                   <p style={{ textAlign: 'center', color: 'var(--nw-gray-400)', fontSize: '0.875rem', padding: 'var(--space-6)' }}>
-                    You've seen everything 🎉
+                    <i className="fa-solid fa-circle-check" aria-hidden="true" /> You've seen everything
                   </p>
                 )}
               </div>

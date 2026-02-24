@@ -83,7 +83,7 @@ export default function Signup() {
     setLoading(true)
     try {
       await signup({ ...form, otp, _step: 'verify' })
-      toast.success('Account created! Welcome to NexWAD 🎉')
+      toast.success('Account created! Welcome to NexWAD')
       navigate('/dashboard')
     } catch (err) {
       toast.error(getErrorMessage(err, 'Invalid OTP'))
@@ -117,7 +117,7 @@ export default function Signup() {
                 fontSize: '0.75rem', fontWeight: 700, color: 'white',
                 transition: 'background 0.3s',
               }}>
-                {step > i ? '✓' : i + 1}
+                {step > i ? <i className="fa-solid fa-check" aria-hidden="true" /> : i + 1}
               </div>
               <span style={{ color: step === i + 1 ? 'white' : 'rgba(255,255,255,0.4)', fontSize: '0.875rem', fontWeight: step === i + 1 ? 600 : 400 }}>
                 {label}
@@ -223,7 +223,7 @@ export default function Signup() {
                   {errors.otp && <span className="form-error">{errors.otp}</span>}
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px' }} disabled={loading}>
-                  {loading ? <span className="spinner" style={{ width: 18, height: 18 }} /> : 'Verify & Join NexWAD 🎉'}
+                  {loading ? <span className="spinner" style={{ width: 18, height: 18 }} /> : <><i className="fa-solid fa-circle-check" aria-hidden="true" /> Verify & Join NexWAD</>}
                 </button>
                 <p className="auth-footer" style={{ marginTop: 12 }}>
                   Didn't receive it?{' '}

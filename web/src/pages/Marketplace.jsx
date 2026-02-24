@@ -108,7 +108,7 @@ export default function Marketplace() {
             </div>
           ) : listings.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state__icon" style={{ fontSize: '2rem' }}>🔍</div>
+              <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-magnifying-glass" aria-hidden="true" /></div>
               <div className="empty-state__title">No listings found</div>
               <div className="empty-state__text">Try a different category or be the first to sell!</div>
               <button className="btn btn-primary" onClick={() => setShowCreate(true)}>Create Listing</button>
@@ -211,7 +211,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
               </div>
             ) : (
               <>
-                <div className="upload-area__icon">📸</div>
+                <div className="upload-area__icon"><i className="fa-solid fa-camera" aria-hidden="true" /></div>
                 <div style={{ fontWeight: 500, marginBottom: 4 }}>Drop photos here or click to browse</div>
                 <div className="caption">PNG, JPG, WEBP up to 10MB each</div>
               </>

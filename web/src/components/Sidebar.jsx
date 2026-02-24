@@ -100,7 +100,9 @@ export default function Sidebar({ messageBadge = 0 }) {
             <div className="sidebar__user-info">
               <div className="sidebar__user-name">{user?.name}</div>
               <div className="sidebar__user-role">
-                {user?.subscription?.plan === 'premium' ? '⭐ Premium' : user?.role || 'Student'}
+                {user?.subscription?.plan === 'premium'
+                  ? <><i className="fa-solid fa-star" aria-hidden="true" /> Premium</>
+                  : user?.role || 'Student'}
               </div>
             </div>
           </NavLink>

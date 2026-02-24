@@ -47,10 +47,12 @@ export default function AdminDashboard() {
   )
 }
 
-function StatCard({ icon, label, value, color, textColor }) {
+function StatCard({ iconClass, label, value, color, textColor }) {
   return (
     <div className="stat-card animate-fade-in">
-      <div className="stat-card__icon" style={{ background: color, color: textColor, fontSize: '1.2rem' }}>{icon}</div>
+      <div className="stat-card__icon" style={{ background: color, color: textColor, fontSize: '1.2rem' }}>
+        <i className={iconClass} aria-hidden="true" />
+      </div>
       <div className="stat-card__value">{value}</div>
       <div className="stat-card__label">{label}</div>
     </div>
@@ -69,12 +71,12 @@ function AdminOverview() {
       ) : (
         <>
           <div className="grid-3" style={{ marginBottom: 'var(--space-8)' }}>
-            <StatCard icon="👥" label="Total Users" value={stats.totalUsers?.toLocaleString()} color="var(--nw-primary-light)" textColor="var(--nw-primary)" />
-            <StatCard icon="🛒" label="Active Listings" value={stats.activeListings?.toLocaleString()} color="var(--nw-accent-light)" textColor="var(--nw-accent)" />
-            <StatCard icon="💰" label="Total Revenue" value={`₦${(stats.totalRevenue||0).toLocaleString()}`} color="var(--nw-green-light)" textColor="var(--nw-green)" />
-            <StatCard icon="🚩" label="Open Reports" value={stats.openReports} color="var(--nw-red-light)" textColor="var(--nw-red)" />
-            <StatCard icon="⭐" label="Premium Users" value={stats.premiumUsers} color="var(--nw-gold-light)" textColor="#92400e" />
-            <StatCard icon="🔍" label="Active Lost Items" value={stats.activeLostFound} color="var(--nw-gray-100)" textColor="var(--nw-gray-600)" />
+            <StatCard iconClass="fa-solid fa-users" label="Total Users" value={stats.totalUsers?.toLocaleString()} color="var(--nw-primary-light)" textColor="var(--nw-primary)" />
+            <StatCard iconClass="fa-solid fa-cart-shopping" label="Active Listings" value={stats.activeListings?.toLocaleString()} color="var(--nw-accent-light)" textColor="var(--nw-accent)" />
+            <StatCard iconClass="fa-solid fa-naira-sign" label="Total Revenue" value={`₦${(stats.totalRevenue||0).toLocaleString()}`} color="var(--nw-green-light)" textColor="var(--nw-green)" />
+            <StatCard iconClass="fa-solid fa-flag" label="Open Reports" value={stats.openReports} color="var(--nw-red-light)" textColor="var(--nw-red)" />
+            <StatCard iconClass="fa-solid fa-star" label="Premium Users" value={stats.premiumUsers} color="var(--nw-gold-light)" textColor="#92400e" />
+            <StatCard iconClass="fa-solid fa-magnifying-glass" label="Active Lost Items" value={stats.activeLostFound} color="var(--nw-gray-100)" textColor="var(--nw-gray-600)" />
           </div>
           <div className="card" style={{ overflow: 'hidden' }}>
             <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--nw-gray-100)' }}>
@@ -195,7 +197,11 @@ function AdminListings() {
                   <td style={{ fontWeight: 600 }}>₦{l.price?.toLocaleString()}</td>
                   <td><span className="badge badge-gray">{l.category}</span></td>
                   <td><span className={`badge ${l.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{l.status}</span></td>
-                  <td><button className={`btn btn-sm ${l.isPremium ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => toggle(l._id, l.isPremium)}>{l.isPremium ? '★ Featured' : 'Feature'}</button></td>
+                  <td>
+                    <button className={`btn btn-sm ${l.isPremium ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => toggle(l._id, l.isPremium)}>
+                      {l.isPremium ? <><i className="fa-solid fa-star" aria-hidden="true" /> Featured</> : 'Feature'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

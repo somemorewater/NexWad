@@ -68,7 +68,7 @@ export default function NotificationPanel({ onClose }) {
             color: 'var(--nw-gray-400)',
             fontSize: '0.875rem',
           }}>
-            You're all caught up 🎉
+            <i className="fa-solid fa-circle-check" aria-hidden="true" /> You're all caught up
           </div>
         ) : (
           notifications.map((notif, i) => (

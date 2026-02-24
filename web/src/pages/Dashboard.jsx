@@ -28,7 +28,7 @@ export default function Dashboard() {
       value: listings.filter(l => l.status === 'active').length,
       change: '+2 this week',
       up: true,
-      icon: '🛒',
+      iconClass: 'fa-solid fa-cart-shopping',
       color: 'var(--nw-primary-light)',
       iconColor: 'var(--nw-primary)',
     },
@@ -37,7 +37,7 @@ export default function Dashboard() {
       value: listings.reduce((a, l) => a + (l.views || 0), 0),
       change: '+12% this week',
       up: true,
-      icon: '👁️',
+      iconClass: 'fa-solid fa-eye',
       color: 'var(--nw-accent-light)',
       iconColor: 'var(--nw-accent)',
     },
@@ -46,7 +46,7 @@ export default function Dashboard() {
       value: user?.unreadMessages || 0,
       change: 'Click to view',
       up: null,
-      icon: '💬',
+      iconClass: 'fa-solid fa-comments',
       color: 'var(--nw-green-light)',
       iconColor: 'var(--nw-green)',
     },
@@ -55,7 +55,7 @@ export default function Dashboard() {
       value: user?.savedCount || 0,
       change: 'Across all categories',
       up: null,
-      icon: '❤️',
+      iconClass: 'fa-solid fa-heart',
       color: 'var(--nw-gold-light)',
       iconColor: 'var(--nw-gold)',
     },
@@ -77,7 +77,7 @@ export default function Dashboard() {
               letterSpacing: '-0.015em',
               marginBottom: 4,
             }}>
-              Good {getTimeGreeting()}, {user?.name?.split(' ')[0]} 👋
+              Good {getTimeGreeting()}, {user?.name?.split(' ')[0]} <i className="fa-solid fa-hand" aria-hidden="true" />
             </h1>
             <p style={{ color: 'var(--nw-gray-500)' }}>Here's what's happening on NexWAD</p>
           </div>
@@ -92,7 +92,7 @@ export default function Dashboard() {
                 onClick={s.label === 'Messages' ? () => navigate('/chat') : undefined}
               >
                 <div className="stat-card__icon" style={{ background: s.color, color: s.iconColor, fontSize: '1.25rem' }}>
-                  {s.icon}
+                  <i className={s.iconClass} aria-hidden="true" />
                 </div>
                 <div className="stat-card__value">{s.value.toLocaleString()}</div>
                 <div className="stat-card__label">{s.label}</div>
@@ -127,7 +127,7 @@ export default function Dashboard() {
               <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(37,99,255,0.25), transparent)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.0625rem', color: 'white', marginBottom: 4 }}>
-                  ⭐ Upgrade to NexWAD Premium
+                  <i className="fa-solid fa-star" aria-hidden="true" /> Upgrade to NexWAD Premium
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
                   Get premium listing placement, seller analytics & more
@@ -159,7 +159,7 @@ export default function Dashboard() {
               </div>
             ) : listings.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state__icon" style={{ fontSize: '2rem' }}>📦</div>
+                <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-box-open" aria-hidden="true" /></div>
                 <div className="empty-state__title">No listings yet</div>
                 <div className="empty-state__text">Start selling to fellow students on NexWAD</div>
                 <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>

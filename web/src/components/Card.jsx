@@ -84,14 +84,23 @@ export function ListingCard({ listing }) {
         </div>
 
         <div className="listing-card__footer">
-          <div className="listing-card__seller">
+          <button
+            type="button"
+            className="listing-card__seller"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (seller?._id) navigate(`/profile/${seller._id}`)
+            }}
+            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+            aria-label={seller?.name ? `View ${seller.name} profile` : 'View seller profile'}
+          >
             <div className="avatar avatar-sm" style={{ width: 22, height: 22, fontSize: '0.6875rem' }}>
               {seller?.avatar
                 ? <img src={seller.avatar} alt={seller.name} style={{ width: '100%', borderRadius: '50%' }} />
                 : seller?.name?.[0]}
             </div>
             {seller?.name}
-          </div>
+          </button>
           <span className="caption">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
         </div>
       </div>

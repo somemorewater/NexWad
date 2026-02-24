@@ -15,6 +15,7 @@ import Chat from './pages/Chat'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import Subscription from './pages/Subscription'
+import ProductDetails from './pages/ProductDetails'
 import AdminDashboard from './pages/AdminDashboard'
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/marketplace/:listingId" element={<ProductDetails />} />
                 <Route path="/social" element={<Social />} />
                 <Route path="/lost-found" element={<LostFound />} />
                 <Route path="/chat" element={<Chat />} />

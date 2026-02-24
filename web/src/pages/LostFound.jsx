@@ -58,7 +58,7 @@ export default function LostFound() {
             </div>
           ) : items.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state__icon" style={{ fontSize: '2rem' }}>🔍</div>
+              <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-magnifying-glass" aria-hidden="true" /></div>
               <div className="empty-state__title">Nothing here</div>
               <div className="empty-state__text">Be the first to report a lost or found item</div>
             </div>
@@ -93,20 +93,24 @@ function LFCard({ item, delay }) {
         <img src={item.image} alt={item.title} className="lf-card__image" />
       ) : (
         <div className="lf-card__image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', background: isLost ? 'var(--nw-accent-light)' : 'var(--nw-green-light)' }}>
-          {isLost ? '😔' : '🎉'}
+          {isLost ? <i className="fa-solid fa-circle-exclamation" aria-hidden="true" /> : <i className="fa-solid fa-circle-check" aria-hidden="true" />}
         </div>
       )}
       <div className="lf-card__content">
         <div className={`lf-card__status lf-card__status--${isResolved ? 'found' : item.type}`}>
-          {isResolved ? '✓ Resolved' : isLost ? '⚠ Lost' : '● Found'}
+          {isResolved
+            ? <><i className="fa-solid fa-check" aria-hidden="true" /> Resolved</>
+            : isLost
+              ? <><i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Lost</>
+              : <><i className="fa-solid fa-circle-dot" aria-hidden="true" /> Found</>}
         </div>
         <h3 className="lf-card__title">{item.title}</h3>
         {item.description && (
           <p style={{ fontSize: '0.875rem', color: 'var(--nw-gray-500)', marginBottom: 8 }}>{item.description}</p>
         )}
         <div className="lf-card__meta">
-          {item.location && <span>📍 {item.location}</span>}
-          <span>🕐 {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
+          {item.location && <span><i className="fa-solid fa-location-dot" aria-hidden="true" /> {item.location}</span>}
+          <span><i className="fa-solid fa-clock" aria-hidden="true" /> {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
           <span>by {item.reporter?.name}</span>
         </div>
       </div>
@@ -189,7 +193,7 @@ function ReportModal({ isOpen, onClose, type, onCreated, locations }) {
               <img src={preview} alt="" style={{ maxHeight: 120, borderRadius: 8 }} />
             ) : (
               <>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📷</div>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}><i className="fa-solid fa-camera" aria-hidden="true" /></div>
                 <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>Upload photo</div>
               </>
             )}
