@@ -2,6 +2,7 @@ import { useState, useContext, useRef, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { SocketContext } from '../context/SocketContext'
+import { useLayout } from '../context/LayoutContext'
 import NotificationPanel from './Notification'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 
@@ -37,14 +38,34 @@ function PlusIcon() {
   )
 }
 
+function MenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M3 6h18M3 12h18M3 18h18" />
+    </svg>
+  )
+}
+
+function BackIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  )
+}
+
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
   const { unreadCount } = useContext(SocketContext)
+  const { toggleSidebar, closeSidebar } = useLayout()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [showNotifs, setShowNotifs] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
   const notifRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -63,19 +84,53 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NW'
 
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname)
+  const canGoBack = isAuthenticated && !isPublicPage && location.pathname !== '/dashboard'
+
+  const handleBack = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/dashboard')
+  }
 
   return (
     <nav className="navbar">
       <div className="navbar__inner">
-        {/* Logo */}
-        <Link to={isAuthenticated ? '/dashboard' : '/'} className="navbar__logo">
-          <img src={nexwadLogo} alt="NexWAD" className="navbar__logo-img" />
-        </Link>
+        <div className="navbar__left">
+          {isAuthenticated && isMobile && (
+            <button
+              className="navbar__icon-btn navbar__menu-btn"
+              onClick={toggleSidebar}
+              aria-label="Toggle menu"
+            >
+              <MenuIcon />
+            </button>
+          )}
+
+          {canGoBack && (
+            <button
+              className="navbar__icon-btn"
+              onClick={handleBack}
+              aria-label="Go back"
+            >
+              <BackIcon />
+            </button>
+          )}
+
+          {/* Logo */}
+          <Link to={isAuthenticated ? '/dashboard' : '/'} className="navbar__logo" onClick={closeSidebar}>
+            <img src={nexwadLogo} alt="NexWAD" className="navbar__logo-img" />
+          </Link>
+        </div>
 
         {/* Search (only when authenticated) */}
         {isAuthenticated && (

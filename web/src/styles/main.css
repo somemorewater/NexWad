@@ -179,10 +179,14 @@ ul, ol {
 }
 
 .page-layout {
-  display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
   padding-top: var(--nav-height);
+}
+
+.page-main {
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
+  padding: var(--space-8);
 }
 
 .page-content {
@@ -474,12 +478,17 @@ ul, ol {
    Responsive Breakpoints
    ============================================ */
 @media (max-width: 1024px) {
-  .page-layout { grid-template-columns: 1fr; }
+  .page-main {
+    margin-left: 0;
+    width: 100%;
+    padding: var(--space-6) var(--space-4);
+  }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
   :root { --nav-height: 56px; }
+  .page-main { padding: var(--space-5) var(--space-4); }
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
   .container { padding: 0 var(--space-4); }

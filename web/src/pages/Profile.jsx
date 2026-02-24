@@ -82,7 +82,7 @@ export default function Profile() {
       <Navbar />
       <div className="page-layout">
         <Sidebar />
-        <main style={{ marginLeft: 'var(--sidebar-width)', padding: 'var(--space-8)' }}>
+        <main className="page-main">
           {/* Profile Header */}
           <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
             <div style={{ display: 'flex', gap: 'var(--space-6)', alignItems: 'flex-start', flexWrap: 'wrap' }}>

@@ -1,5 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Fragment, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useLayout } from '../context/LayoutContext'
 
 const navItems = [
   {
@@ -49,47 +51,61 @@ function StarIcon() {
 
 export default function Sidebar({ messageBadge = 0 }) {
   const { user } = useAuth()
+  const location = useLocation()
+  const { sidebarOpen, closeSidebar } = useLayout()
 
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NW'
 
-  return (
-    <aside className="sidebar">
-      {navItems.map(section => (
-        <div key={section.label}>
-          <div className="sidebar__section-label">{section.label}</div>
-          {section.links.map(link => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) => `sidebar__link${isActive ? ' active' : ''}`}
-            >
-              <link.icon />
-              {link.label}
-              {link.to === '/chat' && messageBadge > 0 && (
-                <span className="sidebar__link-badge">{messageBadge}</span>
-              )}
-            </NavLink>
-          ))}
-        </div>
-      ))}
+  useEffect(() => {
+    closeSidebar()
+  }, [location.pathname])
 
-      <div className="sidebar__footer">
-        <NavLink to={`/profile/${user?._id}`} className="sidebar__user">
-          <div className="avatar avatar-sm">
-            {user?.avatar
-              ? <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-              : avatarInitials}
+  return (
+    <Fragment>
+      <button
+        className={`sidebar__backdrop${sidebarOpen ? ' open' : ''}`}
+        onClick={closeSidebar}
+        aria-label="Close menu"
+      />
+      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}>
+        {navItems.map(section => (
+          <div key={section.label}>
+            <div className="sidebar__section-label">{section.label}</div>
+            {section.links.map(link => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) => `sidebar__link${isActive ? ' active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <link.icon />
+                {link.label}
+                {link.to === '/chat' && messageBadge > 0 && (
+                  <span className="sidebar__link-badge">{messageBadge}</span>
+                )}
+              </NavLink>
+            ))}
           </div>
-          <div className="sidebar__user-info">
-            <div className="sidebar__user-name">{user?.name}</div>
-            <div className="sidebar__user-role">
-              {user?.subscription?.plan === 'premium' ? '⭐ Premium' : user?.role || 'Student'}
+        ))}
+
+        <div className="sidebar__footer">
+          <NavLink to={`/profile/${user?._id}`} className="sidebar__user" onClick={closeSidebar}>
+            <div className="avatar avatar-sm">
+              {user?.avatar
+                ? <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                : avatarInitials}
             </div>
-          </div>
-        </NavLink>
-      </div>
-    </aside>
+            <div className="sidebar__user-info">
+              <div className="sidebar__user-name">{user?.name}</div>
+              <div className="sidebar__user-role">
+                {user?.subscription?.plan === 'premium' ? '⭐ Premium' : user?.role || 'Student'}
+              </div>
+            </div>
+          </NavLink>
+        </div>
+      </aside>
+    </Fragment>
   )
 }

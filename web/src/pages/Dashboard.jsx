@@ -66,7 +66,7 @@ export default function Dashboard() {
       <Navbar />
       <div className="page-layout">
         <Sidebar />
-        <main style={{ marginLeft: 'var(--sidebar-width)', padding: 'var(--space-8) var(--space-8)' }}>
+        <main className="page-main">
           {/* Welcome */}
           <div style={{ marginBottom: 'var(--space-8)' }}>
             <h1 style={{

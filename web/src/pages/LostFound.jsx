@@ -28,7 +28,7 @@ export default function LostFound() {
       <Navbar />
       <div className="page-layout">
         <Sidebar />
-        <main style={{ marginLeft: 'var(--sidebar-width)', padding: 'var(--space-8)' }}>
+        <main className="page-main">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
             <div>
               <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.75rem', marginBottom: 4 }}>Lost &amp; Found</h1>

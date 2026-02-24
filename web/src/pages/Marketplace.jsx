@@ -65,7 +65,7 @@ export default function Marketplace() {
       <Navbar />
       <div className="page-layout">
         <Sidebar />
-        <main style={{ marginLeft: 'var(--sidebar-width)', padding: 'var(--space-8)' }}>
+        <main className="page-main">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
             <div className="page-header" style={{ marginBottom: 0 }}>
               <h1 className="page-header__title">{title}</h1>
