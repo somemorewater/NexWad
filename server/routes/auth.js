@@ -1,99 +1,186 @@
-const express = require("express");
-const router = express.Router();
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const auth = require("../middleware/auth");
+const express = require('express')
+const router = express.Router()
+const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
+const { totp } = require('otplib')
+const User = require('../models/User')
+const { protect } = require('../middleware/auth')
+const { signupRules, loginRules, validate, body } = require('../middleware/validate')
+const { storeOTP, verifyOTP, blacklistToken } = require('../utils/redis')
+const { sendEmail } = require('../config/email')
+const logger = require('../utils/logger')
 
-router.post("/signup", async (req, res) => {
+totp.options = { step: 600, digits: 6 } // 10 min OTP
+
+// ─── Token factory ────────────────────────────
+function signToken(userId) {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  })
+}
+
+function sanitizeUser(user) {
+  const obj = user.toObject ? user.toObject() : user
+  delete obj.password
+  delete obj.passwordResetToken
+  delete obj.passwordResetExpires
+  return obj
+}
+
+// ─── POST /api/auth/signup ────────────────────
+router.post('/signup', signupRules, validate, async (req, res, next) => {
   try {
-    const {
-      firstName,
-      lastName,
-      username,
-      email,
-      password,
-      matricNo,
-      userType,
-    } = req.body;
+    const { name, email, password, matricNumber, department, level, phone, otp, _step } = req.body
 
-    if (userType === "student" && !matricNo) {
-      return res
-        .status(400)
-        .json({ message: "Matric number is required for students" });
+    // Step 1: initiate — create unverified user and send OTP
+    if (_step === 'initiate' || !_step) {
+      const existing = await User.findOne({ $or: [{ email }, ...(matricNumber ? [{ matricNumber }] : [])] })
+      if (existing && existing.verified) {
+        return res.status(409).json({ error: 'Account already exists' })
+      }
+
+      // Generate 6-digit OTP
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      await storeOTP(email, code)
+      await sendEmail(email, 'otp', { name, otp: code })
+
+      // Upsert unverified user
+      await User.findOneAndUpdate(
+        { email },
+        { name, email, password, matricNumber, department, level, phone, verified: false },
+        { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
+      )
+
+      return res.status(200).json({ message: 'OTP sent to your AFIT email', email })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Step 2: verify OTP and activate
+    if (_step === 'verify') {
+      if (!otp) return res.status(400).json({ error: 'OTP required' })
+      const valid = await verifyOTP(email, otp)
+      if (!valid) return res.status(400).json({ error: 'Invalid or expired OTP' })
 
-    const user = await User.create({
-      firstName,
-      lastName,
-      username,
-      email,
-      password: hashedPassword,
-      matricNo: userType === "student" ? matricNo : undefined,
-      userType,
-      role: "free",
-    });
+      const user = await User.findOneAndUpdate(
+        { email },
+        { verified: true },
+        { new: true }
+      )
+      if (!user) return res.status(404).json({ error: 'User not found. Please sign up again.' })
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+      await sendEmail(email, 'welcome', { name: user.name })
+      const token = signToken(user._id)
+      logger.info(`New user registered: ${email}`)
+      return res.status(201).json({ token, user: sanitizeUser(user) })
+    }
 
-    res.status(201).json({ token });
+    return res.status(400).json({ error: 'Invalid signup step' })
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err)
   }
-});
+})
 
-
-router.post("/login", async (req, res) => {
+// ─── POST /api/auth/login ─────────────────────
+router.post('/login', loginRules, validate, async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    const { email, password } = req.body
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+    // Accept email or matric number
+    const user = await User.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { matricNumber: email.toUpperCase() },
+      ],
+    }).select('+password')
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' })
+    if (user.banned) return res.status(403).json({ error: 'Account suspended. Contact support.' })
+    if (!user.verified) return res.status(403).json({ error: 'Please verify your email first' })
 
-    res.json({ token });
+    const match = await user.comparePassword(password)
+    if (!match) return res.status(401).json({ error: 'Invalid credentials' })
+
+    const token = signToken(user._id)
+    logger.info(`User logged in: ${user.email}`)
+    res.json({ token, user: sanitizeUser(user) })
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err)
   }
-});
+})
 
-router.post("/upgrade/seller", auth, async (req, res) => {
-  const { nin } = req.body;
-  const user = req.user;
+// ─── GET /api/auth/me ─────────────────────────
+router.get('/me', protect, (req, res) => {
+  res.json({ user: sanitizeUser(req.user) })
+})
 
-  if (!user.isVerified) {
-    return res
-      .status(403)
-      .json({
-        message: "You must verify your account before becoming a seller",
-      });
+// ─── POST /api/auth/logout ────────────────────
+router.post('/logout', protect, async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1]
+  if (token) await blacklistToken(token)
+  res.json({ message: 'Logged out' })
+})
+
+// ─── POST /api/auth/forgot-password ──────────
+router.post('/forgot-password',
+  [body('email').isEmail().normalizeEmail()], validate,
+  async (req, res, next) => {
+    try {
+      const user = await User.findOne({ email: req.body.email })
+      if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' })
+
+      const token = crypto.randomBytes(32).toString('hex')
+      user.passwordResetToken = crypto.createHash('sha256').update(token).digest('hex')
+      user.passwordResetExpires = new Date(Date.now() + 3600000) // 1 hour
+      await user.save({ validateBeforeSave: false })
+
+      const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`
+      await sendEmail(user.email, 'passwordReset', { name: user.name, resetUrl })
+      res.json({ message: 'If that email exists, a reset link has been sent.' })
+    } catch (err) {
+      next(err)
+    }
   }
+)
 
-  if (!nin)
-    return res
-      .status(400)
-      .json({ message: "NIN is required to become a seller" });
+// ─── POST /api/auth/reset-password ───────────
+router.post('/reset-password',
+  [body('token').notEmpty(), body('password').isLength({ min: 8 })], validate,
+  async (req, res, next) => {
+    try {
+      const hashedToken = crypto.createHash('sha256').update(req.body.token).digest('hex')
+      const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() },
+      })
+      if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' })
 
-  user.role = "seller";
-  user.nin = nin;
+      user.password = req.body.password
+      user.passwordResetToken = undefined
+      user.passwordResetExpires = undefined
+      user.lastPasswordChange = new Date()
+      await user.save()
 
-  await user.save();
+      res.json({ message: 'Password reset successful' })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
 
-  res.json({ message: "Account upgraded to seller", user });
-});
+// ─── POST /api/auth/resend-otp ────────────────
+router.post('/resend-otp',
+  [body('email').isEmail().normalizeEmail()], validate,
+  async (req, res, next) => {
+    try {
+      const user = await User.findOne({ email: req.body.email, verified: false })
+      if (!user) return res.status(404).json({ error: 'No pending account found' })
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      await storeOTP(req.body.email, code)
+      await sendEmail(req.body.email, 'otp', { name: user.name, otp: code })
+      res.json({ message: 'OTP resent' })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
 
-module.exports = router;
+module.exports = router

@@ -1,13 +1,32 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose')
+const logger = require('../utils/logger')
 
-const connectDB = async () => {
+let isConnected = false
+
+async function connectDB() {
+  if (isConnected) return
+
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB connected");
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+    isConnected = true
+    logger.info(`MongoDB connected: ${conn.connection.host}`)
   } catch (err) {
-    console.error(err);
-    process.exit(1);
+    logger.error('MongoDB connection failed:', err.message)
+    process.exit(1)
   }
-};
+}
 
-module.exports = connectDB;
+mongoose.connection.on('disconnected', () => {
+  logger.warn('MongoDB disconnected')
+  isConnected = false
+})
+
+mongoose.connection.on('reconnected', () => {
+  logger.info('MongoDB reconnected')
+  isConnected = true
+})
+
+module.exports = { connectDB }
