@@ -933,13 +933,20 @@
 }
 
 .auth-left__logo {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: white;
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
   position: relative;
   z-index: 1;
+  margin-bottom: var(--space-4);
+}
+
+.auth-left__logo img {
+  display: block;
+  width: clamp(260px, 30vw, 400px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
 }
 
 .auth-left__content {
