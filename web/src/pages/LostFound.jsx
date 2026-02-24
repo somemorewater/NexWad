@@ -1,0 +1,202 @@
+import { useState, useEffect } from 'react'
+import Navbar from '../components/Navbar'
+import Sidebar from '../components/Sidebar'
+import Modal from '../components/Modal'
+import { lostFoundAPI } from '../api/endpoints'
+import { formatDistanceToNow } from 'date-fns'
+import toast from 'react-hot-toast'
+
+const TABS = ['All', 'Lost', 'Found', 'Resolved']
+const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports Complex', 'Library', 'Cafeteria', 'Car Park', 'Other']
+
+export default function LostFound() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('All')
+  const [showReport, setShowReport] = useState(false)
+  const [reportType, setReportType] = useState('lost')
+
+  useEffect(() => {
+    lostFoundAPI.getAll({ type: activeTab === 'All' ? undefined : activeTab.toLowerCase() })
+      .then(({ data }) => setItems(data.items || []))
+      .catch(() => toast.error('Failed to load'))
+      .finally(() => setLoading(false))
+  }, [activeTab])
+
+  return (
+    <div>
+      <Navbar />
+      <div className="page-layout">
+        <Sidebar />
+        <main style={{ marginLeft: 'var(--sidebar-width)', padding: 'var(--space-8)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.75rem', marginBottom: 4 }}>Lost &amp; Found</h1>
+              <p style={{ color: 'var(--nw-gray-500)' }}>Help your fellow students recover their belongings</p>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" onClick={() => { setReportType('found'); setShowReport(true) }}>
+                I Found Something
+              </button>
+              <button className="btn btn-primary" onClick={() => { setReportType('lost'); setShowReport(true) }}>
+                Report Lost Item
+              </button>
+            </div>
+          </div>
+
+          <div className="tabs" style={{ marginBottom: 'var(--space-6)' }}>
+            {TABS.map(t => (
+              <button key={t} className={`tab ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 130, borderRadius: 'var(--radius-xl)' }} />)}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state__icon" style={{ fontSize: '2rem' }}>🔍</div>
+              <div className="empty-state__title">Nothing here</div>
+              <div className="empty-state__text">Be the first to report a lost or found item</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {items.map((item, i) => (
+                <LFCard key={item._id} item={item} delay={i * 0.05} />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+
+      <ReportModal
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        type={reportType}
+        onCreated={item => setItems(prev => [item, ...prev])}
+        locations={LOCATIONS}
+      />
+    </div>
+  )
+}
+
+function LFCard({ item, delay }) {
+  const isLost = item.type === 'lost'
+  const isResolved = item.status === 'resolved'
+
+  return (
+    <div className="lf-card animate-fade-in" style={{ animationDelay: `${delay}s` }}>
+      {item.image ? (
+        <img src={item.image} alt={item.title} className="lf-card__image" />
+      ) : (
+        <div className="lf-card__image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', background: isLost ? 'var(--nw-accent-light)' : 'var(--nw-green-light)' }}>
+          {isLost ? '😔' : '🎉'}
+        </div>
+      )}
+      <div className="lf-card__content">
+        <div className={`lf-card__status lf-card__status--${isResolved ? 'found' : item.type}`}>
+          {isResolved ? '✓ Resolved' : isLost ? '⚠ Lost' : '● Found'}
+        </div>
+        <h3 className="lf-card__title">{item.title}</h3>
+        {item.description && (
+          <p style={{ fontSize: '0.875rem', color: 'var(--nw-gray-500)', marginBottom: 8 }}>{item.description}</p>
+        )}
+        <div className="lf-card__meta">
+          {item.location && <span>📍 {item.location}</span>}
+          <span>🕐 {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</span>
+          <span>by {item.reporter?.name}</span>
+        </div>
+      </div>
+      {!isResolved && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-primary btn-sm">Contact</button>
+          {item.type === 'lost' && <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.8125rem' }}>I Found It</button>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReportModal({ isOpen, onClose, type, onCreated, locations }) {
+  const [form, setForm] = useState({ title: '', description: '', location: '', image: null })
+  const [preview, setPreview] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const set = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }))
+
+  const handleImage = (e) => {
+    const file = e.target.files[0]
+    if (file) { setForm(p => ({ ...p, image: file })); setPreview(URL.createObjectURL(file)) }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.title) { toast.error('Title is required'); return }
+    setLoading(true)
+    try {
+      const fd = new FormData()
+      fd.append('type', type)
+      Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v) })
+      const { data } = await lostFoundAPI.create(fd)
+      toast.success(type === 'lost' ? 'Lost item reported!' : 'Found item reported!')
+      onCreated?.(data.item)
+      onClose()
+      setForm({ title: '', description: '', location: '', image: null })
+      setPreview(null)
+    } catch (err) {
+      toast.error(err?.message || 'Failed to report')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={isOpen} onClose={onClose}
+      title={type === 'lost' ? 'Report Lost Item' : 'Report Found Item'}
+      footer={
+        <>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+            {loading ? <span className="spinner" style={{ width: 18, height: 18 }} /> : 'Submit Report'}
+          </button>
+        </>
+      }
+    >
+      <form style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="form-group">
+          <label className="form-label">Item Name *</label>
+          <input type="text" className="form-input" placeholder="e.g. HP Laptop Charger" value={form.title} onChange={set('title')} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Location {type === 'lost' ? 'Lost' : 'Found'}</label>
+          <select className="form-select" value={form.location} onChange={set('location')}>
+            <option value="">Select location</option>
+            {locations.map(l => <option key={l}>{l}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Description</label>
+          <textarea className="form-textarea" placeholder="Add identifying details to help verification..." value={form.description} onChange={set('description')} rows={3} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Photo (optional)</label>
+          <label className="upload-area" htmlFor="lf-image" style={{ cursor: 'pointer', padding: 'var(--space-6)' }}>
+            {preview ? (
+              <img src={preview} alt="" style={{ maxHeight: 120, borderRadius: 8 }} />
+            ) : (
+              <>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📷</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>Upload photo</div>
+              </>
+            )}
+            <input id="lf-image" type="file" accept="image/*" hidden onChange={handleImage} />
+          </label>
+        </div>
+      </form>
+    </Modal>
+  )
+}
