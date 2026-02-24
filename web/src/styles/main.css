@@ -84,6 +84,87 @@
   --container-max: 1200px;
 }
 
+:root[data-theme='dark'] {
+  --nw-ink: #eef2ff;
+  --nw-ink-soft: #d4dcff;
+  --nw-surface: #0b1020;
+  --nw-white: #121a2b;
+
+  --nw-primary: #6ea8ff;
+  --nw-primary-dark: #4c8fff;
+  --nw-primary-light: rgba(110, 168, 255, 0.16);
+  --nw-primary-glow: rgba(110, 168, 255, 0.35);
+
+  --nw-accent: #ff8e76;
+  --nw-accent-light: rgba(255, 142, 118, 0.18);
+
+  --nw-gold: #fbbf24;
+  --nw-gold-light: rgba(251, 191, 36, 0.2);
+
+  --nw-green: #34d399;
+  --nw-green-light: rgba(52, 211, 153, 0.2);
+
+  --nw-red: #f87171;
+  --nw-red-light: rgba(248, 113, 113, 0.2);
+
+  --nw-gray-50: #0f172a;
+  --nw-gray-100: #172235;
+  --nw-gray-200: #233149;
+  --nw-gray-300: #344763;
+  --nw-gray-400: #7f93b4;
+  --nw-gray-500: #a6b4cc;
+  --nw-gray-600: #c7d2e5;
+  --nw-gray-700: #d8e0f0;
+  --nw-gray-800: #e5ebf7;
+  --nw-gray-900: #f4f7ff;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 6px 14px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.42), 0 6px 16px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 26px 70px rgba(0, 0, 0, 0.48);
+  --shadow-primary: 0 4px 20px rgba(110, 168, 255, 0.35);
+}
+
+:root[data-theme='red'] {
+  --nw-primary: #dc2626;
+  --nw-primary-dark: #b91c1c;
+  --nw-primary-light: #fee2e2;
+  --nw-primary-glow: rgba(220, 38, 38, 0.18);
+  --nw-accent: #fb7185;
+  --nw-accent-light: #ffe4ea;
+  --shadow-primary: 0 4px 20px rgba(220, 38, 38, 0.3);
+}
+
+:root[data-theme='blue'] {
+  --nw-primary: #2563eb;
+  --nw-primary-dark: #1d4ed8;
+  --nw-primary-light: #dbeafe;
+  --nw-primary-glow: rgba(37, 99, 235, 0.2);
+  --nw-accent: #0ea5e9;
+  --nw-accent-light: #e0f2fe;
+  --shadow-primary: 0 4px 20px rgba(37, 99, 235, 0.32);
+}
+
+:root[data-theme='green'] {
+  --nw-primary: #15803d;
+  --nw-primary-dark: #166534;
+  --nw-primary-light: #dcfce7;
+  --nw-primary-glow: rgba(21, 128, 61, 0.2);
+  --nw-accent: #0d9488;
+  --nw-accent-light: #ccfbf1;
+  --shadow-primary: 0 4px 20px rgba(21, 128, 61, 0.32);
+}
+
+:root[data-theme='yellow'] {
+  --nw-primary: #b7791f;
+  --nw-primary-dark: #975a16;
+  --nw-primary-light: #fef3c7;
+  --nw-primary-glow: rgba(183, 121, 31, 0.22);
+  --nw-accent: #f59e0b;
+  --nw-accent-light: #ffedd5;
+  --shadow-primary: 0 4px 20px rgba(183, 121, 31, 0.3);
+}
+
 /* ============================================
    Reset & Base
    ============================================ */

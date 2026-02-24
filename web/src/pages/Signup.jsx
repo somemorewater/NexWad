@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
+import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 
 const DEPARTMENTS = [
   'Computer Engineering', 'Electrical Engineering', 'Mechanical Engineering',
@@ -97,7 +98,9 @@ export default function Signup() {
   return (
     <div className="auth-layout">
       <div className="auth-left">
-        <div className="auth-left__logo">NexWAD<span style={{ color: 'var(--nw-accent)', marginLeft: 4 }}>·</span></div>
+        <div className="auth-left__logo">
+          <img src={nexwadLogo} alt="NexWAD Logo" />
+        </div>
         <div className="auth-left__content">
           <h2 className="auth-left__headline">
             Join your<br />campus network.
