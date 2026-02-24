@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NexWAD
 
 **The student platform for AFIT Kaduna** — buy, sell, find lost items, and share campus life.
@@ -173,8 +172,3 @@ Every destructive admin action is logged to `AdminLog` with IP, user agent, and 
 ---
 
 © 2025 NexWAD · Built for AFIT Kaduna
-=======
-# NexWad
-  
-This is an online marketplace where students of a particular university can buy and sell goods or services. Students can also connect with each other through this platform 
->>>>>>> 5151827e9c2c948fa82c3708378cc23f2da5fc19
