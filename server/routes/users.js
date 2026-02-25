@@ -2,6 +2,11 @@ const express = require('express')
 const router = express.Router()
 const User = require('../models/User')
 const Listing = require('../models/Listing')
+const Post = require('../models/Post')
+const LostFound = require('../models/LostFound')
+const Review = require('../models/Review')
+const Subscription = require('../models/Subscription')
+const Chat = require('../models/Chat')
 const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadAvatar, deleteAsset } = require('../utils/cloudinary')
 const { notifyNewFollower } = require('../utils/notifications')
@@ -54,6 +59,65 @@ router.put('/me', protect,
       const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true })
         .select('-password')
       res.json({ user })
+    } catch (err) { next(err) }
+  }
+)
+
+// ─── PUT /api/users/me/password ──────────────
+router.put('/me/password', protect,
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const { currentPassword, newPassword } = req.body
+      const user = await User.findById(req.user._id).select('+password')
+      if (!user) return res.status(404).json({ error: 'User not found' })
+
+      const isMatch = await user.comparePassword(currentPassword)
+      if (!isMatch) return res.status(401).json({ error: 'Current password is incorrect' })
+      if (currentPassword === newPassword) {
+        return res.status(400).json({ error: 'New password must be different from current password' })
+      }
+
+      user.password = newPassword
+      user.lastPasswordChange = new Date()
+      await user.save()
+      res.json({ message: 'Password updated successfully' })
+    } catch (err) { next(err) }
+  }
+)
+
+// ─── DELETE /api/users/me ─────────────────────
+router.delete('/me', protect,
+  [body('password').notEmpty().withMessage('Password is required')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const { password } = req.body
+      const user = await User.findById(req.user._id).select('+password')
+      if (!user) return res.status(404).json({ error: 'User not found' })
+
+      const isMatch = await user.comparePassword(password)
+      if (!isMatch) return res.status(401).json({ error: 'Password is incorrect' })
+
+      const userId = user._id
+      if (user.avatarPublicId) await deleteAsset(user.avatarPublicId)
+
+      await Promise.all([
+        Listing.deleteMany({ seller: userId }),
+        Post.deleteMany({ author: userId }),
+        LostFound.deleteMany({ reporter: userId }),
+        Review.deleteMany({ $or: [{ reviewer: userId }, { seller: userId }] }),
+        Subscription.deleteMany({ user: userId }),
+        Chat.updateMany({ participants: userId }, { $pull: { participants: userId } }),
+        User.updateMany({}, { $pull: { followers: userId, following: userId } }),
+      ])
+
+      await User.deleteOne({ _id: userId })
+      res.json({ message: 'Account deleted successfully' })
     } catch (err) { next(err) }
   }
 )

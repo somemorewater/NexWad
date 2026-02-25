@@ -92,12 +92,13 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
 router.post('/login', loginRules, validate, async (req, res, next) => {
   try {
     const { email, password } = req.body
+    const identifier = String(email || '').trim()
 
     // Accept email or matric number
     const user = await User.findOne({
       $or: [
-        { email: email.toLowerCase() },
-        { matricNumber: email.toUpperCase() },
+        { email: identifier.toLowerCase() },
+        { matricNumber: identifier.toUpperCase() },
       ],
     }).select('+password')
 

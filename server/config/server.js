@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit')
 const path = require('path')
 
 const app = express()
+const isProd = process.env.NODE_ENV === 'production'
 
 // ─── Security ─────────────────────────────────
 app.use(helmet())
@@ -20,7 +21,7 @@ app.use(cors({
 // ─── Global rate limiter ──────────────────────
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  max: parseInt(process.env.RATE_LIMIT_MAX) || (isProd ? 100 : 1000),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
@@ -29,8 +30,11 @@ app.use('/api/', limiter)
 
 // Stricter limiter for auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
+  windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || (isProd ? 20 : 200),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
   message: { error: 'Too many auth attempts. Try again in 15 minutes.' },
 })
 app.use('/api/auth/', authLimiter)
