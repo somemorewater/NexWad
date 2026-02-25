@@ -23,7 +23,7 @@ const signupRules = [
 ]
 
 const loginRules = [
-  body('email').notEmpty().withMessage('Email required'),
+  body('email').trim().notEmpty().withMessage('Email required'),
   body('password').notEmpty().withMessage('Password required'),
 ]
 

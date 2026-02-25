@@ -17,7 +17,7 @@ const navItems = [
   {
     label: 'Account',
     links: [
-      { to: '/profile', label: 'Profile', icon: UserIcon },
+      { to: '/profile', label: 'Profile', icon: UserIcon, end: true },
       { to: '/profile/settings', label: 'Settings', icon: SettingsIcon },
       { to: '/profile/subscription', label: 'Subscription', icon: StarIcon },
     ],
@@ -64,11 +64,14 @@ export default function Sidebar({ messageBadge = 0 }) {
 
   return (
     <Fragment>
-      <button
-        className={`sidebar__backdrop${sidebarOpen ? ' open' : ''}`}
-        onClick={closeSidebar}
-        aria-label="Close menu"
-      />
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="sidebar__backdrop open"
+          onClick={closeSidebar}
+          aria-label="Close menu"
+        />
+      )}
       <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}>
         {navItems.map(section => (
           <div key={section.label}>
@@ -77,6 +80,7 @@ export default function Sidebar({ messageBadge = 0 }) {
               <NavLink
                 key={link.to}
                 to={link.to}
+                end={link.end}
                 className={({ isActive }) => `sidebar__link${isActive ? ' active' : ''}`}
                 onClick={closeSidebar}
               >

@@ -18,7 +18,7 @@ const PLAN_INFO = {
 
 export default function Profile() {
   const { userId } = useParams()
-  const { user: currentUser, updateUser } = useAuth()
+  const { user: currentUser, updateUser, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const isOwn = !userId || userId === currentUser?._id
 
@@ -132,7 +132,7 @@ export default function Profile() {
     }
   }
 
-  if (loading) return (
+  if (loading || (isOwn && authLoading && !currentUser)) return (
     <div><Navbar /><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div className="spinner" style={{ width: 32, height: 32 }} /></div></div>
   )
 
@@ -147,7 +147,7 @@ export default function Profile() {
         <Sidebar />
         <main className="page-main">
           {/* Profile Header */}
-          <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+          <div className="card card-body profile-header" style={{ marginBottom: 'var(--space-6)' }}>
             <div style={{ display: 'flex', gap: 'var(--space-6)', alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div className="avatar avatar-xl" style={{ width: 88, height: 88, fontSize: '2rem' }}>
                 {p?.avatar ? <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}
@@ -167,29 +167,39 @@ export default function Profile() {
                   <span><strong style={{ color: 'var(--nw-ink)' }}>{p?.followingCount || 0}</strong> Following</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
+              <div className="profile-header__actions" style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
                 {isOwn ? (
                   <>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setEditMode(true); setEditForm({ name: p.name, bio: p.bio || '', phone: p.phone || '' }) }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        if (!p) return
+                        setEditMode(true)
+                        setEditForm({ name: p.name || '', bio: p.bio || '', phone: p.phone || '' })
+                      }}
+                      disabled={!p}
+                    >
                       Edit Profile
                     </button>
-                    <button className="btn btn-ghost btn-sm" onClick={handleShareProfile}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleShareProfile} disabled={!p?._id}>
                       Share Profile
                     </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setShowSubModal(true)}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowSubModal(true)} disabled={!p}>
                       {p?.subscription?.plan ? 'Manage Plan' : <><i className="fa-solid fa-star" aria-hidden="true" /> Go Premium</>}
                     </button>
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-primary btn-sm" onClick={handleMessageUser} disabled={messagingAction}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleMessageUser} disabled={messagingAction || !p?._id}>
                       {messagingAction ? 'Opening...' : 'Message'}
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={handleShareProfile}>Share</button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={handleShareProfile} disabled={!p?._id}>Share</button>
                     <button
+                      type="button"
                       className={`btn btn-sm ${profile?.isFollowing ? 'btn-secondary' : 'btn-primary'}`}
                       onClick={handleFollow}
-                      disabled={followingAction}
+                      disabled={followingAction || !p?._id}
                     >
                       {profile?.isFollowing ? 'Unfollow' : 'Follow'}
                     </button>

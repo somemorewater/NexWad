@@ -23,6 +23,8 @@ export default function Signup() {
   })
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
 
   const getErrorMessage = (err, fallback) => {
@@ -149,12 +151,44 @@ export default function Signup() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Password</label>
-                  <input type="password" className="form-input" placeholder="Min. 8 characters" value={form.password} onChange={set('password')} />
+                  <div className="password-field">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="form-input password-field__input"
+                      placeholder="Min. 8 characters"
+                      value={form.password}
+                      onChange={set('password')}
+                    />
+                    <button
+                      type="button"
+                      className="password-field__toggle"
+                      onClick={() => setShowPassword(v => !v)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                   {errors.password && <span className="form-error">{errors.password}</span>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Confirm Password</label>
-                  <input type="password" className="form-input" placeholder="Repeat password" value={form.confirmPassword} onChange={set('confirmPassword')} />
+                  <div className="password-field">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      className="form-input password-field__input"
+                      placeholder="Repeat password"
+                      value={form.confirmPassword}
+                      onChange={set('confirmPassword')}
+                    />
+                    <button
+                      type="button"
+                      className="password-field__toggle"
+                      onClick={() => setShowConfirmPassword(v => !v)}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                   {errors.confirmPassword && <span className="form-error">{errors.confirmPassword}</span>}
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px' }}>

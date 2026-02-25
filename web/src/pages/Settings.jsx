@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
@@ -77,11 +78,16 @@ export default function Settings() {
 
           <div className="card card-body" style={{ maxWidth: 920, marginTop: 'var(--space-5)' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', marginBottom: 'var(--space-2)' }}>
-              Profile Editing
+              Account Details
             </h2>
             <p style={{ color: 'var(--nw-gray-500)' }}>
-              Profile editing is now in the Profile page. Open your profile and click <strong>Edit Profile</strong>.
+              Open Account Manager to edit your important account information.
             </p>
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <Link to="/profile/account-manager" className="btn btn-primary">
+                Go to Account Manager
+              </Link>
+            </div>
           </div>
         </main>
       </div>

@@ -227,7 +227,7 @@ export default function Navbar() {
                     border: '1px solid var(--nw-gray-100)',
                     boxShadow: 'var(--shadow-lg)',
                     minWidth: 200,
-                    zIndex: 200,
+                    zIndex: 5100,
                     overflow: 'hidden',
                     animation: 'fadeIn 0.15s var(--ease-out)',
                   }}>

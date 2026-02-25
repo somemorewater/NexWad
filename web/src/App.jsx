@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { SocketProvider } from './context/SocketContext'
@@ -15,13 +16,36 @@ import LostFound from './pages/LostFound'
 import Chat from './pages/Chat'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import AccountManager from './pages/AccountManager'
 import Subscription from './pages/Subscription'
 import ProductDetails from './pages/ProductDetails'
 import AdminDashboard from './pages/AdminDashboard'
+import nexwadLogo from './assets/images/nexwad-logo.png'
 
-export default function App() {
+function AppContent() {
+  const location = useLocation()
+  const isFirstRoute = useRef(true)
+  const [routeLoading, setRouteLoading] = useState(false)
+
+  useEffect(() => {
+    if (isFirstRoute.current) {
+      isFirstRoute.current = false
+      return
+    }
+
+    setRouteLoading(true)
+    const timer = window.setTimeout(() => setRouteLoading(false), 420)
+    return () => window.clearTimeout(timer)
+  }, [location.pathname, location.search])
+
   return (
-    <BrowserRouter>
+    <>
+      {routeLoading && (
+        <div className="route-loader" role="status" aria-live="polite" aria-label="Loading page">
+          <img src={nexwadLogo} alt="NexWAD" className="route-loader__logo" />
+          <span className="spinner route-loader__spinner" />
+        </div>
+      )}
       <ThemeProvider>
         <AuthProvider>
           <LayoutProvider>
@@ -53,6 +77,7 @@ export default function App() {
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/chat/:chatId" element={<Chat />} />
                 <Route path="/profile/settings" element={<Settings />} />
+                <Route path="/profile/account-manager" element={<AccountManager />} />
                 <Route path="/profile/subscription" element={<Subscription />} />
                 <Route path="/profile/:userId?" element={<Profile />} />
               </Route>
@@ -68,6 +93,14 @@ export default function App() {
           </LayoutProvider>
         </AuthProvider>
       </ThemeProvider>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   )
 }

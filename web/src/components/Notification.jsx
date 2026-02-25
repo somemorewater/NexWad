@@ -38,7 +38,7 @@ export default function NotificationPanel({ onClose }) {
       borderRadius: 'var(--radius-xl)',
       border: '1px solid var(--nw-gray-100)',
       boxShadow: 'var(--shadow-xl)',
-      zIndex: 200,
+      zIndex: 5100,
       overflow: 'hidden',
       animation: 'fadeIn 0.15s var(--ease-out)',
     }}>

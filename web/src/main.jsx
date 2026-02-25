@@ -9,3 +9,9 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+const preAppLoader = document.getElementById('pre-app-loader')
+if (preAppLoader) {
+  preAppLoader.classList.add('hidden')
+  window.setTimeout(() => preAppLoader.remove(), 240)
+}

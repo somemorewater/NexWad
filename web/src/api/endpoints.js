@@ -4,6 +4,8 @@ import api from './index'
 export const usersAPI = {
   getProfile: (userId) => api.get(`/users/${userId}`),
   updateProfile: (data) => api.put('/users/me', data),
+  changePassword: (data) => api.put('/users/me/password', data),
+  deleteAccount: (data) => api.delete('/users/me', { data }),
   uploadAvatar: (formData) =>
     api.post('/users/me/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   follow: (userId) => api.post(`/users/${userId}/follow`),
