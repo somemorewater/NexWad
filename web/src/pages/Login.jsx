@@ -12,8 +12,17 @@ export default function Login() {
   const from = requestedPath && requestedPath !== '/login' ? requestedPath : '/dashboard'
 
   const [form, setForm] = useState({ email: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
+
+  const getErrorMessage = (err, fallback) => {
+    if (err?.error) return err.error
+    if (Array.isArray(err?.details) && err.details.length > 0) {
+      return err.details[0]?.message || fallback
+    }
+    return err?.message || fallback
+  }
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -34,11 +43,11 @@ export default function Login() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      await login(form)
+      await login({ ...form, email: form.email.trim() })
       toast.success('Welcome back!')
       navigate(from, { replace: true })
     } catch (err) {
-      toast.error(err?.message || 'Invalid credentials')
+      toast.error(getErrorMessage(err, 'Invalid credentials'))
     } finally {
       setLoading(false)
     }
@@ -111,14 +120,24 @@ export default function Login() {
                   Forgot?
                 </Link>
               </label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Your password"
-                value={form.password}
-                onChange={set('password')}
-                autoComplete="current-password"
-              />
+              <div className="password-field">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input password-field__input"
+                  placeholder="Your password"
+                  value={form.password}
+                  onChange={set('password')}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="password-field__toggle"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
               {errors.password && <span className="form-error">{errors.password}</span>}
             </div>
 

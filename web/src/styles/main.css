@@ -409,6 +409,34 @@ ul, ol {
   min-height: 100px;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field__input {
+  padding-right: 68px;
+}
+
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--nw-primary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+}
+
+.password-field__toggle:hover {
+  background: var(--nw-primary-light);
+}
+
 .form-error {
   font-size: 0.8125rem;
   color: var(--nw-red);
@@ -522,10 +550,60 @@ ul, ol {
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid var(--nw-gray-200);
-  border-top-color: var(--nw-primary);
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  background: center / 70% no-repeat url('../assets/images/nexwad-logo.png');
+  filter: drop-shadow(0 2px 8px rgba(37, 99, 255, 0.2));
+  animation: spin 0.95s linear infinite;
+}
+
+.spinner::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--nw-gray-200);
+  border-top-color: currentColor;
+  animation: spin 0.8s linear infinite reverse;
+  opacity: 0.85;
+}
+
+.route-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(37, 99, 255, 0.14), transparent 60%),
+    rgba(245, 244, 240, 0.84);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeIn 0.14s var(--ease-out);
+}
+
+.route-loader__logo {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  animation: pulseLogo 0.95s ease-in-out infinite;
+}
+
+.route-loader__spinner {
+  width: 24px;
+  height: 24px;
+  color: var(--nw-primary);
+}
+
+@keyframes pulseLogo {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.06); opacity: 1; }
 }
 
 /* ============================================
