@@ -39,8 +39,8 @@
   --nw-gray-900: #0f0e0d;
 
   /* Typography */
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  --font-display: 'IBM Plex Sans', sans-serif;
+  --font-body: 'Source Sans 3', sans-serif;
 
   /* Spacing Scale */
   --space-1: 4px;
@@ -497,6 +497,11 @@ ul, ol {
 .badge-green { background: var(--nw-green-light); color: #065f46; }
 .badge-red { background: var(--nw-red-light); color: #991b1b; }
 .badge-gray { background: var(--nw-gray-100); color: var(--nw-gray-600); }
+.badge-verified {
+  background: #dbeafe;
+  color: #1d4ed8;
+  gap: 6px;
+}
 
 /* ============================================
    Avatar

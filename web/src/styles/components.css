@@ -48,11 +48,12 @@
 }
 
 .navbar__logo-img {
-  height: 280px;
+  height: 44px;
   width: auto;
-  margin-left: -30px;
-  max-width: 280px;
+  margin-left: 0;
+  max-width: 200px;
   object-fit: contain;
+  display: block;
 }
 
 .navbar__logo-dot {
@@ -1139,11 +1140,13 @@
 .profile-header {
   position: relative;
   isolation: isolate;
+  pointer-events: auto;
 }
 
 .profile-header__actions {
   position: relative;
-  z-index: 2;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .profile-header__actions .btn {
