@@ -101,6 +101,7 @@ export default function Navbar() {
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NW'
+  const canSell = user?.role === 'seller'
 
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname)
   const canGoBack = isAuthenticated && !isPublicPage && location.pathname !== '/dashboard'
@@ -162,12 +163,14 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               {/* New Listing */}
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => navigate('/marketplace?create=true')}
-              >
-                <PlusIcon /> Sell
-              </button>
+              {canSell && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => navigate('/marketplace?create=true')}
+                >
+                  <PlusIcon /> Sell
+                </button>
+              )}
 
               {/* Messages */}
               {isMobile && (
@@ -240,7 +243,7 @@ export default function Navbar() {
                       { label: 'My Listings', to: '/marketplace?mine=true' },
                       { label: 'Saved Items', to: '/marketplace?saved=true' },
                       { label: 'Settings', to: '/profile/settings' },
-                      ...(user?.role === 'super_admin' || user?.role === 'admin' ? [{ label: 'Admin Panel', to: '/admin' }] : []),
+                      ...(user?.role === 'super_admin' || user?.role === 'superadmin' || user?.role === 'admin' ? [{ label: 'Admin Panel', to: '/admin' }] : []),
                     ].map(item => (
                       <Link
                         key={item.to}
