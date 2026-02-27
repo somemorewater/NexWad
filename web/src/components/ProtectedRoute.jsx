@@ -22,7 +22,7 @@ export default function ProtectedRoute({ requiredRole }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (requiredRole && !['admin', 'super_admin', 'moderator', 'cs'].includes(user?.role)) {
+  if (requiredRole && !['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(user?.role)) {
     return <Navigate to="/dashboard" replace />
   }
 
