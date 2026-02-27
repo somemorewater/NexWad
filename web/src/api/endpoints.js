@@ -34,6 +34,7 @@ export const listingsAPI = {
 export const postsAPI = {
   getFeed: (params) => api.get('/posts/feed', { params }),
   getById: (id) => api.get(`/posts/${id}`),
+  getComments: (id) => api.get(`/posts/${id}/comments`),
   create: (formData) =>
     api.post('/posts', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   delete: (id) => api.delete(`/posts/${id}`),
@@ -75,6 +76,11 @@ export const subscriptionsAPI = {
   getCurrent: () => api.get('/subscriptions/current'),
   subscribe: (planId, paymentData) =>
     api.post('/subscriptions', { planId, ...paymentData }),
+  applySeller: (formData) =>
+    api.post('/subscriptions/apply-seller', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  getMySellerApplication: () => api.get('/subscriptions/my-application'),
   cancel: () => api.delete('/subscriptions/current'),
   getReceipt: (subId) => api.get(`/subscriptions/${subId}/receipt`, { responseType: 'blob' }),
 }
@@ -91,4 +97,7 @@ export const adminAPI = {
   getLogs: (params) => api.get('/admin/logs', { params }),
   getListings: (params) => api.get('/admin/listings', { params }),
   featureListing: (id, featured) => api.put(`/admin/listings/${id}/feature`, { featured }),
+  getSellerApplications: (params) => api.get('/admin/seller-applications', { params }),
+  approveSellerApplication: (id) => api.put(`/admin/seller-applications/${id}/approve`),
+  rejectSellerApplication: (id, reason) => api.put(`/admin/seller-applications/${id}/reject`, { reason }),
 }
