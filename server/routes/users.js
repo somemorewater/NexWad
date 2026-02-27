@@ -22,7 +22,7 @@ router.get('/search', protect, async (req, res, next) => {
       _id: { $ne: req.user._id },
       verified: true,
       banned: false,
-    }).select('name avatar department level subscription rating').limit(20)
+    }).select('name avatar department level subscription rating role buyerType sellerTier').limit(20)
     res.json({ users })
   } catch (err) { next(err) }
 })
@@ -89,6 +89,28 @@ router.put('/me/password', protect,
     } catch (err) { next(err) }
   }
 )
+
+// ─── POST /api/users/me/upgrade-seller ───────
+router.post('/me/upgrade-seller', protect, async (req, res, next) => {
+  try {
+    if (['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)) {
+      return res.status(400).json({ error: 'Admin roles cannot be converted to seller' })
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        role: 'seller',
+        sellerTier: 'basic',
+        buyerType: 'regular',
+        subscriptionStatus: 'none',
+      },
+      { new: true, runValidators: true }
+    ).select('-password')
+
+    res.json({ user, message: 'Account upgraded to seller' })
+  } catch (err) { next(err) }
+})
 
 // ─── DELETE /api/users/me ─────────────────────
 router.delete('/me', protect,
@@ -196,7 +218,7 @@ router.delete('/:id/follow', protect, async (req, res, next) => {
 // ─── GET /api/users/:id/followers ─────────────
 router.get('/:id/followers', optionalAuth, async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).populate('followers', 'name avatar department subscription')
+    const user = await User.findById(req.params.id).populate('followers', 'name avatar department subscription role buyerType sellerTier')
     if (!user) return res.status(404).json({ error: 'User not found' })
     res.json({ followers: user.followers, count: user.followers.length })
   } catch (err) { next(err) }
@@ -205,7 +227,7 @@ router.get('/:id/followers', optionalAuth, async (req, res, next) => {
 // ─── GET /api/users/:id/following ─────────────
 router.get('/:id/following', optionalAuth, async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).populate('following', 'name avatar department subscription')
+    const user = await User.findById(req.params.id).populate('following', 'name avatar department subscription role buyerType sellerTier')
     if (!user) return res.status(404).json({ error: 'User not found' })
     res.json({ following: user.following, count: user.following.length })
   } catch (err) { next(err) }
