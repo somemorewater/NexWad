@@ -78,7 +78,7 @@ router.delete('/:id', protect, async (req, res, next) => {
   try {
     const item = await LostFound.findById(req.params.id)
     if (!item) return res.status(404).json({ error: 'Not found' })
-    if (item.reporter.toString() !== req.user._id.toString() && !['admin', 'super_admin', 'moderator'].includes(req.user.role)) {
+    if (item.reporter.toString() !== req.user._id.toString() && !['admin', 'superadmin', 'super_admin', 'moderator'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
     if (item.imagePublicId) await deleteAsset(item.imagePublicId)
