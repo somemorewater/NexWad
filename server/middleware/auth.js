@@ -15,8 +15,8 @@ async function protect(req, res, next) {
     if (!user) return res.status(401).json({ error: 'User not found' })
     if (user.banned) return res.status(403).json({ error: 'Account suspended' })
 
-    // Check subscription expiry
-    user.checkSubscription()
+    // Check subscription expiry and apply dynamic access rules.
+    await user.checkSubscription()
 
     req.user = user
     next()
@@ -52,9 +52,9 @@ function requireRole(...roles) {
   }
 }
 
-const requireAdmin = requireRole('admin', 'super_admin')
-const requireModerator = requireRole('moderator', 'admin', 'super_admin')
-const requireCS = requireRole('cs', 'moderator', 'admin', 'super_admin')
+const requireAdmin = requireRole('admin', 'superadmin', 'super_admin')
+const requireModerator = requireRole('moderator', 'admin', 'superadmin', 'super_admin')
+const requireCS = requireRole('cs', 'moderator', 'admin', 'superadmin', 'super_admin')
 
 // ─── Verified user ────────────────────────────
 function requireVerified(req, res, next) {
