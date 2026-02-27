@@ -32,6 +32,9 @@ export default function AccountManager() {
   const [savingDetails, setSavingDetails] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const setDetails = (key) => (e) => setDetailsForm((prev) => ({ ...prev, [key]: e.target.value }))
   const setPassword = (key) => (e) => setPasswordForm((prev) => ({ ...prev, [key]: e.target.value }))
@@ -55,6 +58,31 @@ export default function AccountManager() {
   }, [deleteForm, deletingAccount])
 
   const exitToSettings = () => navigate('/profile/settings')
+
+  const handleAvatarPick = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
+  const uploadAvatar = async () => {
+    if (!avatarFile || uploadingAvatar) return
+    setUploadingAvatar(true)
+    try {
+      const fd = new FormData()
+      fd.append('avatar', avatarFile)
+      const { data } = await usersAPI.uploadAvatar(fd)
+      updateUser(data.user)
+      setAvatarFile(null)
+      setAvatarPreview(data.user?.avatar || '')
+      toast.success('Avatar updated')
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const saveAccountDetails = async (e) => {
     e.preventDefault()
@@ -145,6 +173,31 @@ export default function AccountManager() {
           <div className="card card-body" style={{ maxWidth: 820 }}>
             {activeTab === 'details' && (
               <form onSubmit={saveAccountDetails} style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                <div className="form-group">
+                  <label className="form-label">Profile Photo</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                    <div className="avatar avatar-lg" style={{ width: 72, height: 72, fontSize: '1.25rem' }}>
+                      {avatarPreview
+                        ? <img src={avatarPreview} alt="Avatar preview" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        : (user?.name?.[0] || 'U')}
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                        Choose Image
+                        <input type="file" accept="image/*" hidden onChange={handleAvatarPick} />
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={uploadAvatar}
+                        disabled={!avatarFile || uploadingAvatar}
+                      >
+                        {uploadingAvatar ? 'Uploading...' : 'Upload'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-hint">Square images work best. Max 5MB.</div>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Full Name</label>
                   <input className="form-input" value={detailsForm.name} onChange={setDetails('name')} />
