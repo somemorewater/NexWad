@@ -11,6 +11,7 @@ function TrendDown() { return <svg width="14" height="14" fill="none" stroke="cu
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const canSell = user?.role === 'seller'
   const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -149,7 +150,7 @@ export default function Dashboard() {
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem' }}>My Listings</h2>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => navigate('/marketplace?mine=true')}>View All</button>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/marketplace?create=true')}>+ New Listing</button>
+                {canSell && <button className="btn btn-primary btn-sm" onClick={() => navigate('/marketplace?create=true')}>+ New Listing</button>}
               </div>
             </div>
 
@@ -162,9 +163,11 @@ export default function Dashboard() {
                 <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-box-open" aria-hidden="true" /></div>
                 <div className="empty-state__title">No listings yet</div>
                 <div className="empty-state__text">Start selling to fellow students on NexWAD</div>
-                <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>
-                  Create First Listing
-                </button>
+                {canSell && (
+                  <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>
+                    Create First Listing
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid-3">
