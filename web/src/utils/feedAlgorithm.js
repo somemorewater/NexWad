@@ -11,9 +11,9 @@ const W = {
   share: 7,
   save: 4,
   view: 0.5,
-  premium: 20,
-  sellerGold: 8,
-  sellerSilver: 4,
+  buyerPremium: 12,
+  sellerPro: 8,
+  sellerElite: 16,
   recencyDecayHalfLife: 12, // hours
 }
 
@@ -29,8 +29,9 @@ export function scoreItem(item) {
     shares = 0,
     saves = 0,
     views = 0,
-    isPremium = false,
-    sellerTier = 'basic', // 'basic' | 'silver' | 'gold'
+    role = 'buyer',
+    buyerType = 'regular',
+    sellerTier = 'basic', // 'basic' | 'pro' | 'elite'
     createdAt,
   } = item
 
@@ -47,12 +48,13 @@ export function scoreItem(item) {
   const recencyScore = Math.pow(0.5, ageHours / W.recencyDecayHalfLife) * 50
 
   // Boost
-  const premiumBoost = isPremium ? W.premium : 0
+  const buyerBoost = buyerType === 'premium' ? W.buyerPremium : 0
   const tierBoost =
-    sellerTier === 'gold' ? W.sellerGold :
-    sellerTier === 'silver' ? W.sellerSilver : 0
+    role === 'seller'
+      ? (sellerTier === 'elite' ? W.sellerElite : sellerTier === 'pro' ? W.sellerPro : 0)
+      : 0
 
-  return engagement + recencyScore + premiumBoost + tierBoost
+  return engagement + recencyScore + buyerBoost + tierBoost
 }
 
 /**
