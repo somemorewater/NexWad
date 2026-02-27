@@ -5,6 +5,7 @@ const Listing = require('../models/Listing')
 const Post = require('../models/Post')
 const LostFound = require('../models/LostFound')
 const Subscription = require('../models/Subscription')
+const SellerApplication = require('../models/SellerApplication')
 const AdminLog = require('../models/AdminLog')
 const { protect, requireAdmin, requireModerator, requireCS } = require('../middleware/auth')
 const { body, validate, paginationRules } = require('../middleware/validate')
@@ -84,13 +85,130 @@ router.get('/users', async (req, res, next) => {
 
 // ─── PUT /api/admin/users/:id/role ───────────
 router.put('/users/:id/role', requireAdmin,
-  [body('role').isIn(['user', 'cs', 'moderator', 'admin', 'super_admin'])], validate,
+  [body('role').isIn(['buyer', 'seller', 'user', 'cs', 'moderator', 'admin', 'superadmin', 'super_admin'])], validate,
   async (req, res, next) => {
     try {
       const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true }).select('-password')
       if (!user) return res.status(404).json({ error: 'User not found' })
       await auditLog(req, 'CHANGE_ROLE', `User:${user.email}`, `Role changed to ${req.body.role}`, user._id, 'User')
       res.json({ user })
+    } catch (err) { next(err) }
+  }
+)
+
+// ─── GET /api/admin/seller-applications ──────
+router.get('/seller-applications', requireAdmin, async (req, res, next) => {
+  try {
+    const { status = 'pending', page = 1, limit = 30 } = req.query
+    const query = status ? { status } : {}
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+    const [applications, total] = await Promise.all([
+      SellerApplication.find(query)
+        .populate('user', 'name email role buyerType sellerTier')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      SellerApplication.countDocuments(query),
+    ])
+    res.json({ applications, total, hasMore: total > skip + applications.length })
+  } catch (err) { next(err) }
+})
+
+// ─── PUT /api/admin/seller-applications/:id/approve ──
+router.put('/seller-applications/:id/approve', requireAdmin, async (req, res, next) => {
+  try {
+    const application = await SellerApplication.findById(req.params.id).populate('user')
+    if (!application) return res.status(404).json({ error: 'Application not found' })
+    if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending' })
+
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000)
+    const tier = application.plan === 'seller_elite' ? 'elite'
+      : application.plan === 'seller_pro' ? 'pro'
+        : 'basic'
+
+    await Subscription.updateMany(
+      { user: application.user._id, status: 'active' },
+      { status: 'cancelled', cancelledAt: now, cancelReason: 'Seller plan approved' }
+    )
+
+    const sub = await Subscription.create({
+      user: application.user._id,
+      plan: application.plan,
+      price: application.amount,
+      currency: application.currency,
+      status: 'active',
+      startDate: now,
+      expiresAt,
+      paymentReference: application.paymentReference,
+      paymentMethod: application.paymentMethod,
+      paymentGateway: 'manual-approval',
+    })
+
+    const user = await User.findByIdAndUpdate(
+      application.user._id,
+      {
+        role: 'seller',
+        buyerType: 'regular',
+        sellerTier: tier,
+        subscriptionStatus: 'active',
+        subscriptionExpiry: expiresAt,
+        'subscription.plan': application.plan,
+        'subscription.expiresAt': expiresAt,
+        'subscription.active': true,
+      },
+      { new: true }
+    ).select('-password')
+
+    application.status = 'approved'
+    application.approvedAt = now
+    application.expiresAt = expiresAt
+    application.approvedBy = req.user._id
+    await application.save()
+
+    await auditLog(
+      req,
+      'APPROVE_SELLER_APPLICATION',
+      `SellerApplication:${application._id}`,
+      `Approved ${application.plan} for ${user.email}`,
+      application._id,
+      'SellerApplication'
+    )
+
+    res.json({ application, user, subscription: sub })
+  } catch (err) { next(err) }
+})
+
+// ─── PUT /api/admin/seller-applications/:id/reject ───
+router.put('/seller-applications/:id/reject', requireAdmin,
+  [body('reason').optional().isLength({ max: 500 })], validate,
+  async (req, res, next) => {
+    try {
+      const application = await SellerApplication.findById(req.params.id).populate('user')
+      if (!application) return res.status(404).json({ error: 'Application not found' })
+      if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending' })
+
+      application.status = 'rejected'
+      application.rejectionReason = req.body.reason || 'Application rejected by admin'
+      application.approvedBy = req.user._id
+      await application.save()
+
+      await User.findByIdAndUpdate(application.user._id, {
+        role: 'buyer',
+        sellerTier: 'basic',
+        subscriptionStatus: 'none',
+      })
+
+      await auditLog(
+        req,
+        'REJECT_SELLER_APPLICATION',
+        `SellerApplication:${application._id}`,
+        application.rejectionReason,
+        application._id,
+        'SellerApplication'
+      )
+
+      res.json({ application, message: 'Seller application rejected' })
     } catch (err) { next(err) }
   }
 )
