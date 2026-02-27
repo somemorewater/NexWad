@@ -10,13 +10,22 @@ cloudinary.config({
 
 // ─── Storage factories ────────────────────────
 
-function makeStorage(folder, allowedFormats = ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
+function makeStorage(folder, allowedFormats = ['jpg', 'jpeg', 'png', 'webp', 'gif'], transformOverride = null) {
   return new CloudinaryStorage({
     cloudinary,
-    params: {
-      folder: `nexwad/${folder}`,
-      allowed_formats: allowedFormats,
-      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    params: (req, file) => {
+      const isVideo = file?.mimetype?.startsWith('video/')
+      const baseTransform = isVideo
+        ? [{ quality: 'auto', fetch_format: 'auto' }]
+        : [
+            { quality: 'auto', fetch_format: 'webp', format: 'webp' },
+            { width: 1600, height: 1600, crop: 'limit' },
+          ]
+      return {
+        folder: `nexwad/${folder}`,
+        allowed_formats: allowedFormats,
+        transformation: transformOverride || baseTransform,
+      }
     },
   })
 }
@@ -28,7 +37,10 @@ const uploadListingImages = multer({
 }).array('images', 5)
 
 const uploadAvatar = multer({
-  storage: makeStorage('avatars'),
+  storage: makeStorage('avatars', ['jpg', 'jpeg', 'png', 'webp'], [
+    { quality: 'auto', fetch_format: 'webp', format: 'webp' },
+    { width: 512, height: 512, crop: 'fill', gravity: 'auto' },
+  ]),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
 }).single('avatar')
 
@@ -46,6 +58,11 @@ const uploadChatMedia = multer({
   storage: makeStorage('chat', ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov']),
   limits: { fileSize: 50 * 1024 * 1024, files: 1 },
 }).single('media')
+
+const uploadSellerId = multer({
+  storage: makeStorage('seller-id'),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+}).single('schoolIdImage')
 
 // ─── Middleware wrapper (handles multer errors) ─
 function handleUpload(multerInstance) {
@@ -88,6 +105,7 @@ module.exports = {
   uploadPostImage,
   uploadLostFoundImage,
   uploadChatMedia,
+  uploadSellerId,
   deleteAsset,
   uploadBuffer,
 }
