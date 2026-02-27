@@ -32,11 +32,15 @@ router.get('/feed', protect, paginationRules, validate, async (req, res, next) =
 router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('author', 'name avatar subscription department')
+      .populate('author', 'name avatar subscription department role buyerType sellerTier')
       .populate('comments.author', 'name avatar')
     if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
-    post.views += 1
-    post.save()
+    const viewerId = req.user?._id?.toString()
+    const authorId = post.author?._id?.toString()
+    if (!viewerId || viewerId !== authorId) {
+      post.views += 1
+      post.save()
+    }
     res.json({ post })
   } catch (err) { next(err) }
 })
@@ -54,7 +58,7 @@ router.post('/', protect, handleUpload(uploadPostImage), async (req, res, next) 
       image: req.file?.path,
       imagePublicId: req.file?.filename,
     })
-    const populated = await post.populate('author', 'name avatar subscription department')
+    const populated = await post.populate('author', 'name avatar subscription department role buyerType sellerTier')
     await invalidateFeedCache(req.user._id)
     res.status(201).json({ post: { ...populated.toObject(), isLiked: false, likeCount: 0, commentCount: 0 } })
   } catch (err) { next(err) }
@@ -65,7 +69,7 @@ router.delete('/:id', protect, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
     if (!post) return res.status(404).json({ error: 'Not found' })
-    if (post.author.toString() !== req.user._id.toString() && !['admin', 'super_admin', 'moderator'].includes(req.user.role)) {
+    if (post.author.toString() !== req.user._id.toString() && !['admin', 'superadmin', 'super_admin', 'moderator'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
     if (post.imagePublicId) await deleteAsset(post.imagePublicId)
@@ -120,6 +124,16 @@ router.post('/:id/comments', protect,
   }
 )
 
+// ─── GET /api/posts/:id/comments ─────────────
+router.get('/:id/comments', protect, async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate('comments.author', 'name avatar')
+    if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
+    res.json({ comments: post.comments, commentCount: post.comments.length })
+  } catch (err) { next(err) }
+})
+
 // ─── DELETE /api/posts/:postId/comments/:commentId ─
 router.delete('/:postId/comments/:commentId', protect, async (req, res, next) => {
   try {
@@ -127,7 +141,7 @@ router.delete('/:postId/comments/:commentId', protect, async (req, res, next) =>
     if (!post) return res.status(404).json({ error: 'Not found' })
     const comment = post.comments.id(req.params.commentId)
     if (!comment) return res.status(404).json({ error: 'Comment not found' })
-    if (comment.author.toString() !== req.user._id.toString() && !['admin', 'super_admin', 'moderator'].includes(req.user.role)) {
+    if (comment.author.toString() !== req.user._id.toString() && !['admin', 'superadmin', 'super_admin', 'moderator'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
     comment.deleteOne()
