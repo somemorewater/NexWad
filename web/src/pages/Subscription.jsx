@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { subscriptionsAPI } from '../api/endpoints'
 import toast from 'react-hot-toast'
 
 export default function Subscription() {
+  const navigate = useNavigate()
   const [plans, setPlans] = useState([])
   const [current, setCurrent] = useState(null)
+  const [application, setApplication] = useState(null)
   const [loading, setLoading] = useState(true)
   const [actionPlan, setActionPlan] = useState(null)
 
@@ -19,6 +22,7 @@ export default function Subscription() {
       ])
       setPlans(plansData.plans || [])
       setCurrent(currentData.subscription || null)
+      setApplication(currentData.application || null)
     } catch (err) {
       toast.error(err?.message || 'Failed to load subscriptions')
     } finally {
@@ -85,6 +89,16 @@ export default function Subscription() {
             </div>
           )}
 
+          {application?.status === 'pending' && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+              <div style={{ fontWeight: 700 }}>Seller Application Pending</div>
+              <div className="caption">
+                Plan: {application.plan} · Submitted: {new Date(application.createdAt).toLocaleDateString()} ·
+                Your role remains Buyer until admin approval.
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="card card-body">Loading plans...</div>
           ) : (
@@ -103,14 +117,24 @@ export default function Subscription() {
                         <div key={f} className="plan-feature">{f}</div>
                       ))}
                     </div>
-                    <button
-                      className={`btn ${isCurrent ? 'btn-secondary' : 'btn-primary'}`}
-                      style={{ width: '100%' }}
-                      disabled={isCurrent || actionPlan === plan._id}
-                      onClick={() => subscribe(plan._id)}
-                    >
-                      {isCurrent ? 'Current Plan' : actionPlan === plan._id ? 'Processing...' : `Choose ${plan.name}`}
-                    </button>
+                    {plan.type === 'seller' ? (
+                      <button
+                        className="btn btn-secondary"
+                        style={{ width: '100%' }}
+                        onClick={() => navigate(`/profile/become-seller?plan=${plan._id}`)}
+                      >
+                        Apply as {plan.name}
+                      </button>
+                    ) : (
+                      <button
+                        className={`btn ${isCurrent ? 'btn-secondary' : 'btn-primary'}`}
+                        style={{ width: '100%' }}
+                        disabled={isCurrent || actionPlan === plan._id}
+                        onClick={() => subscribe(plan._id)}
+                      >
+                        {isCurrent ? 'Current Plan' : actionPlan === plan._id ? 'Processing...' : `Choose ${plan.name}`}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -121,4 +145,3 @@ export default function Subscription() {
     </div>
   )
 }
-
