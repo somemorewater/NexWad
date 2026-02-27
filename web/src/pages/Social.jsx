@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { formatDistanceToNow } from 'date-fns'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { PostCard } from '../components/Card'
@@ -6,6 +7,7 @@ import { postsAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import { rankFeed, deduplicateFeed } from '../utils/feedAlgorithm'
 import toast from 'react-hot-toast'
+import Modal from '../components/Modal'
 
 export default function Social() {
   const { user } = useAuth()
@@ -17,6 +19,12 @@ export default function Social() {
   const [submitting, setSubmitting] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [commentsPost, setCommentsPost] = useState(null)
+  const [comments, setComments] = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentSubmitting, setCommentSubmitting] = useState(false)
   const fileRef = useRef(null)
 
   const loadFeed = async (reset = false) => {
@@ -66,6 +74,42 @@ export default function Social() {
   const handleLike = async (postId, wasLiked) => {
     if (wasLiked) await postsAPI.unlike(postId)
     else await postsAPI.like(postId)
+  }
+
+  const openComments = async (postId) => {
+    const post = posts.find(p => p._id === postId)
+    if (!post) return
+    setCommentsPost(post)
+    setCommentsOpen(true)
+    setComments([])
+    setCommentsLoading(true)
+    try {
+      const { data } = await postsAPI.getComments(postId)
+      setComments(data.comments || [])
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to load comments')
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  const submitComment = async () => {
+    if (!commentsPost?._id || !commentText.trim()) return
+    setCommentSubmitting(true)
+    try {
+      const { data } = await postsAPI.comment(commentsPost._id, commentText.trim())
+      setComments(prev => [...prev, data.comment])
+      setCommentText('')
+      setPosts(prev => prev.map(p => (
+        p._id === commentsPost._id
+          ? { ...p, commentCount: data.commentCount }
+          : p
+      )))
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to post comment')
+    } finally {
+      setCommentSubmitting(false)
+    }
   }
 
   const avatarInitials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'
@@ -140,7 +184,7 @@ export default function Social() {
                         Sponsored ·
                       </div>
                     )}
-                    <PostCard post={post} onLike={handleLike} />
+                    <PostCard post={post} onLike={handleLike} onComment={openComments} />
                   </div>
                 ))}
                 {hasMore && (
@@ -160,6 +204,60 @@ export default function Social() {
           </div>
         </main>
       </div>
+
+      <Modal
+        isOpen={commentsOpen}
+        onClose={() => { setCommentsOpen(false); setCommentsPost(null); setCommentText('') }}
+        title="Comments"
+        size="md"
+      >
+        {commentsLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)' }}>
+            <div className="spinner" />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {comments.length === 0 ? (
+              <div style={{ color: 'var(--nw-gray-500)', fontSize: '0.9rem' }}>No comments yet.</div>
+            ) : comments.map((c) => (
+              <div key={c._id} style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                <div className="avatar avatar-sm">
+                  {c.author?.avatar
+                    ? <img src={c.author.avatar} alt={c.author.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    : (c.author?.name?.[0] || 'U')}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.author?.name || 'User'}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--nw-gray-700)', marginTop: 2 }}>{c.text}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--nw-gray-400)', marginTop: 4 }}>
+                    {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'Just now'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ borderTop: '1px solid var(--nw-gray-100)', marginTop: 'var(--space-5)', paddingTop: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <textarea
+              className="form-textarea"
+              rows={2}
+              placeholder="Write a comment..."
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={submitComment}
+              disabled={commentSubmitting || !commentText.trim()}
+              style={{ alignSelf: 'flex-end' }}
+            >
+              {commentSubmitting ? 'Posting...' : 'Post'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
