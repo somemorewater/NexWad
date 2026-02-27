@@ -56,8 +56,8 @@ export function AuthProvider({ children }) {
   }
 
   const isAuthenticated = Boolean(user)
-  const isAdmin = user?.role && ['admin', 'super_admin', 'moderator', 'cs'].includes(user.role)
-  const isSuperAdmin = user?.role === 'super_admin'
+  const isAdmin = user?.role && ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(user.role)
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super_admin'
 
   return (
     <AuthContext.Provider value={{
