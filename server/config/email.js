@@ -28,7 +28,8 @@ const wrapEmail = (content) => `
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'DM Sans',Arial,sans-serif; background:#f5f4f0; color:#0a0a0f; }
   .wrap { max-width:600px; margin:32px auto; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 4px 32px rgba(10,10,15,0.08); }
-  .header { background:#0a0a0f; padding:28px 40px; display:flex; align-items:center; gap:10px; }
+  .header { background:#0a0a0f; padding:24px 40px; display:flex; align-items:center; gap:12px; }
+  .logo-img { height:36px; width:auto; display:block; }
   .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:#fff; letter-spacing:-0.02em; }
   .logo-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#ff5c35; margin-left:3px; }
   .body { padding:40px; }
@@ -47,6 +48,11 @@ const wrapEmail = (content) => `
 <body>
 <div class="wrap">
   <div class="header">
+    <img
+      class="logo-img"
+      src="${process.env.CLIENT_URL || ''}/nexwad-logo-full.png"
+      alt="NexWAD"
+    />
     <div class="logo">NexWAD<span class="logo-dot"></span></div>
   </div>
   <div class="body">${content}</div>

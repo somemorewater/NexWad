@@ -18,6 +18,7 @@ import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import AccountManager from './pages/AccountManager'
 import Subscription from './pages/Subscription'
+import BecomeSeller from './pages/BecomeSeller'
 import ProductDetails from './pages/ProductDetails'
 import AdminDashboard from './pages/AdminDashboard'
 import nexwadLogo from './assets/images/nexwad-logo.png'
@@ -79,6 +80,7 @@ function AppContent() {
                 <Route path="/profile/settings" element={<Settings />} />
                 <Route path="/profile/account-manager" element={<AccountManager />} />
                 <Route path="/profile/subscription" element={<Subscription />} />
+                <Route path="/profile/become-seller" element={<BecomeSeller />} />
                 <Route path="/profile/:userId?" element={<Profile />} />
               </Route>
 

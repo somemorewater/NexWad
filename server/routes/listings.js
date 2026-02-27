@@ -24,7 +24,7 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
       const skip = (parsedPage - 1) * parsedLimit
       const [listings, total] = await Promise.all([
         Listing.find(query)
-          .populate('seller', 'name avatar subscription')
+          .populate('seller', 'name avatar subscription role buyerType sellerTier')
           .sort({ isPremium: -1, createdAt: -1 })
           .skip(skip)
           .limit(parsedLimit)
@@ -58,7 +58,7 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     const skip = (parsedPage - 1) * parsedLimit
     const [listings, total] = await Promise.all([
       Listing.find(query)
-        .populate('seller', 'name avatar subscription')
+        .populate('seller', 'name avatar subscription role buyerType sellerTier')
         .sort({ isPremium: -1, createdAt: -1 })
         .skip(skip).limit(parsedLimit),
       Listing.countDocuments(query),
@@ -72,7 +72,7 @@ router.get('/saved', protect, async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'savedListings',
-      populate: { path: 'seller', select: 'name avatar subscription' },
+      populate: { path: 'seller', select: 'name avatar subscription role buyerType sellerTier' },
     })
     res.json({ listings: user.savedListings, hasMore: false })
   } catch (err) { next(err) }
@@ -90,7 +90,7 @@ router.get('/mine', protect, async (req, res, next) => {
 router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id)
-      .populate('seller', 'name avatar rating ratingCount subscription department')
+      .populate('seller', 'name avatar rating ratingCount subscription department role buyerType sellerTier')
     if (!listing || listing.status === 'removed') return res.status(404).json({ error: 'Listing not found' })
 
     // Increment views
@@ -108,19 +108,27 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 // ─── POST /api/listings ───────────────────────
 router.post('/', protect, handleUpload(uploadListingImages), listingRules, validate, async (req, res, next) => {
   try {
+    const canSell = req.user.role === 'seller'
+    if (!canSell) {
+      return res.status(403).json({ error: 'Upgrade to seller to create listings' })
+    }
+
     const { title, description, price, originalPrice, category, condition, tags } = req.body
     const images = req.files?.map(f => f.path) || []
     const imagePublicIds = req.files?.map(f => f.filename) || []
+
+    const premiumByTier = ['pro', 'elite'].includes(req.user.sellerTier)
+    const premiumByLegacyPlan = req.user.subscription?.active && req.user.subscription.plan !== 'basic'
 
     const listing = await Listing.create({
       title, description, price, originalPrice, category, condition,
       seller: req.user._id,
       images, imagePublicIds,
       tags: tags ? tags.split(',').map(t => t.trim()) : [],
-      isPremium: req.user.subscription?.active && req.user.subscription.plan !== 'basic',
+      isPremium: premiumByTier || premiumByLegacyPlan,
     })
 
-    const populated = await listing.populate('seller', 'name avatar subscription')
+    const populated = await listing.populate('seller', 'name avatar subscription role buyerType sellerTier')
     res.status(201).json({ listing: populated })
   } catch (err) { next(err) }
 })
@@ -145,7 +153,7 @@ router.delete('/:id', protect, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id)
     if (!listing) return res.status(404).json({ error: 'Not found' })
-    if (listing.seller.toString() !== req.user._id.toString() && !['admin', 'super_admin', 'moderator'].includes(req.user.role)) {
+    if (listing.seller.toString() !== req.user._id.toString() && !['admin', 'superadmin', 'super_admin', 'moderator'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
     // Delete images from Cloudinary

@@ -6,6 +6,7 @@ import { ListingCard } from '../components/Card'
 import Modal from '../components/Modal'
 import { listingsAPI } from '../api/endpoints'
 import toast from 'react-hot-toast'
+import { useAuth } from '../hooks/useAuth'
 
 const CATEGORIES = ['All', 'Electronics', 'Textbooks', 'Hostel', 'Clothing', 'Food', 'Services', 'Other']
 const SORT_OPTIONS = [
@@ -16,6 +17,7 @@ const SORT_OPTIONS = [
 ]
 
 export default function Marketplace() {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +25,18 @@ export default function Marketplace() {
   const [page, setPage] = useState(1)
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('newest')
-  const [showCreate, setShowCreate] = useState(searchParams.get('create') === 'true')
+  const canSell = user?.role === 'seller'
+  const [showCreate, setShowCreate] = useState(searchParams.get('create') === 'true' && canSell)
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowCreate(canSell)
+    }
+  }, [canSell, searchParams])
+
+  useEffect(() => {
+    if (!canSell && showCreate) setShowCreate(false)
+  }, [canSell, showCreate])
 
   const fetchListings = useCallback(async (reset = false) => {
     setLoading(true)
@@ -71,7 +84,7 @@ export default function Marketplace() {
               <h1 className="page-header__title">{title}</h1>
               <p className="page-header__sub">{listings.length} items found</p>
             </div>
-            {!searchParams.get('saved') && (
+            {!searchParams.get('saved') && canSell && (
               <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
                 + New Listing
               </button>
@@ -111,7 +124,7 @@ export default function Marketplace() {
               <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-magnifying-glass" aria-hidden="true" /></div>
               <div className="empty-state__title">No listings found</div>
               <div className="empty-state__text">Try a different category or be the first to sell!</div>
-              <button className="btn btn-primary" onClick={() => setShowCreate(true)}>Create Listing</button>
+              {canSell && <button className="btn btn-primary" onClick={() => setShowCreate(true)}>Create Listing</button>}
             </div>
           ) : (
             <>
@@ -139,7 +152,7 @@ export default function Marketplace() {
       </div>
 
       {/* Create Listing Modal */}
-      <CreateListingModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={(l) => setListings(prev => [l, ...prev])} />
+      {canSell && <CreateListingModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={(l) => setListings(prev => [l, ...prev])} />}
     </div>
   )
 }

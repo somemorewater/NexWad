@@ -1,17 +1,39 @@
 const mongoose = require('mongoose')
 
-// ─── Weights ──────────────────────────────────
+function numEnv(name, fallback) {
+  const val = Number(process.env[name])
+  return Number.isFinite(val) ? val : fallback
+}
+
+// ─── Dynamic Weights (configurable via env) ───
 const W = {
-  like: 3,
-  comment: 5,
-  share: 7,
-  view: 0.5,
-  save: 4,
-  premium: 20,
-  tierGold: 8,
-  tierSilver: 4,
-  recencyHalfLifeHours: 12,
-  followingBoost: 10,
+  like: numEnv('FEED_WEIGHT_LIKE', 3),
+  comment: numEnv('FEED_WEIGHT_COMMENT', 5),
+  share: numEnv('FEED_WEIGHT_SHARE', 7),
+  view: numEnv('FEED_WEIGHT_VIEW', 0.5),
+  save: numEnv('FEED_WEIGHT_SAVE', 4),
+  recencyHalfLifeHours: numEnv('FEED_RECENCY_HALF_LIFE_HOURS', 12),
+  followingBoost: numEnv('FEED_WEIGHT_FOLLOWING', 10),
+  buyerPremiumBoost: numEnv('FEED_BOOST_BUYER_PREMIUM', 12),
+  sellerTierBasicBoost: numEnv('FEED_BOOST_SELLER_BASIC', 0),
+  sellerTierProBoost: numEnv('FEED_BOOST_SELLER_PRO', 8),
+  sellerTierEliteBoost: numEnv('FEED_BOOST_SELLER_ELITE', 16),
+}
+
+function resolveAccessProfile(profile = {}) {
+  const plan = profile.subscription?.plan || 'basic'
+  const role = profile.role === 'user' ? 'buyer' : (profile.role || 'buyer')
+  const buyerType = profile.buyerType || ((plan === 'premium_buyer' || plan === 'silver') ? 'premium' : 'regular')
+
+  const sellerTier = profile.sellerTier
+    || (
+      plan === 'seller_elite' || plan === 'premium' ? 'elite'
+        : plan === 'seller_pro' || plan === 'gold' ? 'pro'
+          : plan === 'seller_basic' ? 'basic'
+            : 'basic'
+    )
+
+  return { role, buyerType, sellerTier }
 }
 
 /**
@@ -29,16 +51,23 @@ function scoreItem(item, viewerFollowing = []) {
   const ageHours = (Date.now() - new Date(item.createdAt).getTime()) / 3_600_000
   const recency  = Math.pow(0.5, ageHours / W.recencyHalfLifeHours) * 50
 
-  const premium  = item.isPremium ? W.premium : 0
+  const profile = item.seller || item.author || {}
+  const access = resolveAccessProfile(profile)
 
-  const sellerTier = item.seller?.subscription?.plan
-  const tier = sellerTier === 'premium' || sellerTier === 'gold' ? W.tierGold
-    : sellerTier === 'silver' ? W.tierSilver : 0
+  const buyerBoost = access.buyerType === 'premium' ? W.buyerPremiumBoost : 0
+
+  const sellerBoost = access.role === 'seller'
+    ? (
+      access.sellerTier === 'elite' ? W.sellerTierEliteBoost
+        : access.sellerTier === 'pro' ? W.sellerTierProBoost
+          : W.sellerTierBasicBoost
+    )
+    : 0
 
   const authorId = (item.author || item.seller)?._id?.toString()
   const followBoost = viewerFollowing.includes(authorId) ? W.followingBoost : 0
 
-  return engagement + recency + premium + tier + followBoost
+  return engagement + recency + buyerBoost + sellerBoost + followBoost
 }
 
 /**
@@ -51,7 +80,7 @@ async function buildPostFeed(viewerUser, { page = 1, limit = 20 } = {}) {
 
   // Fetch candidates: following + recent public posts
   const candidates = await Post.find({ removed: false })
-    .populate('author', 'name avatar subscription department')
+    .populate('author', 'name avatar subscription department role buyerType sellerTier')
     .sort({ createdAt: -1 })
     .limit(200)  // score top 200 then paginate
     .lean()
@@ -105,7 +134,7 @@ async function buildListingFeed(viewerUser, {
   const savedIds = viewerUser.savedListings?.map(s => s.toString()) || []
 
   const candidates = await Listing.find(query)
-    .populate('seller', 'name avatar subscription')
+    .populate('seller', 'name avatar subscription role buyerType sellerTier')
     .sort(mongoSort)
     .limit(sort === 'newest' || sort === 'popular' ? 200 : 1000)
     .lean()

@@ -10,10 +10,14 @@ import toast from 'react-hot-toast'
 import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
 
 const PLAN_INFO = {
-  basic: { name: 'Basic', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
-  silver: { name: 'Silver', color: '#64748b', bg: '#f1f5f9' },
-  gold: { name: 'Gold', color: '#92400e', bg: 'var(--nw-gold-light)' },
-  premium: { name: 'Premium', color: 'var(--nw-primary)', bg: 'var(--nw-primary-light)' },
+  basic: { name: 'Regular Buyer', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
+  premium_buyer: { name: 'Verified', color: '#1d4ed8', bg: '#dbeafe' },
+  seller_basic: { name: 'Basic Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
+  seller_pro: { name: 'Pro Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
+  seller_elite: { name: 'Elite Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
+  silver: { name: 'Verified', color: '#1d4ed8', bg: '#dbeafe' },
+  gold: { name: 'Pro Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
+  premium: { name: 'Elite Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
 }
 
 export default function Profile() {
@@ -155,7 +159,24 @@ export default function Profile() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
                   <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.375rem' }}>{p?.name}</h1>
-                  <span className="badge" style={{ background: plan.bg, color: plan.color }}>{plan.name}</span>
+                  <span className="badge" style={{ background: plan.bg, color: plan.color }}>
+                    {(p?.subscription?.plan === 'premium_buyer' || p?.subscription?.plan === 'silver') && (
+                      <svg
+                        viewBox="0 0 22 22"
+                        aria-label="Verified account"
+                        role="img"
+                        style={{ width: 14, height: 14, marginRight: 6, display: 'inline-block' }}
+                      >
+                        <g>
+                          <path
+                            fill="currentColor"
+                            d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"
+                          />
+                        </g>
+                      </svg>
+                    )}
+                    {plan.name}
+                  </span>
                 </div>
                 <p style={{ color: 'var(--nw-gray-500)', fontSize: '0.9rem', marginBottom: 8 }}>
                   {p?.department} · {p?.level} · AFIT Kaduna
@@ -286,6 +307,7 @@ export default function Profile() {
 }
 
 function SubscriptionModal({ isOpen, onClose, currentPlan }) {
+  const navigate = useNavigate()
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(false)
   const [subscribing, setSubscribing] = useState(null)
@@ -339,10 +361,23 @@ function SubscriptionModal({ isOpen, onClose, currentPlan }) {
                   style={isFeatured
                     ? { background: 'white', color: 'var(--nw-primary)', width: '100%' }
                     : { background: 'var(--nw-primary)', color: 'white', width: '100%' }}
-                  onClick={() => subscribe(plan._id)}
+                  onClick={() => {
+                    if (plan.type === 'seller') {
+                      onClose()
+                      navigate(`/profile/become-seller?plan=${plan._id}`)
+                      return
+                    }
+                    subscribe(plan._id)
+                  }}
                   disabled={isCurrent || !!subscribing}
                 >
-                  {isCurrent ? 'Current Plan' : subscribing === plan._id ? <span className="spinner" style={{ width: 18, height: 18 }} /> : `Get ${plan.name}`}
+                  {isCurrent
+                    ? 'Current Plan'
+                    : plan.type === 'seller'
+                      ? `Apply as ${plan.name}`
+                      : subscribing === plan._id
+                        ? <span className="spinner" style={{ width: 18, height: 18 }} />
+                        : `Get ${plan.name}`}
                 </button>
               </div>
             )
