@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { rankFeed, deduplicateFeed } from '../utils/feedAlgorithm'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
+import { formatPinTimeLeft } from '../utils/pins'
 
 export default function Social() {
   const { user, isAuthenticated } = useAuth()
@@ -186,6 +187,41 @@ export default function Social() {
               <div className="card card-body" style={{ marginBottom: 'var(--space-5)', color: 'var(--nw-gray-600)' }}>
                 Browse public posts. Login to publish, like, and comment.
               </div>
+            )}
+
+            {posts.some((item) => item.isPinned) && (
+              <section className="pin-strip" style={{ marginBottom: 'var(--space-5)' }}>
+                <div className="pin-strip__header">
+                  <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Posts</h2>
+                </div>
+                <div className="pin-strip__scroller">
+                  {posts.filter((item) => item.isPinned).map((item) => (
+                    <div key={`pin-${item._id}`} className="pin-strip__item">
+                      {(() => {
+                        const canSeePinTime = Boolean(user?._id && item.author?._id && user._id === item.author._id)
+                        return (
+                          <>
+                      <div className="pin-strip__thumb">
+                        {item.image ? (
+                          <img src={item.image} alt={item.author?.name || 'Pinned post'} />
+                        ) : (
+                          <i className="fa-solid fa-image" aria-hidden="true" />
+                        )}
+                      </div>
+                      <div className="pin-strip__content">
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.author?.name || 'Student'}</div>
+                        <div className="caption">
+                          {String(item.content || '').slice(0, 52) || 'Photo post'}
+                          {canSeePinTime ? ` · ${formatPinTimeLeft(item.pin?.expiresAt)}` : ''}
+                        </div>
+                      </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
 
             {/* Feed */}

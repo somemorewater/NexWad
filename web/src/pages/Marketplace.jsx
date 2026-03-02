@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { ListingCard } from '../components/Card'
 import Modal from '../components/Modal'
-import { listingsAPI } from '../api/endpoints'
+import { chatAPI, listingsAPI } from '../api/endpoints'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { formatPinTimeLeft } from '../utils/pins'
 
 const CATEGORIES = ['All', 'Electronics', 'Textbooks', 'Hostel', 'Clothing', 'Food', 'Services', 'Other']
 const SORT_OPTIONS = [
@@ -18,6 +19,7 @@ const SORT_OPTIONS = [
 
 export default function Marketplace() {
   const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -25,6 +27,8 @@ export default function Marketplace() {
   const [page, setPage] = useState(1)
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('newest')
+  const [selectedPinnedListing, setSelectedPinnedListing] = useState(null)
+  const [openingChat, setOpeningChat] = useState(false)
   const canSell = user?.role === 'seller'
   const [showCreate, setShowCreate] = useState(searchParams.get('create') === 'true' && canSell)
 
@@ -73,6 +77,40 @@ export default function Marketplace() {
     : searchParams.get('saved') ? 'Saved Items'
     : 'Marketplace'
 
+  const handlePinnedListingClick = (item) => {
+    const itemSellerId = item?.seller?._id || item?.seller
+    const isOwner = Boolean(user?._id && itemSellerId && user._id === String(itemSellerId))
+    if (isOwner) {
+      navigate(`/marketplace/${item._id}`)
+      return
+    }
+    setSelectedPinnedListing(item)
+  }
+
+  const handleGetProduct = async () => {
+    const sellerId = selectedPinnedListing?.seller?._id || selectedPinnedListing?.seller
+    if (!selectedPinnedListing?._id || !sellerId) {
+      toast.error('Seller details unavailable for this listing')
+      return
+    }
+    if (!isAuthenticated) {
+      toast.error('Login required to message seller')
+      navigate('/login')
+      return
+    }
+
+    setOpeningChat(true)
+    try {
+      const { data } = await chatAPI.getOrCreate(selectedPinnedListing._id, sellerId)
+      setSelectedPinnedListing(null)
+      navigate(`/chat/${data.chat._id}`)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not open chat')
+    } finally {
+      setOpeningChat(false)
+    }
+  }
+
   return (
     <div>
       <Navbar />
@@ -118,6 +156,37 @@ export default function Marketplace() {
             </div>
           )}
 
+          {listings.some((item) => item.isPinned) && (
+            <section className="pin-strip" style={{ marginBottom: 'var(--space-5)' }}>
+              <div className="pin-strip__header">
+                <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Listings</h2>
+              </div>
+              <div className="pin-strip__scroller">
+                {listings.filter((item) => item.isPinned).map((item) => (
+                  <button
+                    key={`pin-${item._id}`}
+                    type="button"
+                    className="pin-strip__item"
+                    style={{ cursor: 'pointer', textAlign: 'left' }}
+                    onClick={() => handlePinnedListingClick(item)}
+                  >
+                    <div className="pin-strip__thumb">
+                      {item.images?.[0] ? (
+                        <img src={item.images[0]} alt={item.title} />
+                      ) : (
+                        <i className="fa-solid fa-image" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="pin-strip__content">
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
+                      <div className="caption">₦{(item.price || 0).toLocaleString()} · {formatPinTimeLeft(item.pin?.expiresAt)}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Grid */}
           {loading && listings.length === 0 ? (
             <div className="grid-3">
@@ -159,6 +228,47 @@ export default function Marketplace() {
 
       {/* Create Listing Modal */}
       {canSell && <CreateListingModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreated={(l) => setListings(prev => [l, ...prev])} />}
+
+      <Modal
+        isOpen={Boolean(selectedPinnedListing)}
+        onClose={() => setSelectedPinnedListing(null)}
+        title={selectedPinnedListing?.title || 'Product Details'}
+        size="md"
+        footer={(
+          <>
+            <button className="btn btn-secondary" onClick={() => setSelectedPinnedListing(null)}>
+              Close
+            </button>
+            <button className="btn btn-primary" onClick={handleGetProduct} disabled={openingChat}>
+              {openingChat ? 'Opening chat...' : 'Get Product'}
+            </button>
+          </>
+        )}
+      >
+        {selectedPinnedListing && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ width: '100%', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--nw-gray-200)', background: 'var(--nw-gray-100)' }}>
+              {selectedPinnedListing.images?.[0] ? (
+                <img
+                  src={selectedPinnedListing.images[0]}
+                  alt={selectedPinnedListing.title}
+                  style={{ width: '100%', maxHeight: 260, objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nw-gray-400)' }}>
+                  <i className="fa-solid fa-image" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>₦{(selectedPinnedListing.price || 0).toLocaleString()}</div>
+            <div className="caption">Seller: {selectedPinnedListing.seller?.name || 'Seller'}</div>
+            {selectedPinnedListing.description && (
+              <p style={{ margin: 0, color: 'var(--nw-gray-700)', lineHeight: 1.6 }}>{selectedPinnedListing.description}</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

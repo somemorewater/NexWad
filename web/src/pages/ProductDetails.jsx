@@ -46,13 +46,17 @@ export default function ProductDetails() {
       toast.error('Login required to message seller')
       return
     }
-    if (!listing?.seller?._id) return
+    const sellerId = listing?.seller?._id || listing?.seller
+    if (!listing?._id || !sellerId) {
+      toast.error('Seller details unavailable for this listing')
+      return
+    }
     setStartingChat(true)
     try {
-      const { data } = await chatAPI.getOrCreate(listing._id, listing.seller._id)
+      const { data } = await chatAPI.getOrCreate(listing._id, sellerId)
       navigate(`/chat/${data.chat._id}`)
     } catch (err) {
-      toast.error(err?.message || 'Could not open chat')
+      toast.error(err?.error || err?.message || 'Could not open chat')
     } finally {
       setStartingChat(false)
     }
@@ -173,7 +177,7 @@ export default function ProductDetails() {
                 </div>
 
                 <button className="btn btn-primary" onClick={messageSeller} disabled={startingChat}>
-                  {startingChat ? 'Opening chat...' : 'Message Seller About This Product'}
+                  {startingChat ? 'Opening chat...' : 'Get Product'}
                 </button>
                 <button className="btn btn-secondary" onClick={shareProduct} style={{ marginTop: 10 }}>
                   Share Product
