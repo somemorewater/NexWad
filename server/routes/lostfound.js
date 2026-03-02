@@ -5,6 +5,8 @@ const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadLostFoundImage, deleteAsset } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
 const { notifyLostFoundClaim } = require('../utils/notifications')
+const { attachPinsAndSort } = require('../utils/pins')
+const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 // ─── GET /api/lostfound ───────────────────────
 router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) => {
@@ -23,7 +25,8 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
         .skip(skip).limit(parseInt(limit)),
       LostFound.countDocuments(query),
     ])
-    res.json({ items, hasMore: total > skip + items.length, total })
+    const { items: enrichedItems, pinnedItems } = await attachPinsAndSort(items.map((item) => item.toObject?.() || item), 'lostfound')
+    res.json({ items: enrichedItems, pinnedItems, hasMore: total > skip + items.length, total })
   } catch (err) { next(err) }
 })
 
@@ -36,7 +39,17 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     if (!item) return res.status(404).json({ error: 'Not found' })
     item.views += 1
     item.save()
-    res.json({ item })
+    if (req.user?._id) {
+      queueUserLog(buildRequestLog(req, res, {
+        action: 'lostfound_viewed',
+        category: 'lostfound',
+        entityType: 'lostfound',
+        entityId: item._id.toString(),
+        metadata: { type: item.type, status: item.status },
+      }))
+    }
+    const { items } = await attachPinsAndSort([item.toObject()], 'lostfound')
+    res.json({ item: items[0] })
   } catch (err) { next(err) }
 })
 

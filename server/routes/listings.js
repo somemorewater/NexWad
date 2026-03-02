@@ -6,6 +6,8 @@ const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadListingImages, deleteAsset } = require('../utils/cloudinary')
 const { listingRules, validate, paginationRules } = require('../middleware/validate')
 const { buildListingFeed } = require('../utils/feedAlgorithm')
+const { attachPinsAndSort } = require('../utils/pins')
+const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 // ─── GET /api/listings ────────────────────────
 router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) => {
@@ -38,7 +40,8 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
         isSaved: savedIds.includes(l._id.toString()),
       }))
 
-      return res.json({ listings: result, hasMore: total > skip + result.length, page: parsedPage })
+      const { items, pinnedItems } = await attachPinsAndSort(result, 'listing')
+      return res.json({ listings: items, pinnedListings: pinnedItems, hasMore: total > skip + result.length, page: parsedPage })
     }
 
     if (req.user) {
@@ -46,7 +49,8 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
         page: parsedPage, limit: parsedLimit, category, sort, q,
         mine: mine === 'true', saved: saved === 'true',
       })
-      return res.json(result)
+      const { items, pinnedItems } = await attachPinsAndSort(result.listings || [], 'listing')
+      return res.json({ ...result, listings: items, pinnedListings: pinnedItems })
     }
 
     // Unauthenticated: simple query
@@ -63,7 +67,8 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
         .skip(skip).limit(parsedLimit),
       Listing.countDocuments(query),
     ])
-    res.json({ listings, hasMore: total > skip + listings.length, page: parsedPage })
+    const { items, pinnedItems } = await attachPinsAndSort(listings.map((listing) => listing.toObject?.() || listing), 'listing')
+    res.json({ listings: items, pinnedListings: pinnedItems, hasMore: total > skip + listings.length, page: parsedPage })
   } catch (err) { next(err) }
 })
 
@@ -82,7 +87,8 @@ router.get('/saved', protect, async (req, res, next) => {
 router.get('/mine', protect, async (req, res, next) => {
   try {
     const listings = await Listing.find({ seller: req.user._id }).sort({ createdAt: -1 })
-    res.json({ listings, hasMore: false })
+    const { items, pinnedItems } = await attachPinsAndSort(listings.map((listing) => listing.toObject?.() || listing), 'listing')
+    res.json({ listings: items, pinnedListings: pinnedItems, hasMore: false })
   } catch (err) { next(err) }
 })
 
@@ -96,12 +102,22 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     // Increment views
     listing.views += 1
     listing.save()
+    if (req.user?._id) {
+      queueUserLog(buildRequestLog(req, res, {
+        action: 'listing_viewed',
+        category: 'listing',
+        entityType: 'listing',
+        entityId: listing._id.toString(),
+        metadata: { sellerId: listing.seller?._id?.toString?.() || listing.seller?.toString?.() },
+      }))
+    }
 
     const isSaved = req.user
       ? req.user.savedListings?.some(s => s.toString() === listing._id.toString())
       : false
 
-    res.json({ listing: { ...listing.toObject(), isSaved } })
+    const { items } = await attachPinsAndSort([{ ...listing.toObject(), isSaved }], 'listing')
+    res.json({ listing: items[0] })
   } catch (err) { next(err) }
 })
 

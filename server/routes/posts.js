@@ -7,6 +7,8 @@ const { paginationRules, validate, body } = require('../middleware/validate')
 const { buildPostFeed } = require('../utils/feedAlgorithm')
 const { notifyLike } = require('../utils/notifications')
 const { invalidateFeedCache, getCachedFeed, cacheFeed } = require('../utils/redis')
+const { attachPinsAndSort } = require('../utils/pins')
+const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 // ─── GET /api/posts/feed ─────────────────────
 router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, next) => {
@@ -22,8 +24,10 @@ router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, ne
 
     if (req.user) {
       const result = await buildPostFeed(req.user, { page: p, limit: l })
-      if (p === 1) await cacheFeed(req.user._id, result, 90) // 90s TTL
-      return res.json(result)
+      const { items, pinnedItems } = await attachPinsAndSort(result.posts || [], 'post')
+      const payload = { ...result, posts: items, pinnedPosts: pinnedItems }
+      if (p === 1) await cacheFeed(req.user._id, payload, 90) // 90s TTL
+      return res.json(payload)
     }
 
     // Public feed for guests
@@ -48,7 +52,28 @@ router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, ne
       page: p,
     }
 
-    res.json(result)
+    const { items, pinnedItems } = await attachPinsAndSort(result.posts || [], 'post')
+    res.json({ ...result, posts: items, pinnedPosts: pinnedItems })
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/posts/:id ──────────────────────
+router.get('/mine', protect, async (req, res, next) => {
+  try {
+    const posts = await Post.find({ author: req.user._id, removed: false })
+      .populate('author', 'name avatar subscription department role buyerType sellerTier')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean()
+
+    const normalized = posts.map((post) => ({
+      ...post,
+      isLiked: false,
+      likeCount: post.likes?.length || 0,
+      commentCount: post.comments?.length || 0,
+    }))
+    const { items, pinnedItems } = await attachPinsAndSort(normalized, 'post')
+    res.json({ posts: items, pinnedPosts: pinnedItems, hasMore: false })
   } catch (err) { next(err) }
 })
 
@@ -65,7 +90,17 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       post.views += 1
       post.save()
     }
-    res.json({ post })
+    if (req.user?._id) {
+      queueUserLog(buildRequestLog(req, res, {
+        action: 'post_viewed',
+        category: 'post',
+        entityType: 'post',
+        entityId: post._id.toString(),
+        metadata: { authorId: post.author?._id?.toString?.() },
+      }))
+    }
+    const { items } = await attachPinsAndSort([post.toObject()], 'post')
+    res.json({ post: items[0] })
   } catch (err) { next(err) }
 })
 
