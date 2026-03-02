@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../hooks/useAuth'
 import { Navigate } from 'react-router-dom'
+import { getDefaultRouteForUser } from '../utils/roleRouting'
 
 const features = [
   {
@@ -38,8 +39,8 @@ const stats = [
 ]
 
 export default function Home() {
-  const { isAuthenticated } = useAuth()
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  const { isAuthenticated, user } = useAuth()
+  if (isAuthenticated) return <Navigate to={getDefaultRouteForUser(user)} replace />
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--nw-surface)' }}>
@@ -161,9 +162,7 @@ export default function Home() {
               {' '}· Built for AFIT students · {new Date().getFullYear()}
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
-              {['Privacy', 'Terms', 'Safety'].map(l => (
-                <span key={l} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', cursor: 'pointer' }}>{l}</span>
-              ))}
+              <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem' }}>Legal</Link>
             </div>
           </div>
         </footer>
