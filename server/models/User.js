@@ -60,6 +60,8 @@ const userSchema = new mongoose.Schema({
   totalSales: { type: Number, default: 0 },
   rating: { type: Number, default: 0, min: 0, max: 5 },
   ratingCount: { type: Number, default: 0 },
+  pinCredits: { type: Number, default: 0, min: 0 },
+  pinCreditsPurchased: { type: Number, default: 0, min: 0 },
 
   // Auth
   passwordResetToken: { type: String, select: false },
