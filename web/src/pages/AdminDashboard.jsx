@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import Modal from '../components/Modal'
 import { adminAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -8,12 +9,15 @@ import { formatDistanceToNow } from 'date-fns'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super_admin'
+  const basePath = isSuperAdmin ? '/super-admin' : '/admin'
   const adminNavItems = [
-    { to: '/admin', label: 'Overview', end: true },
-    { to: '/admin/users', label: 'Users' },
-    { to: '/admin/listings', label: 'Listings' },
-    { to: '/admin/reports', label: 'Reports' },
-    { to: '/admin/logs', label: 'Audit Logs' },
+    { to: basePath, label: 'Overview', end: true },
+    { to: `${basePath}/users`, label: 'Users' },
+    { to: `${basePath}/applications`, label: 'Seller Applications' },
+    { to: `${basePath}/listings`, label: 'Listings' },
+    { to: `${basePath}/reports`, label: 'Reports' },
+    { to: `${basePath}/logs`, label: 'Audit Logs' },
   ]
 
   return (
@@ -21,12 +25,34 @@ export default function AdminDashboard() {
       <Navbar />
       <div style={{ paddingTop: 'var(--nav-height)', display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: '100vh' }}>
         <aside style={{ background: 'var(--nw-ink)', padding: 'var(--space-6) var(--space-3)', position: 'sticky', top: 'var(--nav-height)', height: 'calc(100vh - var(--nav-height))', overflowY: 'auto' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', padding: '0 12px 16px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin Panel</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', padding: '0 12px 16px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            {isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel'}
+          </div>
           {adminNavItems.map(item => (
             <NavLink key={item.to} to={item.to} end={item.end}
               style={({ isActive }) => ({ display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 'var(--radius-md)', color: isActive ? 'white' : 'rgba(255,255,255,0.5)', background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', fontSize: '0.9rem', fontWeight: isActive ? 600 : 400, marginBottom: 2, transition: 'all 0.15s', textDecoration: 'none' })}
             >{item.label}</NavLink>
           ))}
+          <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <NavLink
+              to="/home"
+              style={({ isActive }) => ({
+                display: 'flex',
+                alignItems: 'center',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
+                background: isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                transition: 'all 0.15s',
+                textDecoration: 'none',
+              })}
+            >
+              <i className="fa-solid fa-arrow-left" aria-hidden="true" style={{ marginRight: 8 }} />
+              Back to App
+            </NavLink>
+          </div>
           <div style={{ marginTop: 32, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, padding: '16px 12px 0' }}>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>Signed in as</div>
             <div style={{ color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>{user?.name}</div>
@@ -36,7 +62,8 @@ export default function AdminDashboard() {
         <main style={{ padding: 'var(--space-8)', background: 'var(--nw-surface)' }}>
           <Routes>
             <Route path="/" element={<AdminOverview />} />
-            <Route path="/users" element={<AdminUsers />} />
+            <Route path="/users" element={<AdminUsers isSuperAdmin={isSuperAdmin} />} />
+            <Route path="/applications" element={<AdminSellerApplications />} />
             <Route path="/listings" element={<AdminListings />} />
             <Route path="/reports" element={<AdminReports />} />
             <Route path="/logs" element={<AdminLogs />} />
@@ -103,7 +130,7 @@ function AdminOverview() {
   )
 }
 
-function AdminUsers() {
+function AdminUsers({ isSuperAdmin }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -128,13 +155,23 @@ function AdminUsers() {
   }
 
   const changeRole = async (userId, role) => {
+    if (!isSuperAdmin) {
+      toast.error('Only super admin can change roles')
+      return
+    }
     try { await adminAPI.updateUserRole(userId, role); setUsers(p => p.map(u => u._id === userId ? { ...u, role } : u)); toast.success('Role updated') }
-    catch { toast.error('Failed') }
+    catch (err) { toast.error(err?.error || err?.message || 'Failed') }
   }
 
   return (
     <div>
       <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>User Management</h1>
+      {!isSuperAdmin && (
+        <div className="card card-body" style={{ marginBottom: 'var(--space-5)' }}>
+          <div style={{ fontWeight: 700 }}>Role changes restricted</div>
+          <div className="caption">Only super admin can change user roles.</div>
+        </div>
+      )}
       <input type="text" className="form-input" placeholder="Search by name, email, or matric…" value={q} onChange={e => setQ(e.target.value)} style={{ maxWidth: 380, marginBottom: 'var(--space-5)' }} />
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
@@ -151,7 +188,12 @@ function AdminUsers() {
                   </td>
                   <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.matricNumber}</td>
                   <td>
-                    <select value={u.role || 'user'} onChange={e => changeRole(u._id, e.target.value)} style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 6, padding: '4px 8px', fontSize: '0.8125rem', fontFamily: 'var(--font-body)', cursor: 'pointer', outline: 'none' }}>
+                    <select
+                      value={u.role || 'user'}
+                      onChange={e => changeRole(u._id, e.target.value)}
+                      disabled={!isSuperAdmin}
+                      style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 6, padding: '4px 8px', fontSize: '0.8125rem', fontFamily: 'var(--font-body)', cursor: isSuperAdmin ? 'pointer' : 'not-allowed', outline: 'none', opacity: isSuperAdmin ? 1 : 0.7 }}
+                    >
                       {['user', 'cs', 'moderator', 'admin', 'super_admin'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                     </select>
                   </td>
@@ -168,6 +210,195 @@ function AdminUsers() {
           </table>
         )}
       </div>
+    </div>
+  )
+}
+
+function AdminSellerApplications() {
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState('pending')
+  const [actingId, setActingId] = useState(null)
+  const [selectedApp, setSelectedApp] = useState(null)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data } = await adminAPI.getSellerApplications({ status })
+      setApplications(data.applications || [])
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to load seller applications')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [status])
+
+  const approve = async (id) => {
+    setActingId(id)
+    try {
+      await adminAPI.approveSellerApplication(id)
+      toast.success('Seller application approved')
+      setApplications(prev => prev.map(app => app._id === id ? { ...app, status: 'approved', approvedAt: new Date().toISOString() } : app))
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to approve application')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const reject = async (id) => {
+    const reason = window.prompt('Reason for rejection (optional):', 'Application rejected by admin') || 'Application rejected by admin'
+    setActingId(id)
+    try {
+      await adminAPI.rejectSellerApplication(id, reason)
+      toast.success('Seller application rejected')
+      setApplications(prev => prev.map(app => app._id === id ? { ...app, status: 'rejected', rejectionReason: reason } : app))
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to reject application')
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>
+        Seller Applications
+      </h1>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-5)' }}>
+        {['pending', 'approved', 'rejected'].map(s => (
+          <button key={s} className={`btn ${status === s ? 'btn-primary' : 'btn-secondary'} btn-sm`} onClick={() => setStatus(s)}>
+            {s[0].toUpperCase() + s.slice(1)}
+          </button>
+        ))}
+      </div>
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
+          <table className="admin-table">
+            <thead><tr><th>Applicant</th><th>Plan</th><th>Amount</th><th>Reference</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {applications.length === 0 ? (
+                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--nw-gray-500)' }}>No applications found.</td></tr>
+              ) : applications.map(app => (
+                <tr key={app._id}>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{app.user?.name || 'Unknown user'}</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{app.user?.email || 'No email'}</div>
+                  </td>
+                  <td><span className="badge badge-primary">{app.plan}</span></td>
+                  <td>₦{(app.amount || 0).toLocaleString()}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.paymentReference}</td>
+                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}</td>
+                  <td>
+                    <span className={`badge ${app.status === 'approved' ? 'badge-green' : app.status === 'rejected' ? 'badge-red' : 'badge-accent'}`}>
+                      {app.status}
+                    </span>
+                  </td>
+                  <td>
+                    {app.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
+                          Review
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => approve(app._id)} disabled={actingId === app._id}>
+                          {actingId === app._id ? '...' : 'Approve'}
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => reject(app._id)} disabled={actingId === app._id}>
+                          {actingId === app._id ? '...' : 'Reject'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
+                          Review
+                        </button>
+                        <span className="caption">{app.rejectionReason || 'No pending action'}</span>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <Modal
+        isOpen={Boolean(selectedApp)}
+        onClose={() => setSelectedApp(null)}
+        title="Seller Application Review"
+        size="lg"
+      >
+        {selectedApp && (
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                <Detail label="Applicant" value={selectedApp.user?.name || 'Unknown'} />
+                <Detail label="Email" value={selectedApp.user?.email || 'No email'} />
+                <Detail label="Plan" value={selectedApp.plan} />
+                <Detail label="Amount" value={`₦${(selectedApp.amount || 0).toLocaleString()}`} />
+                <Detail label="Payment Ref" value={selectedApp.paymentReference} />
+                <Detail label="Status" value={selectedApp.status} />
+              </div>
+            </div>
+
+            <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 'var(--space-3)' }}>Application Details</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                <Detail label="Full Name" value={selectedApp.application?.fullName} />
+                <Detail label="Store Name" value={selectedApp.application?.storeName} />
+                <Detail label="Phone" value={selectedApp.application?.phone} />
+                <Detail label="NIN" value={selectedApp.application?.nin} />
+                <Detail label="Experience" value={selectedApp.application?.experience || 'N/A'} />
+              </div>
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--nw-gray-600)', marginBottom: 4 }}>Product Details</div>
+                <div style={{ whiteSpace: 'pre-wrap', color: 'var(--nw-ink)' }}>{selectedApp.application?.productDetails || 'N/A'}</div>
+              </div>
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--nw-gray-600)', marginBottom: 4 }}>Reason</div>
+                <div style={{ whiteSpace: 'pre-wrap', color: 'var(--nw-ink)' }}>{selectedApp.application?.reason || 'N/A'}</div>
+              </div>
+            </div>
+
+            <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 'var(--space-3)' }}>School ID Image</h3>
+              {selectedApp.application?.schoolIdImage ? (
+                <>
+                  <img
+                    src={selectedApp.application.schoolIdImage}
+                    alt="School ID"
+                    style={{ width: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 'var(--radius-md)', border: '1px solid var(--nw-gray-100)' }}
+                  />
+                  <a
+                    href={selectedApp.application.schoolIdImage}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'inline-block', marginTop: 'var(--space-2)', color: 'var(--nw-primary)', fontWeight: 600 }}
+                  >
+                    Open image in new tab
+                  </a>
+                </>
+              ) : (
+                <div className="caption">No image uploaded.</div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+function Detail({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--nw-gray-600)', marginBottom: 4 }}>{label}</div>
+      <div style={{ color: 'var(--nw-ink)', wordBreak: 'break-word' }}>{value || 'N/A'}</div>
     </div>
   )
 }
