@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listingsAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
+import toast from 'react-hot-toast'
 
 function HeartIcon({ filled }) {
   return filled
@@ -57,7 +58,9 @@ export function ListingCard({ listing }) {
         await listingsAPI.save(_id)
         setSaved(true)
       }
-    } catch { /* silent */ }
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Login required to save listings')
+    }
     setSaveLoading(false)
   }
 
