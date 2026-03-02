@@ -6,10 +6,12 @@ import { chatAPI, listingsAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
+import { useAuth } from '../hooks/useAuth'
 
 export default function ProductDetails() {
   const { listingId } = useParams()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [listing, setListing] = useState(null)
   const [activeImage, setActiveImage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -40,6 +42,10 @@ export default function ProductDetails() {
   }, [listing])
 
   const messageSeller = async () => {
+    if (!isAuthenticated) {
+      toast.error('Login required to message seller')
+      return
+    }
     if (!listing?.seller?._id) return
     setStartingChat(true)
     try {
