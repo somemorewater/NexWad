@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar'
 import { subscriptionsAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
+import { normalizeRole } from '../utils/roleRouting'
 
 const SELLER_PLANS = ['seller_basic', 'seller_pro', 'seller_elite']
 
@@ -13,6 +14,7 @@ export default function BecomeSeller() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [plans, setPlans] = useState([])
   const [application, setApplication] = useState(null)
+  const [currentSub, setCurrentSub] = useState(null)
   const [selectedPlan, setSelectedPlan] = useState(searchParams.get('plan') || 'seller_basic')
   const [form, setForm] = useState({
     fullName: '',
@@ -32,19 +34,39 @@ export default function BecomeSeller() {
     () => plans.find(p => p._id === selectedPlan) || plans[0],
     [plans, selectedPlan]
   )
+  const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizeRole(user?.role))
+  const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
+  const hasPriorSellerApproval = application?.status === 'approved'
 
   const load = async () => {
     setLoading(true)
     try {
-      const [{ data: plansData }, { data: appData }] = await Promise.all([
+      const [plansResult, appResult, currentResult] = await Promise.allSettled([
         subscriptionsAPI.getPlans(),
         subscriptionsAPI.getMySellerApplication(),
+        subscriptionsAPI.getCurrent(),
       ])
-      const sellerPlans = (plansData.plans || []).filter(p => SELLER_PLANS.includes(p._id))
+      const plansData = plansResult?.status === 'fulfilled' ? plansResult.value?.data : null
+      const sellerPlans = (plansData?.plans || []).filter(p => SELLER_PLANS.includes(p._id))
       setPlans(sellerPlans)
-      setApplication(appData.application || null)
+      if (appResult?.status === 'fulfilled') {
+        setApplication(appResult.value?.data?.application || null)
+      } else {
+        setApplication(null)
+      }
+      if (currentResult?.status === 'fulfilled') {
+        setCurrentSub(currentResult.value?.data?.subscription || null)
+      } else {
+        setCurrentSub(null)
+      }
       if (!sellerPlans.find(p => p._id === selectedPlan) && sellerPlans[0]) {
         setSelectedPlan(sellerPlans[0]._id)
+      }
+      if (appResult?.status === 'rejected') {
+        toast('Could not load previous application status')
+      }
+      if (plansResult?.status === 'rejected') {
+        toast.error('Could not load seller plans')
       }
     } catch (err) {
       toast.error(err?.error || err?.message || 'Failed to load seller plans')
@@ -117,47 +139,114 @@ export default function BecomeSeller() {
     }
   }
 
+  const activateSellerSubscription = async (paymentReference) => {
+    if (!selected?._id) return
+    setSubmitting(true)
+    try {
+      await subscriptionsAPI.subscribe(selected._id, { paymentReference })
+      toast.success('Seller subscription activated successfully')
+      await load()
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not activate seller subscription')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const proceedToPayment = () => {
     if (!selected?._id) return
     if (!paystackReady || !window.PaystackPop) {
       toast.error('Payment gateway not ready yet')
       return
     }
-    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
+    if (!paystackKey) {
       toast.error('Paystack public key is missing (VITE_PAYSTACK_PUBLIC_KEY)')
       return
     }
-    if (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage) {
+    if (!hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)) {
       toast.error('Please fill all required fields before payment')
       return
     }
+    if (hasPriorSellerApproval && amountToPay <= 0) {
+      activateSellerSubscription()
+      return
+    }
 
-    const handler = window.PaystackPop.setup({
-      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-      email: user?.email || 'customer@nexwad.app',
-      amount: Math.round(Number(selected.price || 0) * 100),
-      currency: 'NGN',
-      metadata: {
-        custom_fields: [
-          { display_name: 'Plan', variable_name: 'plan', value: selected._id },
-          { display_name: 'Applicant', variable_name: 'full_name', value: form.fullName.trim() },
-          { display_name: 'NIN', variable_name: 'nin', value: form.nin.trim() },
-        ],
-      },
-      callback: async (response) => {
-        if (!response?.reference) {
-          toast.error('Payment reference missing')
-          return
-        }
-        await submitApplication(response.reference)
-      },
-      onClose: () => {
-        toast('Payment window closed')
-      },
-    })
+    try {
+      const paystackAmountKobo = Math.round(Number(amountToPay || selected.price || 0) * 100)
+      if (!Number.isFinite(paystackAmountKobo) || paystackAmountKobo <= 0) {
+        toast.error('Invalid plan amount. Please reload and try again.')
+        return
+      }
 
-    handler.openIframe()
+      const handler = window.PaystackPop.setup({
+        key: paystackKey,
+        email: user?.email || 'customer@nexwad.app',
+        amount: paystackAmountKobo,
+        currency: 'NGN',
+        metadata: {
+          custom_fields: [
+            { display_name: 'Plan', variable_name: 'plan', value: selected._id },
+            { display_name: 'Applicant', variable_name: 'full_name', value: form.fullName.trim() },
+            { display_name: 'NIN', variable_name: 'nin', value: form.nin.trim() },
+          ],
+        },
+        callback: (response) => {
+          if (!response?.reference) {
+            toast.error('Payment reference missing')
+            return
+          }
+          if (hasPriorSellerApproval) activateSellerSubscription(response.reference)
+          else submitApplication(response.reference)
+        },
+        onClose: () => {
+          toast('Payment window closed')
+        },
+      })
+
+      handler.openIframe()
+    } catch (err) {
+      toast.error(err?.message || 'Could not start payment. Try refreshing.')
+    }
   }
+
+  const missingRequired = !hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)
+  const amountToPay = useMemo(() => {
+    if (!selected) return 0
+    if (!hasPriorSellerApproval) return Number(selected.price || 0)
+
+    const isActiveSellerSub = currentSub?.status === 'active' && ['seller_basic', 'seller_pro', 'seller_elite'].includes(currentSub?.plan)
+    if (!isActiveSellerSub) return Number(selected.price || 0)
+
+    const currentPlan = plans.find(p => p._id === currentSub.plan)
+    if (!currentPlan) return Number(selected.price || 0)
+
+    const targetPrice = Number(selected.price || 0)
+    const currentPrice = Number(currentPlan.price || 0)
+    if (!Number.isFinite(targetPrice) || !Number.isFinite(currentPrice)) return Number(selected.price || 0)
+    if (targetPrice <= currentPrice) return 0
+
+    const currentExpiryMs = new Date(currentSub.expiresAt).getTime()
+    if (!Number.isFinite(currentExpiryMs)) return targetPrice
+    const remainingMs = currentExpiryMs - Date.now()
+    if (remainingMs <= 0) return targetPrice
+
+    const currentDurationMs = Math.max(1, Number(currentPlan.durationDays || 30)) * 24 * 60 * 60 * 1000
+    const remainingRatio = Math.max(0, Math.min(1, remainingMs / currentDurationMs))
+    return Math.max(0, Math.round((targetPrice - currentPrice) * remainingRatio))
+  }, [selected, hasPriorSellerApproval, currentSub, plans])
+  const actionDisabled = !selected || submitting || application?.status === 'pending' || loading || isAdminRole
+  const actionDisabledReason = isAdminRole
+    ? 'Admin roles cannot apply for seller plans.'
+    : application?.status === 'pending'
+      ? 'You already have a pending seller application.'
+      : !selected
+        ? 'No seller plan available. Reload and try again.'
+        : loading
+          ? 'Loading seller plans...'
+          : missingRequired
+            ? 'Complete all required fields before payment.'
+            : ''
 
   return (
     <div>
@@ -170,11 +259,38 @@ export default function BecomeSeller() {
             <p className="page-header__sub">Choose a seller tier, pay, and submit for admin approval.</p>
           </div>
 
+          {isAdminRole && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+              <div style={{ fontWeight: 700 }}>Seller Application Unavailable</div>
+              <div className="caption">Admin roles are not allowed to apply for seller plans.</div>
+            </div>
+          )}
+
           {application?.status === 'pending' && (
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
               <div style={{ fontWeight: 700 }}>Application Pending Approval</div>
               <div className="caption">
                 Plan: {application.plan} · Submitted: {new Date(application.createdAt).toLocaleDateString()}
+              </div>
+              <div className="what-this-means">
+                <strong>What this means:</strong> Your payment and documents are received. You remain a buyer until admin approves this application.
+              </div>
+            </div>
+          )}
+
+          {hasPriorSellerApproval && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+              <div style={{ fontWeight: 700 }}>Seller Approval Already Granted</div>
+              <div className="caption">
+                You can renew or upgrade seller plans directly. No additional approval is required.
+              </div>
+              <div className="caption" style={{ marginTop: 4 }}>
+                {amountToPay > 0
+                  ? `Prorated amount due: ₦${amountToPay.toLocaleString()}`
+                  : 'No additional charge for this plan switch.'}
+              </div>
+              <div className="what-this-means">
+                <strong>What this means:</strong> If you still have active seller time, you only pay the remaining price difference when upgrading.
               </div>
             </div>
           )}
@@ -186,8 +302,12 @@ export default function BecomeSeller() {
           <div className="card card-body" style={{ maxWidth: 720 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>Seller Application Form</div>
             <div className="caption" style={{ marginBottom: 'var(--space-4)' }}>
-              Complete this form, select tier, then proceed to Paystack payment. Your account remains Buyer until admin approval.
+              {hasPriorSellerApproval
+                ? 'You already have seller approval. Select a tier and proceed to payment to renew or upgrade.'
+                : 'Complete this form, select tier, then proceed to Paystack payment. Your account remains Buyer until admin approval.'}
             </div>
+            {!hasPriorSellerApproval && (
+              <>
             <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
               <label className="form-label">Seller Tier *</label>
               <select
@@ -287,17 +407,50 @@ export default function BecomeSeller() {
               />
               {form.schoolIdImage && <div className="caption">Selected: {form.schoolIdImage.name}</div>}
             </div>
+              </>
+            )}
+            {hasPriorSellerApproval && (
+              <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
+                <label className="form-label">Seller Tier *</label>
+                <select
+                  className="form-select"
+                  value={selectedPlan}
+                  onChange={(e) => setSelectedPlan(e.target.value)}
+                >
+                  {plans.map(plan => (
+                    <option key={plan._id} value={plan._id}>
+                      {plan.name} - ₦{plan.price?.toLocaleString()}/30 days
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button
               className="btn btn-primary"
               onClick={proceedToPayment}
-              disabled={!selected || submitting || application?.status === 'pending'}
+              disabled={actionDisabled}
             >
               {application?.status === 'pending'
                 ? 'Application Pending'
                 : submitting
-                  ? 'Submitting Application...'
-                  : `Proceed to Payment (₦${selected?.price?.toLocaleString() || 0})`}
+                  ? (hasPriorSellerApproval ? 'Activating Subscription...' : 'Submitting Application...')
+                  : hasPriorSellerApproval
+                    ? amountToPay > 0
+                      ? `Pay & Activate Plan (₦${amountToPay.toLocaleString()})`
+                      : 'Activate Plan (No Charge)'
+                    : `Proceed to Payment (₦${selected?.price?.toLocaleString() || 0})`}
             </button>
+            {actionDisabledReason && (
+              <div className="caption" style={{ marginTop: 8 }}>
+                {actionDisabledReason}
+              </div>
+            )}
+            {!actionDisabledReason && (
+              <div className="what-this-means">
+                <strong>What this means:</strong> Clicking this button opens secure payment. After successful payment, your subscription is activated
+                immediately or your application is submitted for approval.
+              </div>
+            )}
           </div>
         </main>
       </div>

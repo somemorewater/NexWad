@@ -5,11 +5,13 @@ import Modal from '../components/Modal'
 import { lostFoundAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useAuth } from '../hooks/useAuth'
 
 const TABS = ['All', 'Lost', 'Found', 'Resolved']
 const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports Complex', 'Library', 'Cafeteria', 'Car Park', 'Other']
 
 export default function LostFound() {
+  const { isAuthenticated } = useAuth()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('All')
@@ -34,15 +36,23 @@ export default function LostFound() {
               <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.75rem', marginBottom: 4 }}>Lost &amp; Found</h1>
               <p style={{ color: 'var(--nw-gray-500)' }}>Help your fellow students recover their belongings</p>
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-secondary" onClick={() => { setReportType('found'); setShowReport(true) }}>
-                I Found Something
-              </button>
-              <button className="btn btn-primary" onClick={() => { setReportType('lost'); setShowReport(true) }}>
-                Report Lost Item
-              </button>
-            </div>
+            {isAuthenticated && (
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-secondary" onClick={() => { setReportType('found'); setShowReport(true) }}>
+                  I Found Something
+                </button>
+                <button className="btn btn-primary" onClick={() => { setReportType('lost'); setShowReport(true) }}>
+                  Report Lost Item
+                </button>
+              </div>
+            )}
           </div>
+
+          {!isAuthenticated && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-5)', color: 'var(--nw-gray-600)' }}>
+              Browse public lost and found posts. Login to report or claim an item.
+            </div>
+          )}
 
           <div className="tabs" style={{ marginBottom: 'var(--space-6)' }}>
             {TABS.map(t => (
@@ -72,13 +82,15 @@ export default function LostFound() {
         </main>
       </div>
 
-      <ReportModal
-        isOpen={showReport}
-        onClose={() => setShowReport(false)}
-        type={reportType}
-        onCreated={item => setItems(prev => [item, ...prev])}
-        locations={LOCATIONS}
-      />
+      {isAuthenticated && (
+        <ReportModal
+          isOpen={showReport}
+          onClose={() => setShowReport(false)}
+          type={reportType}
+          onCreated={item => setItems(prev => [item, ...prev])}
+          locations={LOCATIONS}
+        />
+      )}
     </div>
   )
 }

@@ -17,7 +17,7 @@ const SORT_OPTIONS = [
 ]
 
 export default function Marketplace() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -111,6 +111,12 @@ export default function Marketplace() {
               {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
+
+          {!isAuthenticated && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-5)', color: 'var(--nw-gray-600)' }}>
+              You are browsing as a guest. Login to save items, chat with sellers, or create listings.
+            </div>
+          )}
 
           {/* Grid */}
           {loading && listings.length === 0 ? (

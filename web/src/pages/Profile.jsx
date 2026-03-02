@@ -8,6 +8,7 @@ import { usersAPI, listingsAPI, subscriptionsAPI, chatAPI } from '../api/endpoin
 import Modal from '../components/Modal'
 import toast from 'react-hot-toast'
 import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
+import { getDefaultRouteForUser } from '../utils/roleRouting'
 
 const PLAN_INFO = {
   basic: { name: 'Regular Buyer', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
@@ -41,7 +42,7 @@ export default function Profile() {
     if (!isOwn && userId) {
       usersAPI.getProfile(userId)
         .then(({ data }) => setProfile(data.user))
-        .catch(() => navigate('/dashboard'))
+        .catch(() => navigate(getDefaultRouteForUser(currentUser)))
         .finally(() => setLoading(false))
     }
     const uid = isOwn ? currentUser?._id : userId
@@ -50,7 +51,7 @@ export default function Profile() {
         .then(({ data }) => setListings(data.listings || []))
         .catch(() => {})
     }
-  }, [userId, isOwn])
+  }, [userId, isOwn, currentUser, navigate])
 
   useEffect(() => {
     if (!profile && !currentUser) return

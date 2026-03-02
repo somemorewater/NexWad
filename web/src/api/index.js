@@ -22,8 +22,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      clearStoredToken()
-      window.location.href = '/login'
+      const token = getStoredToken()
+      if (token) {
+        clearStoredToken()
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error.response?.data || error)
   }

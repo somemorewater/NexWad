@@ -3,13 +3,14 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
+import { getDefaultRouteForUser } from '../utils/roleRouting'
 
 export default function Login() {
-  const { login, isAuthenticated, loading: authLoading } = useAuth()
+  const { login, user, isAuthenticated, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const requestedPath = location.state?.from?.pathname
-  const from = requestedPath && requestedPath !== '/login' ? requestedPath : '/dashboard'
+  const from = requestedPath && requestedPath !== '/login' ? requestedPath : null
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
@@ -26,9 +27,9 @@ export default function Login() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate(from, { replace: true })
+      navigate(from || getDefaultRouteForUser(user), { replace: true })
     }
-  }, [authLoading, isAuthenticated, from, navigate])
+  }, [authLoading, isAuthenticated, from, navigate, user])
 
   const validate = () => {
     const e = {}
@@ -43,9 +44,9 @@ export default function Login() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      await login({ ...form, email: form.email.trim() })
+      const data = await login({ ...form, email: form.email.trim() })
       toast.success('Welcome back!')
-      navigate(from, { replace: true })
+      navigate(from || getDefaultRouteForUser(data?.user), { replace: true })
     } catch (err) {
       toast.error(getErrorMessage(err, 'Invalid credentials'))
     } finally {
@@ -153,6 +154,9 @@ export default function Login() {
 
           <p className="auth-footer">
             Don't have an account? <Link to="/signup">Sign up</Link>
+          </p>
+          <p className="auth-footer" style={{ marginTop: 10 }}>
+            <Link to="/legal">Legal Policies</Link>
           </p>
         </div>
       </div>

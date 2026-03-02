@@ -1,7 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { getDefaultRouteForUser, normalizeRole } from '../utils/roleRouting'
 
-export default function ProtectedRoute({ requiredRole }) {
+export default function ProtectedRoute({ requiredRole, fallbackTo }) {
   const { isAuthenticated, user, loading } = useAuth()
   const location = useLocation()
 
@@ -22,8 +23,13 @@ export default function ProtectedRoute({ requiredRole }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (requiredRole && !['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(user?.role)) {
-    return <Navigate to="/dashboard" replace />
+  if (requiredRole) {
+    const expected = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
+    const allowedRoles = expected.map(normalizeRole)
+    const currentRole = normalizeRole(user?.role)
+    if (!allowedRoles.includes(currentRole)) {
+      return <Navigate to={fallbackTo || getDefaultRouteForUser(user)} replace />
+    }
   }
 
   return <Outlet />

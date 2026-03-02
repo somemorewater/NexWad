@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 
 export default function Social() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [newPost, setNewPost] = useState('')
@@ -53,6 +53,10 @@ export default function Social() {
   }
 
   const submitPost = async () => {
+    if (!isAuthenticated) {
+      toast.error('Login required to create posts')
+      return
+    }
     if (!newPost.trim() && !postImage) return
     setSubmitting(true)
     try {
@@ -72,6 +76,10 @@ export default function Social() {
   }
 
   const handleLike = async (postId, wasLiked) => {
+    if (!isAuthenticated) {
+      toast.error('Login required to like posts')
+      throw new Error('Authentication required')
+    }
     if (wasLiked) await postsAPI.unlike(postId)
     else await postsAPI.like(postId)
   }
@@ -94,6 +102,10 @@ export default function Social() {
   }
 
   const submitComment = async () => {
+    if (!isAuthenticated) {
+      toast.error('Login required to comment')
+      return
+    }
     if (!commentsPost?._id || !commentText.trim()) return
     setCommentSubmitting(true)
     try {
@@ -126,49 +138,55 @@ export default function Social() {
             </h1>
 
             {/* Compose */}
-            <div className="card card-body" style={{ marginBottom: 'var(--space-5)' }}>
-              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
-                <div className="avatar avatar-md">{user?.avatar ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : avatarInitials}</div>
-                <div style={{ flex: 1 }}>
-                  <textarea
-                    className="form-textarea"
-                    placeholder="What's happening on campus?"
-                    value={newPost}
-                    onChange={e => setNewPost(e.target.value)}
-                    style={{ border: 'none', padding: 0, fontSize: '0.9375rem', resize: 'none', minHeight: 60, boxShadow: 'none' }}
-                    rows={2}
-                    onFocus={e => e.target.rows = 4}
-                  />
-                  {imagePreview && (
-                    <div style={{ position: 'relative', display: 'inline-block', marginTop: 8 }}>
-                      <img src={imagePreview} alt="Preview" style={{ maxHeight: 200, borderRadius: 8, maxWidth: '100%' }} />
+            {isAuthenticated ? (
+              <div className="card card-body" style={{ marginBottom: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+                  <div className="avatar avatar-md">{user?.avatar ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : avatarInitials}</div>
+                  <div style={{ flex: 1 }}>
+                    <textarea
+                      className="form-textarea"
+                      placeholder="What's happening on campus?"
+                      value={newPost}
+                      onChange={e => setNewPost(e.target.value)}
+                      style={{ border: 'none', padding: 0, fontSize: '0.9375rem', resize: 'none', minHeight: 60, boxShadow: 'none' }}
+                      rows={2}
+                      onFocus={e => e.target.rows = 4}
+                    />
+                    {imagePreview && (
+                      <div style={{ position: 'relative', display: 'inline-block', marginTop: 8 }}>
+                        <img src={imagePreview} alt="Preview" style={{ maxHeight: 200, borderRadius: 8, maxWidth: '100%' }} />
+                        <button
+                          onClick={() => { setPostImage(null); setImagePreview(null) }}
+                          style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                        ><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid var(--nw-gray-100)', paddingTop: 12 }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => fileRef.current?.click()}
+                        >
+                          <i className="fa-solid fa-camera" aria-hidden="true" /> Photo
+                        </button>
+                        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImagePick} />
+                      </div>
                       <button
-                        onClick={() => { setPostImage(null); setImagePreview(null) }}
-                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
-                      ><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, borderTop: '1px solid var(--nw-gray-100)', paddingTop: 12 }}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => fileRef.current?.click()}
+                        className="btn btn-primary btn-sm"
+                        onClick={submitPost}
+                        disabled={submitting || (!newPost.trim() && !postImage)}
                       >
-                        <i className="fa-solid fa-camera" aria-hidden="true" /> Photo
+                        {submitting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Post'}
                       </button>
-                      <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImagePick} />
                     </div>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={submitPost}
-                      disabled={submitting || (!newPost.trim() && !postImage)}
-                    >
-                      {submitting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Post'}
-                    </button>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="card card-body" style={{ marginBottom: 'var(--space-5)', color: 'var(--nw-gray-600)' }}>
+                Browse public posts. Login to publish, like, and comment.
+              </div>
+            )}
 
             {/* Feed */}
             {loading && posts.length === 0 ? (
@@ -238,25 +256,31 @@ export default function Social() {
           </div>
         )}
 
-        <div style={{ borderTop: '1px solid var(--nw-gray-100)', marginTop: 'var(--space-5)', paddingTop: 'var(--space-4)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <textarea
-              className="form-textarea"
-              rows={2}
-              placeholder="Write a comment..."
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={submitComment}
-              disabled={commentSubmitting || !commentText.trim()}
-              style={{ alignSelf: 'flex-end' }}
-            >
-              {commentSubmitting ? 'Posting...' : 'Post'}
-            </button>
+        {isAuthenticated ? (
+          <div style={{ borderTop: '1px solid var(--nw-gray-100)', marginTop: 'var(--space-5)', paddingTop: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <textarea
+                className="form-textarea"
+                rows={2}
+                placeholder="Write a comment..."
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={submitComment}
+                disabled={commentSubmitting || !commentText.trim()}
+                style={{ alignSelf: 'flex-end' }}
+              >
+                {commentSubmitting ? 'Posting...' : 'Post'}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ borderTop: '1px solid var(--nw-gray-100)', marginTop: 'var(--space-5)', paddingTop: 'var(--space-4)', color: 'var(--nw-gray-600)', fontSize: '0.9rem' }}>
+            Login to add a comment.
+          </div>
+        )}
       </Modal>
     </div>
   )

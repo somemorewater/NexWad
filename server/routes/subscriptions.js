@@ -11,6 +11,7 @@ const { sendEmail } = require('../config/email')
 const { notifySubscriptionExpiring } = require('../utils/notifications')
 const logger = require('../utils/logger')
 const { nanoid } = require('nanoid')
+const DAY_MS = 24 * 60 * 60 * 1000
 
 async function verifyPaystackPayment(reference, expectedAmountNaira) {
   const secret = process.env.PAYSTACK_SECRET_KEY
@@ -135,6 +136,52 @@ const PLAN_ACCESS = {
   premium: { role: 'seller', buyerType: 'regular', sellerTier: 'elite' },
 }
 
+function getPlanById(planId) {
+  return PLANS.find(p => p._id === planId)
+}
+
+function computeSellerUpgradeQuote(targetPlan, currentSub) {
+  const now = Date.now()
+  const targetPrice = Number(targetPlan?.price || 0)
+  const targetDurationDays = Number(targetPlan?.durationDays || 30)
+  const fullChargeExpiry = new Date(now + targetDurationDays * DAY_MS)
+  const fullCharge = {
+    amountDue: targetPrice,
+    expiresAt: fullChargeExpiry,
+    billingMode: 'full',
+  }
+
+  if (!currentSub || currentSub.status !== 'active') return fullCharge
+
+  const currentPlan = getPlanById(currentSub.plan)
+  if (!currentPlan || currentPlan.type !== 'seller') return fullCharge
+
+  const currentExpiryMs = new Date(currentSub.expiresAt).getTime()
+  if (!Number.isFinite(currentExpiryMs)) return fullCharge
+  const remainingMs = currentExpiryMs - now
+  if (remainingMs <= 0) return fullCharge
+
+  const currentPrice = Number(currentPlan?.price || 0)
+  if (targetPrice <= currentPrice) {
+    return {
+      amountDue: 0,
+      expiresAt: new Date(currentExpiryMs),
+      billingMode: 'switch_no_charge',
+    }
+  }
+
+  const currentDurationMs = Math.max(1, Number(currentPlan.durationDays || 30)) * DAY_MS
+  const remainingRatio = Math.max(0, Math.min(1, remainingMs / currentDurationMs))
+  const delta = targetPrice - currentPrice
+  const amountDue = Math.max(0, Math.round(delta * remainingRatio))
+
+  return {
+    amountDue,
+    expiresAt: new Date(currentExpiryMs),
+    billingMode: 'upgrade_prorated',
+  }
+}
+
 // ─── GET /api/subscriptions/plans ─────────────
 router.get('/plans', (req, res) => {
   res.json({ plans: PLANS })
@@ -161,13 +208,30 @@ router.post('/',
       const { planId, paymentReference, paymentMethod = 'card' } = req.body
       const plan = PLANS.find(p => p._id === planId)
       if (!plan) return res.status(404).json({ error: 'Plan not found' })
+      const currentActiveSub = await Subscription.findOne({ user: req.user._id, status: 'active' }).sort({ createdAt: -1 })
 
       if (plan._id === 'basic') {
         return res.status(400).json({ error: 'Basic plan is always free' })
       }
 
-      if (plan.requiresApproval || plan.type === 'seller') {
-        return res.status(400).json({ error: 'Seller tiers require application. Use /api/subscriptions/apply-seller.' })
+      if (plan.type === 'seller') {
+        const hasApprovedSellerApplication = await SellerApplication.exists({
+          user: req.user._id,
+          status: 'approved',
+        })
+        if (!hasApprovedSellerApplication) {
+          return res.status(400).json({ error: 'Seller tiers require first-time approval. Use /api/subscriptions/apply-seller.' })
+        }
+      }
+
+      let chargeAmount = plan.price
+      let expiresAt = new Date(Date.now() + plan.durationDays * DAY_MS)
+      let billingMode = 'full'
+      if (plan.type === 'seller') {
+        const quote = computeSellerUpgradeQuote(plan, currentActiveSub)
+        chargeAmount = quote.amountDue
+        expiresAt = quote.expiresAt
+        billingMode = quote.billingMode
       }
 
       // TODO: In production, verify paymentReference with your payment gateway
@@ -180,16 +244,15 @@ router.post('/',
       )
 
       const receiptId = `NW-${nanoid(10).toUpperCase()}`
-      const expiresAt = new Date(Date.now() + plan.durationDays * 24 * 3600 * 1000)
 
       const sub = await Subscription.create({
         user: req.user._id,
         plan: planId,
-        price: plan.price,
+        price: chargeAmount,
         currency: plan.currency,
         expiresAt,
         status: 'active',
-        paymentReference: paymentReference || receiptId,
+        paymentReference: chargeAmount > 0 ? (paymentReference || receiptId) : `NO-CHARGE-${receiptId}`,
         paymentMethod,
         paymentGateway: 'paystack',
       })
@@ -217,24 +280,25 @@ router.post('/',
         items: [
           { label: 'Plan', value: plan.name },
           { label: 'Duration', value: `${plan.durationDays} days` },
+          { label: 'Billing Mode', value: billingMode },
           { label: 'Payment Method', value: paymentMethod },
-          { label: 'Payment Reference', value: paymentReference || receiptId },
+          { label: 'Payment Reference', value: chargeAmount > 0 ? (paymentReference || receiptId) : 'No charge (prorated/switch)' },
         ],
-        total: plan.price,
+        total: chargeAmount,
         currency: plan.currency,
       }).then(async ({ url, publicId }) => {
         await Subscription.findByIdAndUpdate(sub._id, { receiptUrl: url, receiptPublicId: publicId })
         await sendEmail(req.user.email, 'subscriptionConfirmation', {
           name: req.user.name,
           plan: plan.name,
-          price: plan.price,
+          price: chargeAmount,
           expiresAt,
           receiptId,
         })
       }).catch(err => logger.error('Receipt generation failed:', err))
 
       logger.info(`Subscription created: ${req.user.email} → ${planId}`)
-      res.status(201).json({ subscription: sub, receiptId })
+      res.status(201).json({ subscription: sub, receiptId, billingMode, chargedAmount: chargeAmount, fullPlanPrice: plan.price })
     } catch (err) { next(err) }
   }
 )
@@ -277,8 +341,11 @@ router.post('/apply-seller',
       const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
       if (isAdminRole) return res.status(403).json({ error: 'Admin roles cannot apply for seller plans' })
 
-      const existingPending = await SellerApplication.findOne({ user: req.user._id, status: 'pending' })
-      if (existingPending) {
+      const existingApplication = await SellerApplication.findOne({ user: req.user._id })
+      if (existingApplication?.status === 'approved') {
+        return res.status(409).json({ error: 'You are already approved as a seller. Renew or upgrade from subscription without re-approval.' })
+      }
+      if (existingApplication?.status === 'pending') {
         return res.status(409).json({ error: 'You already have a pending seller application' })
       }
 
@@ -287,14 +354,14 @@ router.post('/apply-seller',
         return res.status(400).json({ error: paymentCheck.reason || 'Unable to verify payment' })
       }
 
-      const app = await SellerApplication.create({
-        user: req.user._id,
-        plan: planId,
-        amount: plan.price,
-        currency: plan.currency,
-        paymentReference,
-        paymentMethod,
-        application: {
+      let app
+      if (existingApplication) {
+        existingApplication.plan = planId
+        existingApplication.amount = plan.price
+        existingApplication.currency = plan.currency
+        existingApplication.paymentReference = paymentReference
+        existingApplication.paymentMethod = paymentMethod
+        existingApplication.application = {
           fullName,
           storeName,
           nin,
@@ -304,9 +371,36 @@ router.post('/apply-seller',
           reason,
           schoolIdImage: req.file.path,
           schoolIdImagePublicId: req.file.filename,
-        },
-        status: 'pending',
-      })
+        }
+        existingApplication.status = 'pending'
+        existingApplication.rejectionReason = undefined
+        existingApplication.approvedAt = undefined
+        existingApplication.expiresAt = undefined
+        existingApplication.approvedBy = undefined
+        existingApplication.submittedAt = new Date()
+        app = await existingApplication.save()
+      } else {
+        app = await SellerApplication.create({
+          user: req.user._id,
+          plan: planId,
+          amount: plan.price,
+          currency: plan.currency,
+          paymentReference,
+          paymentMethod,
+          application: {
+            fullName,
+            storeName,
+            nin,
+            productDetails,
+            phone,
+            experience,
+            reason,
+            schoolIdImage: req.file.path,
+            schoolIdImagePublicId: req.file.filename,
+          },
+          status: 'pending',
+        })
+      }
 
       await User.findByIdAndUpdate(req.user._id, {
         role: 'buyer',

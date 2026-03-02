@@ -1,20 +1,19 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
 import { listingsAPI } from '../api/endpoints'
 import { ListingCard } from '../components/Card'
 
-function TrendUp() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> }
-function TrendDown() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg> }
-
 export default function Dashboard() {
   const { user } = useAuth()
-  const canSell = user?.role === 'seller'
   const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const isSeller = user?.role === 'seller'
+  if (!isSeller) return <Navigate to="/home" replace />
 
   useEffect(() => {
     listingsAPI.getMyListings()
@@ -23,43 +22,22 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  const stats = [
-    {
-      label: 'Active Listings',
-      value: listings.filter(l => l.status === 'active').length,
-      change: '+2 this week',
-      up: true,
-      iconClass: 'fa-solid fa-cart-shopping',
-      color: 'var(--nw-primary-light)',
-      iconColor: 'var(--nw-primary)',
-    },
-    {
-      label: 'Total Views',
-      value: listings.reduce((a, l) => a + (l.views || 0), 0),
-      change: '+12% this week',
-      up: true,
-      iconClass: 'fa-solid fa-eye',
-      color: 'var(--nw-accent-light)',
-      iconColor: 'var(--nw-accent)',
-    },
-    {
-      label: 'Messages',
-      value: user?.unreadMessages || 0,
-      change: 'Click to view',
-      up: null,
-      iconClass: 'fa-solid fa-comments',
-      color: 'var(--nw-green-light)',
-      iconColor: 'var(--nw-green)',
-    },
-    {
-      label: 'Saved Items',
-      value: user?.savedCount || 0,
-      change: 'Across all categories',
-      up: null,
-      iconClass: 'fa-solid fa-heart',
-      color: 'var(--nw-gold-light)',
-      iconColor: 'var(--nw-gold)',
-    },
+  const activeListings = listings.filter(l => l.status === 'active')
+  const expiredListings = listings.filter(l => l.status === 'expired')
+  const pinnedListings = listings.filter(l => l.isPremium || l.pinned)
+  const totalViews = listings.reduce((acc, l) => acc + (l.views || 0), 0)
+  const revenueOverview = activeListings.reduce((acc, l) => acc + (l.price || 0), 0)
+  const subscriptionStatus = user?.subscription?.plan
+    ? `${String(user.subscription.plan).replace('_', ' ')}`
+    : 'No active seller plan'
+
+  const analytics = [
+    { label: 'Active Listings', value: activeListings.length, icon: 'fa-solid fa-store', color: 'var(--nw-primary)' },
+    { label: 'Expired Listings', value: expiredListings.length, icon: 'fa-solid fa-clock-rotate-left', color: 'var(--nw-accent)' },
+    { label: 'Pins in Use', value: pinnedListings.length, icon: 'fa-solid fa-thumbtack', color: 'var(--nw-gold)' },
+    { label: 'Total Views', value: totalViews, icon: 'fa-solid fa-eye', color: 'var(--nw-green)' },
+    { label: 'Revenue Overview', value: `₦${revenueOverview.toLocaleString()}`, icon: 'fa-solid fa-naira-sign', color: 'var(--nw-primary)' },
+    { label: 'Subscription Status', value: subscriptionStatus, icon: 'fa-solid fa-crown', color: 'var(--nw-accent)' },
   ]
 
   return (
@@ -68,122 +46,89 @@ export default function Dashboard() {
       <div className="page-layout">
         <Sidebar />
         <main className="page-main">
-          {/* Welcome */}
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '1.75rem',
-              fontWeight: 800,
-              color: 'var(--nw-ink)',
-              letterSpacing: '-0.015em',
-              marginBottom: 4,
-            }}>
-              Good {getTimeGreeting()}, {user?.name?.split(' ')[0]} <i className="fa-solid fa-hand" aria-hidden="true" />
-            </h1>
-            <p style={{ color: 'var(--nw-gray-500)' }}>Here's what's happening on NexWAD</p>
+          <div className="page-header">
+            <h1 className="page-header__title">Seller Dashboard</h1>
+            <p className="page-header__sub">Manage your store performance, listings, pins, and subscription in one place.</p>
+            <div className="what-this-means" style={{ maxWidth: 700 }}>
+              <strong>What this means:</strong> This page is only for approved sellers. The cards below summarize your current seller performance
+              and help you decide when to renew, pin, or create new listings.
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid-4" style={{ marginBottom: 'var(--space-8)' }}>
-            {stats.map((s, i) => (
-              <div
-                key={s.label}
-                className="stat-card animate-fade-in"
-                style={{ animationDelay: `${i * 0.06}s`, cursor: s.label === 'Messages' ? 'pointer' : 'default' }}
-                onClick={s.label === 'Messages' ? () => navigate('/chat') : undefined}
-              >
-                <div className="stat-card__icon" style={{ background: s.color, color: s.iconColor, fontSize: '1.25rem' }}>
-                  <i className={s.iconClass} aria-hidden="true" />
-                </div>
-                <div className="stat-card__value">{s.value.toLocaleString()}</div>
-                <div className="stat-card__label">{s.label}</div>
-                {s.up !== null && (
-                  <div className={`stat-card__change stat-card__change--${s.up ? 'up' : 'down'}`}>
-                    {s.up ? <TrendUp /> : <TrendDown />}
-                    {s.change}
+          <div className="grid-3" style={{ marginBottom: 'var(--space-6)' }}>
+            {analytics.map((item) => (
+              <div key={item.label} className="card card-body">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--nw-gray-100)', color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className={item.icon} aria-hidden="true" />
                   </div>
-                )}
-                {s.up === null && (
-                  <div className="stat-card__change" style={{ color: 'var(--nw-gray-400)' }}>{s.change}</div>
-                )}
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{item.label}</div>
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--nw-ink)' }}>{item.value}</div>
               </div>
             ))}
           </div>
 
-          {/* Subscription banner */}
-          {!user?.subscription && (
-            <div style={{
-              background: 'linear-gradient(135deg, var(--nw-ink) 0%, var(--nw-ink-soft) 100%)',
-              borderRadius: 'var(--radius-2xl)',
-              padding: 'var(--space-6) var(--space-8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 'var(--space-4)',
-              marginBottom: 'var(--space-8)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(37,99,255,0.25), transparent)', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.0625rem', color: 'white', marginBottom: 4 }}>
-                  <i className="fa-solid fa-star" aria-hidden="true" /> Upgrade to NexWAD Premium
-                </div>
-                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
-                  Get premium listing placement, seller analytics & more
-                </div>
-              </div>
-              <button
-                className="btn"
-                style={{ background: 'var(--nw-gold)', color: 'white', flexShrink: 0 }}
-                onClick={() => navigate('/profile/subscription')}
-              >
-                Upgrade Now
+          <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-3)' }}>Seller Controls</h2>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>
+                + New Listing
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate('/marketplace?mine=true')}>
+                Manage Listings
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate('/profile/subscription')}>
+                Pin Management
+              </button>
+              <button className="btn btn-ghost" onClick={() => navigate('/profile/subscription')}>
+                Subscription Status
               </button>
             </div>
-          )}
-
-          {/* My Listings */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem' }}>My Listings</h2>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/marketplace?mine=true')}>View All</button>
-                {canSell && <button className="btn btn-primary btn-sm" onClick={() => navigate('/marketplace?create=true')}>+ New Listing</button>}
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="grid-3">
-                {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 280, borderRadius: 'var(--radius-xl)' }} />)}
-              </div>
-            ) : listings.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-box-open" aria-hidden="true" /></div>
-                <div className="empty-state__title">No listings yet</div>
-                <div className="empty-state__text">Start selling to fellow students on NexWAD</div>
-                {canSell && (
-                  <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>
-                    Create First Listing
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid-3">
-                {listings.slice(0, 6).map(l => <ListingCard key={l._id} listing={l} />)}
-              </div>
-            )}
           </div>
+
+          <Section
+            title="Active Listings"
+            loading={loading}
+            items={activeListings}
+            emptyText="No active listings yet."
+            onViewAll={() => navigate('/marketplace?mine=true')}
+          />
+
+          <Section
+            title="Expired Listings"
+            loading={loading}
+            items={expiredListings}
+            emptyText="No expired listings."
+            onViewAll={() => navigate('/marketplace?mine=true')}
+          />
         </main>
       </div>
     </div>
   )
 }
 
-function getTimeGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'morning'
-  if (h < 17) return 'afternoon'
-  return 'evening'
+function Section({ title, loading, items, emptyText, onViewAll }) {
+  return (
+    <div style={{ marginBottom: 'var(--space-6)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem' }}>{title}</h2>
+        <button className="btn btn-ghost btn-sm" onClick={onViewAll}>View all</button>
+      </div>
+
+      {loading ? (
+        <div className="grid-3">
+          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 280, borderRadius: 'var(--radius-xl)' }} />)}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state__title">{emptyText}</div>
+        </div>
+      ) : (
+        <div className="grid-3">
+          {items.slice(0, 6).map(item => <ListingCard key={item._id} listing={item} />)}
+        </div>
+      )}
+    </div>
+  )
 }

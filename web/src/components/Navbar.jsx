@@ -5,6 +5,7 @@ import { SocketContext } from '../context/SocketContext'
 import { useLayout } from '../context/LayoutContext'
 import NotificationPanel from './Notification'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
+import { getDefaultRouteForUser, getPrimaryNavForUser, isSellerRole } from '../utils/roleRouting'
 
 function SearchIcon() {
   return (
@@ -101,21 +102,28 @@ export default function Navbar() {
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NW'
-  const canSell = user?.role === 'seller'
+  const canSell = isSellerRole(user?.role)
+  const defaultRoute = isAuthenticated ? getDefaultRouteForUser(user) : '/'
+  const primaryNav = getPrimaryNavForUser(user)
 
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname)
-  const canGoBack = isAuthenticated && !isPublicPage && location.pathname !== '/dashboard'
+  const hasGuestSidebar = location.pathname === '/marketplace'
+    || location.pathname === '/social'
+    || location.pathname === '/lost-found'
+    || location.pathname.startsWith('/marketplace/')
+  const canToggleSidebar = isMobile && (isAuthenticated || hasGuestSidebar)
+  const canGoBack = isAuthenticated && !isPublicPage && location.pathname !== defaultRoute
 
   const handleBack = () => {
     if (window.history.length > 1) navigate(-1)
-    else navigate('/dashboard')
+    else navigate(defaultRoute)
   }
 
   return (
     <nav className="navbar">
       <div className="navbar__inner">
         <div className="navbar__left">
-          {isAuthenticated && isMobile && (
+          {canToggleSidebar && (
             <button
               className="navbar__icon-btn navbar__menu-btn"
               onClick={toggleSidebar}
@@ -136,7 +144,7 @@ export default function Navbar() {
           )}
 
           {/* Logo */}
-          <Link to={isAuthenticated ? '/dashboard' : '/'} className="navbar__logo" onClick={closeSidebar}>
+          <Link to={defaultRoute} className="navbar__logo" onClick={closeSidebar}>
             <img src={nexwadLogo} alt="NexWAD" className="navbar__logo-img" />
           </Link>
         </div>
@@ -162,6 +170,13 @@ export default function Navbar() {
         <div className="navbar__actions">
           {isAuthenticated ? (
             <>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => navigate(primaryNav.to)}
+              >
+                {primaryNav.label}
+              </button>
+
               {/* New Listing */}
               {canSell && (
                 <button
@@ -239,11 +254,11 @@ export default function Navbar() {
                       <div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{user?.email}</div>
                     </div>
                     {[
+                      { label: primaryNav.label, to: primaryNav.to },
                       { label: 'My Profile', to: `/profile/${user?._id}` },
                       { label: 'My Listings', to: '/marketplace?mine=true' },
                       { label: 'Saved Items', to: '/marketplace?saved=true' },
                       { label: 'Settings', to: '/profile/settings' },
-                      ...(user?.role === 'super_admin' || user?.role === 'superadmin' || user?.role === 'admin' ? [{ label: 'Admin Panel', to: '/admin' }] : []),
                     ].map(item => (
                       <Link
                         key={item.to}

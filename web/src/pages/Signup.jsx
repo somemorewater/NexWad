@@ -3,11 +3,31 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
+import { getDefaultRouteForUser } from '../utils/roleRouting'
 
 const DEPARTMENTS = [
-  'Computer Engineering', 'Electrical Engineering', 'Mechanical Engineering',
-  'Civil Engineering', 'Chemical Engineering', 'Aerospace Engineering',
-  'Cyber Security', 'Information Technology',
+  'AEROSPACE ENGINEERING',
+  'MECHANICAL ENGINEERING',
+  'MECHATRONICS ENGINEERING',
+  'TELECOMMUNICATION ENGINEERING',
+  'AUTOMOTIVE ENGINEERING',
+  'METALLURGICAL & MATERIALS ENGINEERING',
+  'CIVIL ENGINEERING',
+  'INFORMATION AND COMMUNICATION ENGINEERING',
+  'PHYSICS',
+  'PHYSICS WITH ELECTRONICS',
+  'MATHEMATICS',
+  'CHEMISTRY',
+  'STATISTICS',
+  'COMPUTER SCIENCE',
+  'CYBER SECURITY',
+  'ELECTRICAL ENGINEERING',
+  'INTERNATIONAL RELATIONS',
+  'BANKING AND FINANCE',
+  'BUSINESS ADMIN',
+  'MARKETING',
+  'ECONOMICS',
+  'ACCOUNTING',
 ]
 
 const LEVELS = ['100', '200', '300', '400', '500']
@@ -26,6 +46,7 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
+  const matricPattern = /^U\d{2}[A-Z]{2,6}\d{3,5}$/
 
   const getErrorMessage = (err, fallback) => {
     if (err?.error) return err.error
@@ -51,7 +72,9 @@ export default function Signup() {
 
   const validateStep2 = () => {
     const e = {}
-    if (!form.matricNumber.trim()) e.matricNumber = 'Matric number required'
+    const matric = form.matricNumber.trim().toUpperCase()
+    if (!matric) e.matricNumber = 'Matric number required'
+    else if (!matricPattern.test(matric)) e.matricNumber = 'Invalid format. Use U[year][dept][no], e.g. U24PH1025'
     if (!form.department) e.department = 'Department required'
     if (!form.level) e.level = 'Level required'
     return e
@@ -70,7 +93,7 @@ export default function Signup() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      await signup({ ...form, _step: 'initiate' })
+      await signup({ ...form, matricNumber: form.matricNumber.trim().toUpperCase(), _step: 'initiate' })
       setStep(3)
       toast.success('OTP sent to your email')
     } catch (err) {
@@ -85,9 +108,9 @@ export default function Signup() {
     if (!otp || otp.length !== 6) { setErrors({ otp: 'Enter the 6-digit code' }); return }
     setLoading(true)
     try {
-      await signup({ ...form, otp, _step: 'verify' })
+      const data = await signup({ ...form, matricNumber: form.matricNumber.trim().toUpperCase(), otp, _step: 'verify' })
       toast.success('Account created! Welcome to NexWAD')
-      navigate('/dashboard')
+      navigate(getDefaultRouteForUser(data?.user))
     } catch (err) {
       toast.error(getErrorMessage(err, 'Invalid OTP'))
     } finally {
@@ -194,6 +217,9 @@ export default function Signup() {
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px' }}>
                   Continue →
                 </button>
+                <p className="auth-footer" style={{ marginTop: 12 }}>
+                  By signing up, you agree to our <Link to="/legal">Legal Policies</Link>.
+                </p>
               </form>
             </>
           )}
@@ -205,7 +231,8 @@ export default function Signup() {
               <form className="auth-form" onSubmit={handleStep2}>
                 <div className="form-group">
                   <label className="form-label">Matric Number</label>
-                  <input type="text" className="form-input" placeholder="AFIT/ICE/20/001" value={form.matricNumber} onChange={set('matricNumber')} />
+                  <input type="text" className="form-input" placeholder="U24PH1025" value={form.matricNumber} onChange={set('matricNumber')} />
+                  <span className="form-hint">Format: U[year][department][number], e.g. U24PH1025</span>
                   {errors.matricNumber && <span className="form-error">{errors.matricNumber}</span>}
                 </div>
                 <div className="form-group">
@@ -273,9 +300,14 @@ export default function Signup() {
           )}
 
           {step < 3 && (
-            <p className="auth-footer">
-              Already have an account? <Link to="/login">Sign in</Link>
-            </p>
+            <>
+              <p className="auth-footer">
+                Already have an account? <Link to="/login">Sign in</Link>
+              </p>
+              <p className="auth-footer" style={{ marginTop: 10 }}>
+                <Link to="/legal">Legal Policies</Link>
+              </p>
+            </>
           )}
         </div>
       </div>

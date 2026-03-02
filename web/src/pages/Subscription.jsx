@@ -86,6 +86,10 @@ export default function Subscription() {
                   {actionPlan === 'cancel' ? 'Cancelling...' : 'Cancel Subscription'}
                 </button>
               </div>
+              <div className="what-this-means">
+                <strong>What this means:</strong> Your current plan benefits remain active until the expiry date shown above.
+                Cancelling stops renewal and switches your account back after expiry.
+              </div>
             </div>
           )}
 
@@ -95,6 +99,10 @@ export default function Subscription() {
               <div className="caption">
                 Plan: {application.plan} · Submitted: {new Date(application.createdAt).toLocaleDateString()} ·
                 Your role remains Buyer until admin approval.
+              </div>
+              <div className="what-this-means">
+                <strong>What this means:</strong> You have paid and submitted your application. You cannot post seller listings yet
+                until approval is completed by admin.
               </div>
             </div>
           )}
@@ -118,13 +126,19 @@ export default function Subscription() {
                       ))}
                     </div>
                     {plan.type === 'seller' ? (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ width: '100%' }}
-                        onClick={() => navigate(`/profile/become-seller?plan=${plan._id}`)}
-                      >
-                        Apply as {plan.name}
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: '100%' }}
+                          onClick={() => navigate(`/profile/become-seller?plan=${plan._id}`)}
+                        >
+                          Apply as {plan.name}
+                        </button>
+                        <div className="what-this-means">
+                          <strong>What this means:</strong> First-time seller access needs one approval. After approval, renewals/upgrades
+                          are direct and may be prorated.
+                        </div>
+                      </>
                     ) : (
                       <button
                         className={`btn ${isCurrent ? 'btn-secondary' : 'btn-primary'}`}
