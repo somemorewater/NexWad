@@ -15,6 +15,13 @@ export const usersAPI = {
   search: (q) => api.get('/users/search', { params: { q } }),
 }
 
+// ─── User Logs ────────────────────────────────
+export const userLogsAPI = {
+  getMine: (params) => api.get('/user-logs/me', { params }),
+  event: (data) => api.post('/user-logs/event', data),
+  getAdmin: (params) => api.get('/user-logs/admin', { params }),
+}
+
 // ─── Listings ─────────────────────────────────
 export const listingsAPI = {
   getAll: (params) => api.get('/listings', { params }),
@@ -33,6 +40,7 @@ export const listingsAPI = {
 // ─── Posts (Social) ───────────────────────────
 export const postsAPI = {
   getFeed: (params) => api.get('/posts/feed', { params }),
+  getMine: () => api.get('/posts/mine'),
   getById: (id) => api.get(`/posts/${id}`),
   getComments: (id) => api.get(`/posts/${id}/comments`),
   create: (formData) =>
@@ -83,6 +91,17 @@ export const subscriptionsAPI = {
   getMySellerApplication: () => api.get('/subscriptions/my-application'),
   cancel: () => api.delete('/subscriptions/current'),
   getReceipt: (subId) => api.get(`/subscriptions/${subId}/receipt`, { responseType: 'blob' }),
+}
+
+// ─── Pins ─────────────────────────────────────
+export const pinsAPI = {
+  getPlans: () => api.get('/pins/plans'),
+  getMine: () => api.get('/pins/my'),
+  initialize: (data) => api.post('/pins/initialize', data),
+  extend: (pinId, data) => api.post(`/pins/${pinId}/extend`, data),
+  initializeCredits: (data) => api.post('/pins/credits/initialize', data),
+  verifyCredits: (data) => api.post('/pins/credits/verify', data),
+  unpin: (pinId) => api.delete(`/pins/${pinId}`),
 }
 
 // ─── Admin ────────────────────────────────────
