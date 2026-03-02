@@ -23,6 +23,7 @@ import BecomeSeller from './pages/BecomeSeller'
 import ProductDetails from './pages/ProductDetails'
 import AdminDashboard from './pages/AdminDashboard'
 import Legal from './pages/Legal'
+import ActivityTracker from './components/ActivityTracker'
 import nexwadLogo from './assets/images/nexwad-logo.png'
 
 function AppContent() {
@@ -53,6 +54,7 @@ function AppContent() {
         <AuthProvider>
           <LayoutProvider>
             <SocketProvider>
+              <ActivityTracker />
               <Toaster
                 position="top-right"
                 toastOptions={{

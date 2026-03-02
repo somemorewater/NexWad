@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listingsAPI } from '../api/endpoints'
+import { listingsAPI, pinsAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useAuth } from '../hooks/useAuth'
+import { canPinContent, formatPinTimeLeft } from '../utils/pins'
 
 function HeartIcon({ filled }) {
   return filled
@@ -30,8 +32,11 @@ function getUserBadge(user) {
  */
 export function ListingCard({ listing }) {
   const navigate = useNavigate()
+  const { user, isAuthenticated } = useAuth()
   const [saved, setSaved] = useState(listing.isSaved ?? false)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [pinData, setPinData] = useState(listing.pin || null)
+  const [pinLoading, setPinLoading] = useState(false)
 
   const {
     _id,
@@ -42,9 +47,11 @@ export function ListingCard({ listing }) {
     category,
     seller,
     isPremium,
-    condition,
     createdAt,
   } = listing
+  const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
+  const isOwner = Boolean(user?._id && seller?._id && user._id === seller._id)
+  const canPin = isOwner && canPinContent(user)
 
   const toggleSave = async (e) => {
     e.stopPropagation()
@@ -64,16 +71,55 @@ export function ListingCard({ listing }) {
     setSaveLoading(false)
   }
 
+  const togglePin = async (e) => {
+    e.stopPropagation()
+    if (pinLoading) return
+    if (!isAuthenticated) {
+      toast.error('Login required')
+      return
+    }
+    if (!canPin) {
+      toast.error('Only sellers or premium users can pin their own content')
+      return
+    }
+
+    setPinLoading(true)
+    try {
+      if (isPinned) {
+        await pinsAPI.unpin(pinData._id)
+        setPinData(null)
+        toast.success('Unpinned')
+      } else {
+        const { data } = await pinsAPI.initialize({
+          targetType: 'listing',
+          targetId: _id,
+          units: 1,
+        })
+        setPinData(data?.pin || null)
+        toast.success('Pinned for 24 hours')
+      }
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not update pin')
+    } finally {
+      setPinLoading(false)
+    }
+  }
+
   return (
-    <article className="listing-card" onClick={() => navigate(`/marketplace/${_id}`)}>
+    <article className={`listing-card ${isPinned ? 'pinned-card' : ''}`} onClick={() => navigate(`/marketplace/${_id}`)}>
       <div className="listing-card__image">
         <img
           src={images[0] || '/placeholder.jpg'}
           alt={title}
           loading="lazy"
         />
+        {isPinned && (
+          <span className="pin-badge">
+            <i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned
+          </span>
+        )}
         {isPremium && (
-          <span className="listing-card__premium-badge">
+          <span className="listing-card__premium-badge" style={{ top: isPinned ? 40 : undefined }}>
             <StarIcon /> Premium
           </span>
         )}
@@ -115,7 +161,15 @@ export function ListingCard({ listing }) {
             </div>
             {seller?.name}
           </button>
-          <span className="caption">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isPinned && <span className="caption" style={{ color: '#92400e' }}>{formatPinTimeLeft(pinData?.expiresAt)}</span>}
+            {canPin && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={togglePin} disabled={pinLoading}>
+                {pinLoading ? '...' : isPinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
+            <span className="caption">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+          </div>
         </div>
       </div>
     </article>
@@ -127,9 +181,16 @@ export function ListingCard({ listing }) {
  */
 export function PostCard({ post, onLike, onComment }) {
   const navigate = useNavigate()
+  const { user, isAuthenticated } = useAuth()
   const [liked, setLiked] = useState(post.isLiked ?? false)
   const [likeCount, setLikeCount] = useState(post.likeCount ?? post.likes?.length ?? 0)
+  const [pinData, setPinData] = useState(post.pin || null)
+  const [pinLoading, setPinLoading] = useState(false)
   const userBadge = getUserBadge(post.author)
+  const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
+  const isOwner = Boolean(user?._id && post.author?._id && user._id === post.author._id)
+  const canPin = isOwner && canPinContent(user)
+  const canSeePinTime = isPinned && isOwner
 
   const handleLike = async () => {
     const wasLiked = liked
@@ -142,8 +203,41 @@ export function PostCard({ post, onLike, onComment }) {
     await onComment(post._id)
   }
 
+  const togglePin = async () => {
+    if (pinLoading) return
+    if (!isAuthenticated) {
+      toast.error('Login required')
+      return
+    }
+    if (!canPin) {
+      toast.error('Only sellers or premium users can pin their own content')
+      return
+    }
+
+    setPinLoading(true)
+    try {
+      if (isPinned) {
+        await pinsAPI.unpin(pinData._id)
+        setPinData(null)
+        toast.success('Unpinned')
+      } else {
+        const { data } = await pinsAPI.initialize({
+          targetType: 'post',
+          targetId: post._id,
+          units: 1,
+        })
+        setPinData(data?.pin || null)
+        toast.success('Pinned for 24 hours')
+      }
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not update pin')
+    } finally {
+      setPinLoading(false)
+    }
+  }
+
   return (
-    <article className="post-card">
+    <article className={`post-card ${isPinned ? 'pinned-card' : ''}`}>
       <div className="post-card__header">
         <div
           className="avatar avatar-md"
@@ -157,6 +251,11 @@ export function PostCard({ post, onLike, onComment }) {
         <div className="post-card__user-info">
           <div className="post-card__username" style={{ cursor: 'pointer' }} onClick={() => navigate(`/profile/${post.author?._id}`)}>
             {post.author?.name}
+            {isPinned && (
+              <span className="pin-badge" style={{ marginLeft: 6, position: 'static' }}>
+                <i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned
+              </span>
+            )}
             {userBadge && (
               userBadge.variant === 'verified' ? (
                 <span
@@ -191,9 +290,17 @@ export function PostCard({ post, onLike, onComment }) {
             {post.author?.department && ` · ${post.author.department}`}
           </div>
         </div>
-        <button className="post-card__menu-btn">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {canSeePinTime && <span className="caption">{formatPinTimeLeft(pinData?.expiresAt)}</span>}
+          {canPin && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={togglePin} disabled={pinLoading}>
+              {pinLoading ? '...' : isPinned ? 'Unpin' : 'Pin'}
+            </button>
+          )}
+          <button className="post-card__menu-btn">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          </button>
+        </div>
       </div>
 
       {post.content && <p className="post-card__content">{post.content}</p>}

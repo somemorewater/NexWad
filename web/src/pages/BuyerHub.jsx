@@ -6,6 +6,7 @@ import { listingsAPI, postsAPI, lostFoundAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import { SocketContext } from '../context/SocketContext'
 import { isPremiumBuyer } from '../utils/roleRouting'
+import { formatPinTimeLeft } from '../utils/pins'
 
 export default function BuyerHub() {
   const { user } = useAuth()
@@ -32,6 +33,11 @@ export default function BuyerHub() {
   }, [])
 
   const premium = isPremiumBuyer(user)
+  const pinnedHighlights = [
+    ...preview.listings.filter((item) => item.isPinned).map((item) => ({ type: 'Listing', title: item.title, image: item.images?.[0], expiresAt: item.pin?.expiresAt })),
+    ...preview.posts.filter((item) => item.isPinned).map((item) => ({ type: 'Post', title: item.content?.slice(0, 54) || `${item.author?.name || 'Student'} post`, image: item.image, expiresAt: item.pin?.expiresAt })),
+    ...preview.items.filter((item) => item.isPinned).map((item) => ({ type: 'Lost & Found', title: item.title, image: item.image, expiresAt: item.pin?.expiresAt })),
+  ]
 
   return (
     <div>
@@ -73,6 +79,31 @@ export default function BuyerHub() {
               iconClass="fa-solid fa-bell"
             />
           </div>
+
+          {pinnedHighlights.length > 0 && (
+            <section className="pin-strip" style={{ marginBottom: 'var(--space-6)' }}>
+              <div className="pin-strip__header">
+                <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Now</h2>
+              </div>
+              <div className="pin-strip__scroller">
+                {pinnedHighlights.map((item, index) => (
+                  <div key={`${item.type}-${index}`} className="pin-strip__item">
+                    <div className="pin-strip__thumb">
+                      {item.image ? (
+                        <img src={item.image} alt={item.title} />
+                      ) : (
+                        <i className="fa-solid fa-image" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="pin-strip__content">
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
+                      <div className="caption">{item.type} · {formatPinTimeLeft(item.expiresAt)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {!premium && (
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)', background: 'linear-gradient(135deg, var(--nw-ink) 0%, var(--nw-ink-soft) 100%)' }}>

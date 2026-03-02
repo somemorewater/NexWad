@@ -6,6 +6,7 @@ const { handleUpload, uploadChatMedia } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
 const { emitToUser } = require('../socket')
 const { notifyNewMessage } = require('../utils/notifications')
+const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 // ─── GET /api/chat ────────────────────────────
 router.get('/', protect, async (req, res, next) => {
@@ -55,6 +56,14 @@ router.post('/start', protect,
           .populate('participants', 'name avatar online lastSeen')
           .populate('listing', 'title description price images category')
       }
+
+      queueUserLog(buildRequestLog(req, res, {
+        action: 'chat_started',
+        category: 'chat',
+        entityType: 'chat',
+        entityId: chat._id.toString(),
+        metadata: { listingId: listingId || null, sellerId },
+      }))
 
       res.status(201).json({ chat })
     } catch (err) { next(err) }
