@@ -5,6 +5,8 @@ const morgan = require('morgan')
 const compression = require('compression')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
+const { logRequestActivity } = require('../middleware/activityLogger')
+const { enforceApiKey } = require('../middleware/apiKey')
 
 const app = express()
 const isProd = process.env.NODE_ENV === 'production'
@@ -15,7 +17,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
 }))
 
 // ─── Global rate limiter ──────────────────────
@@ -38,11 +40,15 @@ const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts. Try again in 15 minutes.' },
 })
 app.use('/api/auth/', authLimiter)
+app.use('/api', enforceApiKey())
 
 // ─── Body parsing ─────────────────────────────
 app.use(compression())
+app.use('/api/pins/paystack-webhook', express.raw({ type: 'application/json' }))
+app.use('/api/pins/credits/paystack-webhook', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(logRequestActivity)
 
 // ─── Logging ──────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
@@ -57,6 +63,8 @@ app.use('/api/listings', require('../routes/listings'))
 app.use('/api/lostfound', require('../routes/lostfound'))
 app.use('/api/chat', require('../routes/chat'))
 app.use('/api/subscriptions', require('../routes/subscriptions'))
+app.use('/api/pins', require('../routes/pins'))
+app.use('/api/user-logs', require('../routes/userLogs'))
 app.use('/api/admin', require('../routes/admin'))
 
 // ─── Health check ─────────────────────────────
