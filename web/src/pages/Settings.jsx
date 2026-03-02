@@ -89,6 +89,20 @@ export default function Settings() {
               </Link>
             </div>
           </div>
+
+          <div className="card card-body" style={{ maxWidth: 920, marginTop: 'var(--space-5)' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', marginBottom: 'var(--space-2)' }}>
+              Legal
+            </h2>
+            <p style={{ color: 'var(--nw-gray-500)' }}>
+              View Terms and Conditions, Privacy Policy, Cookies Policy, and Data Retention Policy on one page.
+            </p>
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <Link to="/legal" className="btn btn-secondary">
+                Open Legal Page
+              </Link>
+            </div>
+          </div>
         </main>
       </div>
     </div>
