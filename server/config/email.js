@@ -109,6 +109,20 @@ const templates = {
     `),
   }),
 
+  sellerApplicationApproved: ({ name, plan, expiresAt }) => ({
+    subject: 'Your NexWAD seller application has been approved ✓',
+    html: wrapEmail(`
+      <h1>Seller application approved</h1>
+      <p>Hi ${name},</p>
+      <p>Great news. Your seller application has been approved and your seller account is now active.</p>
+      <div class="receipt-row"><span>Seller Plan</span><span>${plan}</span></div>
+      <div class="receipt-row"><span>Valid until</span><span>${new Date(expiresAt).toLocaleDateString('en-NG', { dateStyle: 'long' })}</span></div>
+      <div class="divider"></div>
+      <a class="btn" href="${process.env.CLIENT_URL}/dashboard">Open Seller Dashboard →</a>
+      <p style="font-size:13px;color:#9b9990;">You can now create listings and manage your seller tools on NexWAD.</p>
+    `),
+  }),
+
   purchaseReceipt: ({ buyerName, sellerName, listing, amount, transactionId }) => ({
     subject: `Receipt for your NexWAD purchase — ${listing.title}`,
     html: wrapEmail(`
