@@ -46,7 +46,16 @@ export default function Modal({
         {title && (
           <div className="modal__header">
             <h2 className="modal__title">{title}</h2>
-            <button className="modal__close" onClick={onClose} aria-label="Close">
+            <button
+              type="button"
+              className="modal__close"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onClose?.()
+              }}
+              aria-label="Close"
+            >
               <CloseIcon />
             </button>
           </div>
