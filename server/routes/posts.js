@@ -9,20 +9,44 @@ const { notifyLike } = require('../utils/notifications')
 const { invalidateFeedCache, getCachedFeed, cacheFeed } = require('../utils/redis')
 
 // ─── GET /api/posts/feed ─────────────────────
-router.get('/feed', protect, paginationRules, validate, async (req, res, next) => {
+router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, next) => {
   try {
     const { page = 1, limit = 20 } = req.query
     const p = parseInt(page); const l = parseInt(limit)
 
-    // Cache only page 1
-    if (p === 1) {
+    // Personalized feed for authenticated users
+    if (req.user && p === 1) {
       const cached = await getCachedFeed(req.user._id)
       if (cached) return res.json(cached)
     }
 
-    const result = await buildPostFeed(req.user, { page: p, limit: l })
+    if (req.user) {
+      const result = await buildPostFeed(req.user, { page: p, limit: l })
+      if (p === 1) await cacheFeed(req.user._id, result, 90) // 90s TTL
+      return res.json(result)
+    }
 
-    if (p === 1) await cacheFeed(req.user._id, result, 90) // 90s TTL
+    // Public feed for guests
+    const skip = (p - 1) * l
+    const [posts, total] = await Promise.all([
+      Post.find({ removed: false })
+        .populate('author', 'name avatar subscription department role buyerType sellerTier')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(l)
+        .lean(),
+      Post.countDocuments({ removed: false }),
+    ])
+    const result = {
+      posts: posts.map((post) => ({
+        ...post,
+        isLiked: false,
+        likeCount: post.likes?.length || 0,
+        commentCount: post.comments?.length || 0,
+      })),
+      hasMore: total > skip + posts.length,
+      page: p,
+    }
 
     res.json(result)
   } catch (err) { next(err) }
@@ -125,7 +149,7 @@ router.post('/:id/comments', protect,
 )
 
 // ─── GET /api/posts/:id/comments ─────────────
-router.get('/:id/comments', protect, async (req, res, next) => {
+router.get('/:id/comments', optionalAuth, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate('comments.author', 'name avatar')
