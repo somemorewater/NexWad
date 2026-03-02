@@ -9,6 +9,7 @@ const SellerApplication = require('../models/SellerApplication')
 const AdminLog = require('../models/AdminLog')
 const { protect, requireAdmin, requireModerator, requireCS } = require('../middleware/auth')
 const { body, validate, paginationRules } = require('../middleware/validate')
+const { sendEmail } = require('../config/email')
 const logger = require('../utils/logger')
 
 // ─── Audit log helper ─────────────────────────
@@ -88,6 +89,10 @@ router.put('/users/:id/role', requireAdmin,
   [body('role').isIn(['buyer', 'seller', 'user', 'cs', 'moderator', 'admin', 'superadmin', 'super_admin'])], validate,
   async (req, res, next) => {
     try {
+      const isSuperAdmin = ['superadmin', 'super_admin'].includes(req.user.role)
+      if (!isSuperAdmin) {
+        return res.status(403).json({ error: 'Only super admin can change roles' })
+      }
       const user = await User.findByIdAndUpdate(req.params.id, { role: req.body.role }, { new: true }).select('-password')
       if (!user) return res.status(404).json({ error: 'User not found' })
       await auditLog(req, 'CHANGE_ROLE', `User:${user.email}`, `Role changed to ${req.body.role}`, user._id, 'User')
@@ -174,6 +179,12 @@ router.put('/seller-applications/:id/approve', requireAdmin, async (req, res, ne
       application._id,
       'SellerApplication'
     )
+
+    await sendEmail(user.email, 'sellerApplicationApproved', {
+      name: user.name,
+      plan: application.plan,
+      expiresAt,
+    })
 
     res.json({ application, user, subscription: sub })
   } catch (err) { next(err) }
