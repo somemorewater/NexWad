@@ -97,6 +97,17 @@ async function uploadBuffer(buffer, folder, options = {}) {
   })
 }
 
+// ─── Upload image from buffer (SVG/PNG composition) ───
+async function uploadImageBuffer(buffer, folder, options = {}) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: `nexwad/${folder}`, resource_type: 'image', ...options },
+      (err, result) => { if (err) reject(err); else resolve(result) }
+    )
+    stream.end(buffer)
+  })
+}
+
 module.exports = {
   cloudinary,
   handleUpload,
@@ -108,4 +119,5 @@ module.exports = {
   uploadSellerId,
   deleteAsset,
   uploadBuffer,
+  uploadImageBuffer,
 }

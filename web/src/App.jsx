@@ -17,12 +17,17 @@ import LostFound from './pages/LostFound'
 import Chat from './pages/Chat'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
+import FeatureGuide from './pages/FeatureGuide'
 import AccountManager from './pages/AccountManager'
 import Subscription from './pages/Subscription'
 import BecomeSeller from './pages/BecomeSeller'
+import SellerTools from './pages/SellerTools'
 import ProductDetails from './pages/ProductDetails'
+import PostDetails from './pages/PostDetails'
 import AdminDashboard from './pages/AdminDashboard'
 import Legal from './pages/Legal'
+import SearchResults from './pages/SearchResults'
+import Notifications from './pages/Notifications'
 import ActivityTracker from './components/ActivityTracker'
 import nexwadLogo from './assets/images/nexwad-logo.png'
 
@@ -75,7 +80,11 @@ function AppContent() {
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/:listingId" element={<ProductDetails />} />
               <Route path="/social" element={<Social />} />
+              <Route path="/social/post/:postId" element={<PostDetails />} />
               <Route path="/lost-found" element={<LostFound />} />
+              <Route path="/search" element={<SearchResults />} />
+              <Route path="/profile/:userId" element={<Profile />} />
+              <Route path="/:username" element={<Profile />} />
               <Route path="/legal-page" element={<Navigate to="/legal" replace />} />
               <Route path="/terms-and-conditions" element={<Navigate to="/legal" replace />} />
               <Route path="/privacy-policy" element={<Navigate to="/legal" replace />} />
@@ -87,14 +96,17 @@ function AppContent() {
                 <Route path="/home" element={<BuyerHub />} />
                 <Route element={<ProtectedRoute requiredRole="seller" fallbackTo="/home" />}>
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/profile/seller-tools" element={<SellerTools />} />
                 </Route>
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/chat/:chatId" element={<Chat />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/profile/settings" element={<Settings />} />
+                <Route path="/profile/features" element={<FeatureGuide />} />
                 <Route path="/profile/account-manager" element={<AccountManager />} />
                 <Route path="/profile/subscription" element={<Subscription />} />
                 <Route path="/profile/become-seller" element={<BecomeSeller />} />
-                <Route path="/profile/:userId?" element={<Profile />} />
+                <Route path="/profile" element={<Profile />} />
               </Route>
 
               {/* Admin */}
