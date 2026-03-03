@@ -15,6 +15,11 @@ function validate(req, res, next) {
 // ─── Auth validators ──────────────────────────
 const signupRules = [
   body('name').trim().notEmpty().withMessage('Name required').isLength({ max: 100 }),
+  body('username')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+    .matches(/^[a-zA-Z0-9._]+$/).withMessage('Username can only contain letters, numbers, dots, and underscores'),
   body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('matricNumber').optional().trim().notEmpty(),
