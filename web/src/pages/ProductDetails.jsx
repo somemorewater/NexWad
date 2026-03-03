@@ -7,11 +7,13 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
 import { useAuth } from '../hooks/useAuth'
+import { getUserPath } from '../utils/userPath'
+import ReportActionMenu from '../components/ReportActionMenu'
 
 export default function ProductDetails() {
   const { listingId } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [listing, setListing] = useState(null)
   const [activeImage, setActiveImage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -77,6 +79,14 @@ export default function ProductDetails() {
     }
   }
 
+  const reportProduct = async (reason) => {
+    if (!listing?._id) return
+    if (!isAuthenticated) throw new Error('Login required to report products')
+    await listingsAPI.report(listing._id, reason)
+  }
+
+  const isOwner = Boolean(user?._id && listing?.seller?._id && user._id === listing.seller._id)
+
   return (
     <div>
       <Navbar />
@@ -94,7 +104,7 @@ export default function ProductDetails() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 'var(--space-6)' }}>
+            <div className="product-details-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 'var(--space-6)' }}>
               <section className="card card-body">
                 <div style={{ borderRadius: 'var(--radius-xl)', overflow: 'hidden', background: 'var(--nw-gray-100)', marginBottom: 'var(--space-4)' }}>
                   <img
@@ -130,9 +140,18 @@ export default function ProductDetails() {
 
               <aside className="card card-body">
                 <div className="listing-card__category">{listing.category}</div>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', lineHeight: 1.2, marginBottom: 8 }}>
-                  {listing.title}
-                </h1>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                  <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', lineHeight: 1.2, marginBottom: 0 }}>
+                    {listing.title}
+                  </h1>
+                  {!isOwner && (
+                    <ReportActionMenu
+                      onReport={reportProduct}
+                      entityLabel="product"
+                      buttonClassName="post-card__menu-btn"
+                    />
+                  )}
+                </div>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.75rem', marginBottom: 'var(--space-3)' }}>
                   N{listing.price?.toLocaleString()}
                 </div>
@@ -161,7 +180,7 @@ export default function ProductDetails() {
                 <div style={{ borderTop: '1px solid var(--nw-gray-100)', paddingTop: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
                   <button
                     type="button"
-                    onClick={() => listing.seller?._id && navigate(`/profile/${listing.seller._id}`)}
+                    onClick={() => listing.seller?._id && navigate(getUserPath(listing.seller))}
                     style={{
                       border: 'none',
                       background: 'none',

@@ -62,8 +62,8 @@ export default function Marketplace() {
         setPage(p => p + 1)
       }
       setHasMore(data.hasMore)
-    } catch {
-      toast.error('Failed to load listings')
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to load listings')
     } finally {
       setLoading(false)
     }
@@ -117,7 +117,7 @@ export default function Marketplace() {
       <div className="page-layout">
         <Sidebar />
         <main className="page-main">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
+          <div className="page-header-row" style={{ marginBottom: 'var(--space-6)' }}>
             <div className="page-header" style={{ marginBottom: 0 }}>
               <h1 className="page-header__title">{title}</h1>
               <p className="page-header__sub">{listings.length} items found</p>
@@ -141,7 +141,7 @@ export default function Marketplace() {
               </button>
             ))}
             <select
-              className="form-select"
+              className="form-select marketplace-sort"
               style={{ width: 'auto', padding: '7px 14px', borderRadius: 'var(--radius-full)', marginLeft: 'auto' }}
               value={sort}
               onChange={e => setSort(e.target.value)}
@@ -309,7 +309,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
       setForm({ title: '', description: '', price: '', originalPrice: '', category: '', condition: 'good', images: [] })
       setImagePreviews([])
     } catch (err) {
-      toast.error(err?.message || 'Failed to create listing')
+      toast.error(err?.error || err?.message || 'Failed to create listing')
     } finally {
       setLoading(false)
     }
@@ -354,7 +354,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
           <input type="text" className="form-input" placeholder="e.g. Scientific Calculator" value={form.title} onChange={set('title')} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div className="form-group">
             <label className="form-label">Price (₦) *</label>
             <input type="number" className="form-input" placeholder="6000" value={form.price} onChange={set('price')} />
@@ -365,7 +365,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div className="form-group">
             <label className="form-label">Category *</label>
             <select className="form-select" value={form.category} onChange={set('category')}>
