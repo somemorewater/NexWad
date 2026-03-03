@@ -31,15 +31,28 @@ function sanitizeUser(user) {
 // ─── POST /api/auth/signup ────────────────────
 router.post('/signup', signupRules, validate, async (req, res, next) => {
   try {
-    const { name, email, password, matricNumber, department, level, phone, otp, _step } = req.body
+    const { name, username, email, password, matricNumber, department, level, phone, otp, _step } = req.body
 
     // Step 1: initiate — create unverified user and send OTP
     if (_step === 'initiate' || !_step) {
-      const existing = await User.findOne({ $or: [{ email }, ...(matricNumber ? [{ matricNumber }] : [])] })
+      const normalizedUsername = String(username || '').trim().toLowerCase()
+      const existing = await User.findOne({
+        $or: [
+          { email },
+          ...(matricNumber ? [{ matricNumber }] : []),
+          ...(normalizedUsername ? [{ username: normalizedUsername }] : []),
+        ],
+      })
       if (existing && existing.verified) {
+        if (existing.username === normalizedUsername && normalizedUsername) {
+          return res.status(409).json({ error: 'Username already exists' })
+        }
         return res.status(409).json({ error: 'Account already exists' })
       }
       if (existing && existing.email !== email) {
+        if (existing.username === normalizedUsername && normalizedUsername) {
+          return res.status(409).json({ error: 'Username already exists' })
+        }
         return res.status(409).json({ error: 'Matric number already in use' })
       }
 
@@ -51,6 +64,7 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
       // Create/update pending user through document save so password hashing hooks run.
       const pendingUser = existing && existing.email === email ? existing : new User({ email })
       pendingUser.name = name
+      pendingUser.username = normalizedUsername || undefined
       pendingUser.email = email
       pendingUser.password = password
       pendingUser.matricNumber = matricNumber
@@ -93,11 +107,13 @@ router.post('/login', loginRules, validate, async (req, res, next) => {
   try {
     const { email, password } = req.body
     const identifier = String(email || '').trim()
+    const normalizedUsername = identifier.toLowerCase()
 
-    // Accept email or matric number
+    // Accept email, username, or matric number
     const user = await User.findOne({
       $or: [
         { email: identifier.toLowerCase() },
+        { username: normalizedUsername },
         { matricNumber: identifier.toUpperCase() },
       ],
     }).select('+password')

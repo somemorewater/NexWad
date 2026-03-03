@@ -5,15 +5,32 @@ const ADMIN_ROLES = new Set(['admin', 'superadmin', 'super_admin', 'moderator', 
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 100 },
+  username: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    lowercase: true,
+    minlength: 3,
+    maxlength: 30,
+    match: [/^[a-z0-9._]+$/, 'Username can only contain letters, numbers, dots, and underscores'],
+  },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 8, select: false },
   matricNumber: { type: String, unique: true, sparse: true, trim: true, uppercase: true },
   department: { type: String, trim: true },
   level: { type: String, enum: ['100', '200', '300', '400', '500'] },
   phone: { type: String, trim: true },
+  website: { type: String, trim: true, maxlength: 300 },
   avatar: { type: String },
   avatarPublicId: { type: String },
   bio: { type: String, maxlength: 500 },
+  posterImageUrl: { type: String },
+  posterPublicId: { type: String },
+  posterSignature: { type: String },
+  posterTemplateStyle: { type: String, enum: ['basic', 'pro', 'elite'] },
+  posterLastGeneratedAt: { type: Date },
+  featuredProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Listing' }],
 
   role: {
     type: String,
@@ -28,7 +45,7 @@ const userSchema = new mongoose.Schema({
   sellerTier: {
     type: String,
     enum: ['basic', 'pro', 'elite'],
-    default: 'basic',
+    default: undefined,
   },
   subscriptionStatus: {
     type: String,
@@ -40,6 +57,18 @@ const userSchema = new mongoose.Schema({
   verified: { type: Boolean, default: false },
   banned: { type: Boolean, default: false },
   banReason: { type: String },
+  warningsCount: { type: Number, default: 0, min: 0 },
+  warnings: [{
+    reason: { type: String, trim: true, maxlength: 500 },
+    warnedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
+  }],
+  reportCount: { type: Number, default: 0, min: 0 },
+  reports: [{
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true, maxlength: 500 },
+    createdAt: { type: Date, default: Date.now },
+  }],
 
   online: { type: Boolean, default: false },
   lastSeen: { type: Date, default: Date.now },
@@ -81,6 +110,7 @@ userSchema.virtual('followingCount').get(function () {
   return this.following?.length || 0
 })
 userSchema.virtual('sellerTierLegacy').get(function () {
+  if (this.role !== 'seller') return undefined
   if (this.sellerTier) return this.sellerTier
   const plan = this.subscription?.plan
   if (plan === 'premium') return 'elite'
@@ -92,6 +122,14 @@ userSchema.virtual('sellerTierLegacy').get(function () {
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next()
   this.password = await bcrypt.hash(this.password, 12)
+  next()
+})
+
+userSchema.pre('validate', function (next) {
+  if (this.username !== undefined) {
+    const normalized = String(this.username || '').trim().toLowerCase()
+    this.username = normalized || undefined
+  }
   next()
 })
 
@@ -107,7 +145,7 @@ userSchema.methods.applyPlanAccess = function (plan) {
   if (normalizedPlan === 'premium_buyer' || normalizedPlan === 'silver') {
     this.role = ADMIN_ROLES.has(this.role) ? this.role : 'buyer'
     this.buyerType = 'premium'
-    this.sellerTier = 'basic'
+    this.sellerTier = undefined
     return
   }
 
@@ -134,7 +172,7 @@ userSchema.methods.applyPlanAccess = function (plan) {
 
   this.role = ADMIN_ROLES.has(this.role) ? this.role : 'buyer'
   this.buyerType = 'regular'
-  this.sellerTier = 'basic'
+  this.sellerTier = undefined
 }
 
 userSchema.methods.checkSubscription = async function () {
@@ -151,7 +189,7 @@ userSchema.methods.checkSubscription = async function () {
     if (!ADMIN_ROLES.has(this.role)) {
       this.role = 'buyer'
       this.buyerType = 'regular'
-      this.sellerTier = 'basic'
+      this.sellerTier = undefined
     }
 
     await this.save()
@@ -166,7 +204,7 @@ userSchema.methods.checkSubscription = async function () {
 }
 
 // Indexes
-userSchema.index({ name: 'text', bio: 'text' })
+userSchema.index({ name: 'text', bio: 'text', username: 'text' })
 userSchema.index({ createdAt: -1 })
 
 module.exports = mongoose.model('User', userSchema)

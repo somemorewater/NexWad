@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const Post = require('../models/Post')
+const User = require('../models/User')
 const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadPostImage, deleteAsset } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
@@ -13,8 +14,43 @@ const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 // ─── GET /api/posts/feed ─────────────────────
 router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query
+    const { page = 1, limit = 20, q } = req.query
     const p = parseInt(page); const l = parseInt(limit)
+
+    const queryText = String(q || '').trim()
+    if (queryText) {
+      const escaped = queryText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(escaped, 'i')
+      const matchedAuthors = await User.find({
+        banned: false,
+        $or: [{ name: regex }, { username: regex }],
+      }).select('_id').limit(40).lean()
+      const authorIds = matchedAuthors.map((u) => u._id)
+
+      const searchQuery = { removed: false, $or: [{ content: regex }] }
+      if (authorIds.length) searchQuery.$or.push({ author: { $in: authorIds } })
+
+      const skip = (p - 1) * l
+      const [posts, total] = await Promise.all([
+        Post.find(searchQuery)
+          .populate('author', 'name username avatar subscription department role buyerType sellerTier')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(l)
+          .lean(),
+        Post.countDocuments(searchQuery),
+      ])
+
+      const viewerId = req.user?._id?.toString()
+      const normalized = posts.map((post) => ({
+        ...post,
+        isLiked: viewerId ? post.likes?.some((id) => id.toString() === viewerId) : false,
+        likeCount: post.likes?.length || 0,
+        commentCount: post.comments?.length || 0,
+      }))
+      const { items, pinnedItems } = await attachPinsAndSort(normalized, 'post')
+      return res.json({ posts: items, pinnedPosts: pinnedItems, hasMore: total > skip + posts.length, page: p })
+    }
 
     // Personalized feed for authenticated users
     if (req.user && p === 1) {
@@ -34,7 +70,7 @@ router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, ne
     const skip = (p - 1) * l
     const [posts, total] = await Promise.all([
       Post.find({ removed: false })
-        .populate('author', 'name avatar subscription department role buyerType sellerTier')
+        .populate('author', 'name username avatar subscription department role buyerType sellerTier')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(l)
@@ -61,7 +97,7 @@ router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, ne
 router.get('/mine', protect, async (req, res, next) => {
   try {
     const posts = await Post.find({ author: req.user._id, removed: false })
-      .populate('author', 'name avatar subscription department role buyerType sellerTier')
+      .populate('author', 'name username avatar subscription department role buyerType sellerTier')
       .sort({ createdAt: -1 })
       .limit(100)
       .lean()
@@ -77,12 +113,41 @@ router.get('/mine', protect, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ─── GET /api/posts/user/:id ─────────────────
+router.get('/user/:id', optionalAuth, async (req, res, next) => {
+  try {
+    const identifier = String(req.params.id || '').trim()
+    const userQuery = []
+    if (identifier.match(/^[0-9a-fA-F]{24}$/)) userQuery.push({ _id: identifier })
+    userQuery.push({ username: identifier.toLowerCase() })
+
+    const user = await User.findOne({ $or: userQuery, banned: false }).select('_id').lean()
+    if (!user) return res.status(404).json({ error: 'User not found' })
+
+    const posts = await Post.find({ author: user._id, removed: false })
+      .populate('author', 'name username avatar subscription department role buyerType sellerTier')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean()
+
+    const viewerId = req.user?._id?.toString()
+    const normalized = posts.map((post) => ({
+      ...post,
+      isLiked: viewerId ? post.likes?.some((id) => id.toString() === viewerId) : false,
+      likeCount: post.likes?.length || 0,
+      commentCount: post.comments?.length || 0,
+    }))
+    const { items, pinnedItems } = await attachPinsAndSort(normalized, 'post')
+    res.json({ posts: items, pinnedPosts: pinnedItems, hasMore: false })
+  } catch (err) { next(err) }
+})
+
 // ─── GET /api/posts/:id ──────────────────────
 router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('author', 'name avatar subscription department role buyerType sellerTier')
-      .populate('comments.author', 'name avatar')
+      .populate('author', 'name username avatar subscription department role buyerType sellerTier')
+      .populate('comments.author', 'name username avatar')
     if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
     const viewerId = req.user?._id?.toString()
     const authorId = post.author?._id?.toString()
@@ -117,7 +182,7 @@ router.post('/', protect, handleUpload(uploadPostImage), async (req, res, next) 
       image: req.file?.path,
       imagePublicId: req.file?.filename,
     })
-    const populated = await post.populate('author', 'name avatar subscription department role buyerType sellerTier')
+    const populated = await post.populate('author', 'name username avatar subscription department role buyerType sellerTier')
     await invalidateFeedCache(req.user._id)
     res.status(201).json({ post: { ...populated.toObject(), isLiked: false, likeCount: 0, commentCount: 0 } })
   } catch (err) { next(err) }
@@ -175,7 +240,7 @@ router.post('/:id/comments', protect,
         req.params.id,
         { $push: { comments: { author: req.user._id, text: req.body.text } } },
         { new: true }
-      ).populate('comments.author', 'name avatar')
+      ).populate('comments.author', 'name username avatar')
       if (!post) return res.status(404).json({ error: 'Not found' })
       const comment = post.comments[post.comments.length - 1]
       res.status(201).json({ comment, commentCount: post.comments.length })
@@ -187,7 +252,7 @@ router.post('/:id/comments', protect,
 router.get('/:id/comments', optionalAuth, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('comments.author', 'name avatar')
+      .populate('comments.author', 'name username avatar')
     if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
     res.json({ comments: post.comments, commentCount: post.comments.length })
   } catch (err) { next(err) }
