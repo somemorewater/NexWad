@@ -9,6 +9,42 @@ const { buildListingFeed } = require('../utils/feedAlgorithm')
 const { attachPinsAndSort } = require('../utils/pins')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
+const MONTHLY_UPLOAD_LIMITS = {
+  basic: 12,
+  pro: 17,
+  elite: 23,
+}
+
+function resolveSellerTier(user) {
+  if (['basic', 'pro', 'elite'].includes(user?.sellerTier)) return user.sellerTier
+
+  const plan = String(user?.subscription?.plan || '').toLowerCase()
+  if (plan === 'seller_elite' || plan === 'premium') return 'elite'
+  if (plan === 'seller_pro' || plan === 'gold') return 'pro'
+  return 'basic'
+}
+
+async function buildListingSearchClause(rawQuery) {
+  const q = String(rawQuery || '').trim()
+  if (!q) return null
+
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(escaped, 'i')
+  const sellers = await User.find({
+    banned: false,
+    $or: [{ name: regex }, { username: regex }],
+  }).select('_id').limit(40).lean()
+  const sellerIds = sellers.map((s) => s._id)
+
+  const clauses = [
+    { title: regex },
+    { description: regex },
+    { tags: regex },
+  ]
+  if (sellerIds.length) clauses.push({ seller: { $in: sellerIds } })
+  return { $or: clauses }
+}
+
 // ─── GET /api/listings ────────────────────────
 router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) => {
   try {
@@ -21,12 +57,13 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     if (seller) {
       const query = { status: 'active', seller }
       if (category && category !== 'All') query.category = category
-      if (q) query.$text = { $search: q }
+      const searchClause = await buildListingSearchClause(q)
+      if (searchClause) Object.assign(query, searchClause)
 
       const skip = (parsedPage - 1) * parsedLimit
       const [listings, total] = await Promise.all([
         Listing.find(query)
-          .populate('seller', 'name avatar subscription role buyerType sellerTier')
+          .populate('seller', 'name username avatar subscription role buyerType sellerTier')
           .sort({ isPremium: -1, createdAt: -1 })
           .skip(skip)
           .limit(parsedLimit)
@@ -57,12 +94,13 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     const query = { status: 'active' }
     if (category && category !== 'All') query.category = category
     if (seller) query.seller = seller
-    if (q) query.$text = { $search: q }
+    const searchClause = await buildListingSearchClause(q)
+    if (searchClause) Object.assign(query, searchClause)
 
     const skip = (parsedPage - 1) * parsedLimit
     const [listings, total] = await Promise.all([
       Listing.find(query)
-        .populate('seller', 'name avatar subscription role buyerType sellerTier')
+        .populate('seller', 'name username avatar subscription role buyerType sellerTier')
         .sort({ isPremium: -1, createdAt: -1 })
         .skip(skip).limit(parsedLimit),
       Listing.countDocuments(query),
@@ -77,7 +115,7 @@ router.get('/saved', protect, async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'savedListings',
-      populate: { path: 'seller', select: 'name avatar subscription role buyerType sellerTier' },
+      populate: { path: 'seller', select: 'name username avatar subscription role buyerType sellerTier' },
     })
     res.json({ listings: user.savedListings, hasMore: false })
   } catch (err) { next(err) }
@@ -96,7 +134,7 @@ router.get('/mine', protect, async (req, res, next) => {
 router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id)
-      .populate('seller', 'name avatar rating ratingCount subscription department role buyerType sellerTier')
+      .populate('seller', 'name username avatar rating ratingCount subscription department role buyerType sellerTier')
     if (!listing || listing.status === 'removed') return res.status(404).json({ error: 'Listing not found' })
 
     // Increment views
@@ -129,6 +167,24 @@ router.post('/', protect, handleUpload(uploadListingImages), listingRules, valid
       return res.status(403).json({ error: 'Upgrade to seller to create listings' })
     }
 
+    const sellerTier = resolveSellerTier(req.user)
+    const monthlyLimit = MONTHLY_UPLOAD_LIMITS[sellerTier] || MONTHLY_UPLOAD_LIMITS.basic
+    const now = new Date()
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
+    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+    const uploadsThisMonth = await Listing.countDocuments({
+      seller: req.user._id,
+      createdAt: { $gte: monthStart, $lt: nextMonthStart },
+    })
+    if (uploadsThisMonth >= monthlyLimit) {
+      return res.status(403).json({
+        error: `Monthly upload limit reached for ${sellerTier} sellers (${monthlyLimit} listings per month).`,
+        limit: monthlyLimit,
+        uploadsThisMonth,
+        tier: sellerTier,
+      })
+    }
+
     const { title, description, price, originalPrice, category, condition, tags } = req.body
     const images = req.files?.map(f => f.path) || []
     const imagePublicIds = req.files?.map(f => f.filename) || []
@@ -144,7 +200,7 @@ router.post('/', protect, handleUpload(uploadListingImages), listingRules, valid
       isPremium: premiumByTier || premiumByLegacyPlan,
     })
 
-    const populated = await listing.populate('seller', 'name avatar subscription role buyerType sellerTier')
+    const populated = await listing.populate('seller', 'name username avatar subscription role buyerType sellerTier')
     res.status(201).json({ listing: populated })
   } catch (err) { next(err) }
 })

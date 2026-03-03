@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, us
 import { io } from 'socket.io-client'
 import { AuthContext } from './AuthContext'
 import { getStoredToken } from '../utils/tokenStore'
+import { getRuntimeApiOrigin } from '../utils/networkConfig'
+import { notificationsAPI } from '../api/endpoints'
 
 export const SocketContext = createContext(null)
 
@@ -19,11 +21,20 @@ export function SocketProvider({ children }) {
         socketRef.current = null
         setConnected(false)
       }
+      setNotifications([])
+      setUnreadCount(0)
       return
     }
 
+    notificationsAPI.getAll()
+      .then(({ data }) => {
+        setNotifications(data.notifications || [])
+        setUnreadCount(data.unreadCount || 0)
+      })
+      .catch(() => {})
+
     const token = getStoredToken()
-    socketRef.current = io(import.meta.env.VITE_API_URL || '', {
+    socketRef.current = io(getRuntimeApiOrigin() || '', {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
@@ -62,7 +73,10 @@ export function SocketProvider({ children }) {
     return () => socket.off(event, handler)
   }, [])
 
-  const markNotificationsRead = useCallback(() => setUnreadCount(0), [])
+  const markNotificationsRead = useCallback(() => {
+    setUnreadCount(0)
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }, [])
 
   const value = useMemo(() => ({
     socket: socketRef.current,

@@ -136,4 +136,26 @@ router.post('/:id/resolve', protect, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ─── POST /api/lostfound/:id/report ──────────
+router.post('/:id/report', protect,
+  [body('reason').trim().notEmpty().isLength({ max: 500 })], validate,
+  async (req, res, next) => {
+    try {
+      const item = await LostFound.findById(req.params.id).select('_id reporter reports reportCount')
+      if (!item) return res.status(404).json({ error: 'Not found' })
+      if (item.reporter.toString() === req.user._id.toString()) {
+        return res.status(400).json({ error: 'You cannot report your own item' })
+      }
+
+      const alreadyReported = item.reports?.some((r) => r.reporter?.toString() === req.user._id.toString())
+      if (alreadyReported) return res.status(409).json({ error: 'You have already reported this item' })
+
+      item.reports.push({ reporter: req.user._id, reason: req.body.reason })
+      item.reportCount = (item.reportCount || 0) + 1
+      await item.save()
+      res.json({ message: 'Report submitted' })
+    } catch (err) { next(err) }
+  }
+)
+
 module.exports = router

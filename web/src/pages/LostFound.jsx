@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { canPinContent, formatPinTimeLeft } from '../utils/pins'
+import ReportActionMenu from '../components/ReportActionMenu'
 
 const TABS = ['All', 'Lost', 'Found', 'Resolved']
 const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports Complex', 'Library', 'Cafeteria', 'Car Park', 'Other']
@@ -32,13 +33,13 @@ export default function LostFound() {
       <div className="page-layout">
         <Sidebar />
         <main className="page-main">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
+          <div className="page-header-row" style={{ marginBottom: 'var(--space-6)' }}>
             <div>
               <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.75rem', marginBottom: 4 }}>Lost &amp; Found</h1>
               <p style={{ color: 'var(--nw-gray-500)' }}>Help your fellow students recover their belongings</p>
             </div>
             {isAuthenticated && (
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div className="page-header-actions" style={{ gap: 12 }}>
                 <button className="btn btn-secondary" onClick={() => { setReportType('found'); setShowReport(true) }}>
                   I Found Something
                 </button>
@@ -130,6 +131,10 @@ function LFCard({ item, delay }) {
   const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
   const isOwner = Boolean(user?._id && item.reporter?._id && user._id === item.reporter._id)
   const canPin = isOwner && canPinContent(user)
+  const reportLostFound = async (reason) => {
+    if (!isAuthenticated) throw new Error('Login required to report items')
+    await lostFoundAPI.report(item._id, reason)
+  }
 
   const togglePin = async () => {
     if (pinLoading) return
@@ -174,12 +179,21 @@ function LFCard({ item, delay }) {
         </div>
       )}
       <div className="lf-card__content">
-        <div className={`lf-card__status lf-card__status--${isResolved ? 'found' : item.type}`}>
-          {isResolved
-            ? <><i className="fa-solid fa-check" aria-hidden="true" /> Resolved</>
-            : isLost
-              ? <><i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Lost</>
-              : <><i className="fa-solid fa-circle-dot" aria-hidden="true" /> Found</>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div className={`lf-card__status lf-card__status--${isResolved ? 'found' : item.type}`}>
+            {isResolved
+              ? <><i className="fa-solid fa-check" aria-hidden="true" /> Resolved</>
+              : isLost
+                ? <><i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Lost</>
+                : <><i className="fa-solid fa-circle-dot" aria-hidden="true" /> Found</>}
+          </div>
+          {!isOwner && (
+            <ReportActionMenu
+              onReport={reportLostFound}
+              entityLabel="lost and found report"
+              buttonClassName="post-card__menu-btn"
+            />
+          )}
         </div>
         {isPinned && (
           <div style={{ marginBottom: 6 }}>

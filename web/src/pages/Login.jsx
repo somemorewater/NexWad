@@ -33,7 +33,7 @@ export default function Login() {
 
   const validate = () => {
     const e = {}
-    if (!form.email) e.email = 'Email or matric number is required'
+    if (!form.email) e.email = 'Email, username, or matric number is required'
     if (!form.password) e.password = 'Password is required'
     return e
   }
@@ -97,11 +97,11 @@ export default function Login() {
       <div className="auth-right">
         <div className="auth-form-wrap animate-fade-in">
           <h2>Sign in</h2>
-          <p>Use your email or matric number</p>
+          <p>Use your email, username, or matric number</p>
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Email or Matric Number</label>
+              <label className="form-label">Email, Username, or Matric Number</label>
               <input
                 type="text"
                 className="form-input"

@@ -1,0 +1,207 @@
+/* ============================================
+   Post / Social Card
+   ============================================ */
+.post-card {
+  background: var(--nw-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--nw-gray-100);
+  padding: var(--space-5);
+  transition: box-shadow var(--transition-base);
+}
+
+.post-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.post-card__user-info { flex: 1; }
+.post-card__username {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--nw-ink);
+}
+.post-card__meta {
+  font-size: 0.8125rem;
+  color: var(--nw-gray-500);
+}
+
+.post-card__menu-btn {
+  background: none;
+  border: none;
+  color: var(--nw-gray-400);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+.post-card__menu-btn:hover {
+  background: var(--nw-gray-100);
+  color: var(--nw-ink);
+}
+
+.post-card__content {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--nw-gray-700);
+  margin-bottom: var(--space-4);
+}
+
+.post-card__image {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+}
+
+.post-card__image img {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+.post-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--nw-gray-100);
+}
+
+.pin-strip {
+  background: linear-gradient(180deg, #fff8e8 0%, var(--nw-white) 100%);
+  border: 1px solid #f6e7c5;
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+}
+
+.pin-strip__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.pin-strip__title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  margin: 0;
+  color: #92400e;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pin-strip__scroller {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.pin-strip__item {
+  min-width: 200px;
+  max-width: 260px;
+  background: var(--nw-white);
+  border: 1px solid #f7e8cb;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pin-strip__thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #f2dfb9;
+  background: var(--nw-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nw-gray-400);
+  flex-shrink: 0;
+}
+
+.pin-strip__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pin-strip__content {
+  min-width: 0;
+}
+
+.pin-strip__content .caption {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: none;
+  color: var(--nw-gray-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.post-action-btn:hover {
+  background: var(--nw-gray-100);
+  color: var(--nw-ink);
+}
+
+.post-action-btn.liked {
+  color: var(--nw-accent);
+}
+
+.nw-menu {
+  position: relative;
+}
+
+.nw-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 140px;
+  background: var(--nw-white);
+  border: 1px solid var(--nw-gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+}
+
+.nw-menu__item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: 8px 10px;
+  color: var(--nw-ink);
+  cursor: pointer;
+}
+
+.nw-menu__item:hover {
+  background: var(--nw-gray-100);
+}
+
+.nw-menu__item--danger {
+  color: var(--nw-red);
+}

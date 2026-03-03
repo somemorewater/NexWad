@@ -4,33 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 import { getDefaultRouteForUser } from '../utils/roleRouting'
-
-const DEPARTMENTS = [
-  'AEROSPACE ENGINEERING',
-  'MECHANICAL ENGINEERING',
-  'MECHATRONICS ENGINEERING',
-  'TELECOMMUNICATION ENGINEERING',
-  'AUTOMOTIVE ENGINEERING',
-  'METALLURGICAL & MATERIALS ENGINEERING',
-  'CIVIL ENGINEERING',
-  'INFORMATION AND COMMUNICATION ENGINEERING',
-  'PHYSICS',
-  'PHYSICS WITH ELECTRONICS',
-  'MATHEMATICS',
-  'CHEMISTRY',
-  'STATISTICS',
-  'COMPUTER SCIENCE',
-  'CYBER SECURITY',
-  'ELECTRICAL ENGINEERING',
-  'INTERNATIONAL RELATIONS',
-  'BANKING AND FINANCE',
-  'BUSINESS ADMIN',
-  'MARKETING',
-  'ECONOMICS',
-  'ACCOUNTING',
-]
-
-const LEVELS = ['100', '200', '300', '400', '500']
+import { DEPARTMENTS, LEVEL_OPTIONS, MATRIC_PATTERN } from '../constants/academics'
 
 export default function Signup() {
   const { signup } = useAuth()
@@ -38,7 +12,7 @@ export default function Signup() {
 
   const [step, setStep] = useState(1) // 1: account, 2: student info, 3: OTP
   const [form, setForm] = useState({
-    name: '', email: '', password: '', confirmPassword: '',
+    name: '', username: '', email: '', password: '', confirmPassword: '',
     matricNumber: '', department: '', level: '', phone: '',
   })
   const [otp, setOtp] = useState('')
@@ -46,7 +20,7 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
-  const matricPattern = /^U\d{2}[A-Z]{2,6}\d{3,5}$/
+  const usernamePattern = /^[a-zA-Z0-9._]{3,30}$/
 
   const getErrorMessage = (err, fallback) => {
     if (err?.error) return err.error
@@ -64,6 +38,8 @@ export default function Signup() {
   const validateStep1 = () => {
     const e = {}
     if (!form.name.trim()) e.name = 'Full name required'
+    if (!form.username.trim()) e.username = 'Username required'
+    else if (!usernamePattern.test(form.username.trim())) e.username = 'Use 3-30 letters, numbers, dots, or underscores'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address'
     if (form.password.length < 8) e.password = 'Password must be at least 8 characters'
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match'
@@ -73,8 +49,7 @@ export default function Signup() {
   const validateStep2 = () => {
     const e = {}
     const matric = form.matricNumber.trim().toUpperCase()
-    if (!matric) e.matricNumber = 'Matric number required'
-    else if (!matricPattern.test(matric)) e.matricNumber = 'Invalid format. Use U[year][dept][no], e.g. U24PH1025'
+    if (matric && !MATRIC_PATTERN.test(matric)) e.matricNumber = 'Invalid format. Use U[year][dept][no], e.g. U24PH1025'
     if (!form.department) e.department = 'Department required'
     if (!form.level) e.level = 'Level required'
     return e
@@ -93,7 +68,12 @@ export default function Signup() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      await signup({ ...form, matricNumber: form.matricNumber.trim().toUpperCase(), _step: 'initiate' })
+      await signup({
+        ...form,
+        username: form.username.trim().toLowerCase(),
+        matricNumber: form.matricNumber.trim().toUpperCase(),
+        _step: 'initiate',
+      })
       setStep(3)
       toast.success('OTP sent to your email')
     } catch (err) {
@@ -108,7 +88,13 @@ export default function Signup() {
     if (!otp || otp.length !== 6) { setErrors({ otp: 'Enter the 6-digit code' }); return }
     setLoading(true)
     try {
-      const data = await signup({ ...form, matricNumber: form.matricNumber.trim().toUpperCase(), otp, _step: 'verify' })
+      const data = await signup({
+        ...form,
+        username: form.username.trim().toLowerCase(),
+        matricNumber: form.matricNumber.trim().toUpperCase(),
+        otp,
+        _step: 'verify',
+      })
       toast.success('Account created! Welcome to NexWAD')
       navigate(getDefaultRouteForUser(data?.user))
     } catch (err) {
@@ -173,6 +159,12 @@ export default function Signup() {
                   {errors.email && <span className="form-error">{errors.email}</span>}
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Username</label>
+                  <input type="text" className="form-input" placeholder="johndoe_24" value={form.username} onChange={set('username')} />
+                  <span className="form-hint">Used as your public @handle</span>
+                  {errors.username && <span className="form-error">{errors.username}</span>}
+                </div>
+                <div className="form-group">
                   <label className="form-label">Password</label>
                   <div className="password-field">
                     <input
@@ -230,7 +222,7 @@ export default function Signup() {
               <p>We verify this against AFIT records</p>
               <form className="auth-form" onSubmit={handleStep2}>
                 <div className="form-group">
-                  <label className="form-label">Matric Number</label>
+                  <label className="form-label">Matric Number (optional)</label>
                   <input type="text" className="form-input" placeholder="U24PH1025" value={form.matricNumber} onChange={set('matricNumber')} />
                   <span className="form-hint">Format: U[year][department][number], e.g. U24PH1025</span>
                   {errors.matricNumber && <span className="form-error">{errors.matricNumber}</span>}
@@ -247,7 +239,7 @@ export default function Signup() {
                   <label className="form-label">Level</label>
                   <select className="form-select" value={form.level} onChange={set('level')}>
                     <option value="">Select level</option>
-                    {LEVELS.map(l => <option key={l} value={l}>{l}L</option>)}
+                    {LEVEL_OPTIONS.map(l => <option key={l} value={l}>{l}L</option>)}
                   </select>
                   {errors.level && <span className="form-error">{errors.level}</span>}
                 </div>

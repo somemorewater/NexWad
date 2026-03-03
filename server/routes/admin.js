@@ -10,6 +10,7 @@ const AdminLog = require('../models/AdminLog')
 const { protect, requireAdmin, requireModerator, requireCS } = require('../middleware/auth')
 const { body, validate, paginationRules } = require('../middleware/validate')
 const { sendEmail } = require('../config/email')
+const { notify } = require('../utils/notifications')
 const logger = require('../utils/logger')
 
 // ─── Audit log helper ─────────────────────────
@@ -28,6 +29,27 @@ async function auditLog(req, action, target, details, targetId = null, targetMod
   } catch (err) {
     logger.error('Audit log failed:', err)
   }
+}
+
+async function issueWarning(req, userId, reason) {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      $inc: { warningsCount: 1 },
+      $push: { warnings: { reason, warnedBy: req.user._id, createdAt: new Date() } },
+    },
+    { new: true }
+  ).select('-password -warnings')
+  if (!user) return null
+
+  notify(user._id.toString(), {
+    type: 'warning',
+    title: 'Account warning',
+    body: reason || 'Your account received a warning from moderation.',
+    link: '/profile/account-manager',
+  }).catch(() => {})
+
+  return user
 }
 
 // All admin routes require at minimum CS role
@@ -77,7 +99,7 @@ router.get('/users', async (req, res, next) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit)
     const [users, total] = await Promise.all([
-      User.find(query).select('-password').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
+      User.find(query).select('-password -warnings').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
       User.countDocuments(query),
     ])
     res.json({ users, total, hasMore: total > skip + users.length })
@@ -206,7 +228,7 @@ router.put('/seller-applications/:id/reject', requireAdmin,
 
       await User.findByIdAndUpdate(application.user._id, {
         role: 'buyer',
-        sellerTier: 'basic',
+        sellerTier: undefined,
         subscriptionStatus: 'none',
       })
 
@@ -241,6 +263,20 @@ router.post('/users/:id/ban', requireModerator,
 
       await auditLog(req, 'BAN_USER', `User:${user.email}`, req.body.reason, user._id, 'User')
       res.json({ user })
+    } catch (err) { next(err) }
+  }
+)
+
+// ─── POST /api/admin/users/:id/warn ──────────
+router.post('/users/:id/warn', requireModerator,
+  [body('reason').trim().notEmpty().isLength({ max: 500 })], validate,
+  async (req, res, next) => {
+    try {
+      const user = await issueWarning(req, req.params.id, req.body.reason)
+      if (!user) return res.status(404).json({ error: 'User not found' })
+
+      await auditLog(req, 'WARN_USER', `User:${user.email}`, req.body.reason, user._id, 'User')
+      res.json({ user, warningCount: user.warningsCount })
     } catch (err) { next(err) }
   }
 )
@@ -310,13 +346,19 @@ router.get('/reports', requireModerator, async (req, res, next) => {
     const { status = 'open', page = 1, limit = 30 } = req.query
     const skip = (parseInt(page) - 1) * parseInt(limit)
 
-    // Aggregate reports from Listings and Posts
-    const [listingReports, postReports] = await Promise.all([
+    // Aggregate reports from listings, posts, lostfound, and users
+    const [listingReports, postReports, lostFoundReports, userReports] = await Promise.all([
       Listing.find({ reportCount: { $gt: 0 }, ...(status === 'open' ? { status: 'active' } : {}) })
         .populate('seller', 'name').populate('reports.reporter', 'name')
         .sort({ reportCount: -1 }).skip(skip).limit(parseInt(limit)),
       Post.find({ reportCount: { $gt: 0 }, removed: status !== 'open' })
         .populate('author', 'name').populate('reports.reporter', 'name')
+        .sort({ reportCount: -1 }).skip(skip).limit(parseInt(limit)),
+      LostFound.find({ reportCount: { $gt: 0 }, ...(status === 'open' ? { status: { $ne: 'resolved' } } : {}) })
+        .populate('reporter', 'name').populate('reports.reporter', 'name')
+        .sort({ reportCount: -1 }).skip(skip).limit(parseInt(limit)),
+      User.find({ reportCount: { $gt: 0 }, ...(status === 'open' ? { banned: false } : {}) })
+        .populate('reports.reporter', 'name')
         .sort({ reportCount: -1 }).skip(skip).limit(parseInt(limit)),
     ])
 
@@ -330,6 +372,18 @@ router.get('/reports', requireModerator, async (req, res, next) => {
         _id: r._id, targetType: 'post', targetName: p.content?.slice(0, 60),
         targetId: p._id, reporter: r.reporter, reason: r.reason,
         createdAt: r.createdAt, status: p.removed ? 'resolved' : 'open',
+      }))),
+      ...lostFoundReports.flatMap((item) => item.reports.map((r) => ({
+        _id: r._id, targetType: 'lostfound', targetName: item.title,
+        targetId: item._id, reporter: r.reporter, reason: r.reason,
+        ownerId: item.reporter?._id || item.reporter,
+        createdAt: r.createdAt, status: item.status === 'resolved' ? 'resolved' : 'open',
+      }))),
+      ...userReports.flatMap((target) => target.reports.map((r) => ({
+        _id: r._id, targetType: 'user', targetName: target.name,
+        targetId: target._id, reporter: r.reporter, reason: r.reason,
+        ownerId: target._id,
+        createdAt: r.createdAt, status: target.banned ? 'resolved' : 'open',
       }))),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
@@ -346,6 +400,27 @@ router.put('/reports/:id', requireModerator,
       if (action === 'remove') {
         if (targetType === 'listing') await Listing.findByIdAndUpdate(targetId, { status: 'removed' })
         if (targetType === 'post') await Post.findByIdAndUpdate(targetId, { removed: true })
+        if (targetType === 'lostfound') await LostFound.findByIdAndUpdate(targetId, { status: 'resolved', resolvedAt: new Date() })
+        if (targetType === 'user') await User.findByIdAndUpdate(targetId, { banned: true, banReason: 'Removed via report action' })
+      }
+
+      if (action === 'warn') {
+        let warningTargetId = null
+        if (targetType === 'listing') {
+          const listing = await Listing.findById(targetId).select('seller')
+          warningTargetId = listing?.seller
+        } else if (targetType === 'post') {
+          const post = await Post.findById(targetId).select('author')
+          warningTargetId = post?.author
+        } else if (targetType === 'lostfound') {
+          const item = await LostFound.findById(targetId).select('reporter')
+          warningTargetId = item?.reporter
+        } else if (targetType === 'user') {
+          warningTargetId = targetId
+        }
+
+        if (!warningTargetId) return res.status(404).json({ error: 'Warning target not found' })
+        await issueWarning(req, warningTargetId, 'A moderation report was confirmed on your account.')
       }
       await auditLog(req, `REPORT_${action.toUpperCase()}`, `${targetType}:${targetId}`, `Action: ${action}`, targetId, targetType)
       res.json({ message: `Report ${action}d` })

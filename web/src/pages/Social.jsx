@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -12,6 +13,8 @@ import { formatPinTimeLeft } from '../utils/pins'
 
 export default function Social() {
   const { user, isAuthenticated } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [newPost, setNewPost] = useState('')
@@ -37,14 +40,20 @@ export default function Social() {
       setHasMore(data.hasMore)
       if (!reset) setPage(p => p + 1)
       else setPage(2)
-    } catch {
-      toast.error('Could not load feed')
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not load feed')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => { loadFeed(true) }, [])
+
+  useEffect(() => {
+    const postId = new URLSearchParams(location.search).get('post')
+    if (!postId) return
+    navigate(`/social/post/${encodeURIComponent(postId)}`, { replace: true })
+  }, [location.search, navigate])
 
   const handleImagePick = (e) => {
     const file = e.target.files[0]

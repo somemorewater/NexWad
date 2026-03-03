@@ -1,0 +1,184 @@
+/* ============================================
+   NexWAD Component Styles — components.css
+   ============================================ */
+
+/* ============================================
+   Navbar
+   ============================================ */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: rgba(245, 244, 240, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--nw-gray-200);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0 var(--space-6);
+}
+
+.navbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.navbar__logo {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--nw-primary);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.navbar__logo-img {
+  width: clamp(190px, 16vw, 230px);
+  height: auto;
+  max-height: calc(var(--nav-height) - 2px);
+  max-width: 100%;
+  margin-left: 0;
+  object-fit: contain;
+  display: block;
+}
+
+.navbar__logo-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--nw-accent);
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.navbar__search {
+  flex: 1;
+  max-width: 400px;
+  margin: 0 var(--space-8);
+  position: relative;
+}
+
+.navbar__search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nw-gray-400);
+  pointer-events: none;
+}
+
+.navbar__search input {
+  width: 100%;
+  padding: 9px 16px 9px 38px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--nw-gray-200);
+  background: var(--nw-white);
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.navbar__search input:focus {
+  border-color: var(--nw-primary);
+  box-shadow: 0 0 0 3px var(--nw-primary-glow);
+}
+
+.navbar__search-mobile {
+  display: none;
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.navbar__menu-btn {
+  display: none;
+}
+
+.navbar__icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--nw-gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.navbar__icon-btn:hover {
+  background: var(--nw-gray-100);
+  color: var(--nw-ink);
+}
+
+.navbar__notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--nw-accent);
+  border-radius: 50%;
+  border: 2px solid var(--nw-surface);
+}
+
+:root[data-theme='dark'] .navbar,
+:root[data-theme$='-dark'] .navbar {
+  background: rgba(11, 16, 32, 0.92);
+  border-bottom-color: var(--nw-gray-200);
+}
+
+:root[data-theme='dark'] .navbar__page-title,
+:root[data-theme$='-dark'] .navbar__page-title {
+  color: var(--nw-gray-800);
+}
+
+:root[data-theme='dark'] .navbar__icon-btn,
+:root[data-theme$='-dark'] .navbar__icon-btn {
+  color: var(--nw-gray-800);
+}
+
+:root[data-theme='dark'] .navbar__icon-btn:hover,
+:root[data-theme$='-dark'] .navbar__icon-btn:hover {
+  color: var(--nw-ink);
+  background: var(--nw-gray-200);
+}
+
+:root[data-theme='dark'] .navbar__search-icon,
+:root[data-theme$='-dark'] .navbar__search-icon {
+  color: var(--nw-gray-500);
+}
+
+:root[data-theme='dark'] .navbar__search input,
+:root[data-theme$='-dark'] .navbar__search input {
+  background: var(--nw-gray-100);
+  border-color: var(--nw-gray-300);
+  color: var(--nw-ink);
+}
+
+:root[data-theme='dark'] .navbar__search input::placeholder,
+:root[data-theme$='-dark'] .navbar__search input::placeholder {
+  color: var(--nw-gray-500);
+}
+

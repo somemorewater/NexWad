@@ -1,0 +1,434 @@
+/* ============================================
+   Subscription Plan Cards
+   ============================================ */
+.plan-card {
+  background: var(--nw-white);
+  border-radius: var(--radius-2xl);
+  border: 2px solid var(--nw-gray-100);
+  padding: var(--space-8);
+  text-align: center;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.plan-card--featured {
+  border-color: var(--nw-primary);
+  background: var(--nw-primary);
+  color: white;
+}
+
+.plan-card__badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--nw-gold);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.plan-card__name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-4);
+}
+
+.plan-card__price {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-2);
+}
+
+.plan-card__price sub {
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.7;
+  vertical-align: super;
+}
+
+.plan-card__period {
+  font-size: 0.875rem;
+  opacity: 0.7;
+  margin-bottom: var(--space-6);
+}
+
+.plan-card__features {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.plan-feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.9rem;
+}
+
+.plan-feature svg { flex-shrink: 0; }
+
+/* ============================================
+   Admin
+   ============================================ */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nw-gray-500);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--nw-gray-100);
+}
+
+.admin-table td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--nw-gray-50);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background: var(--nw-gray-50);
+}
+
+.admin-dashboard-layout {
+  padding-top: var(--nav-height);
+}
+
+.admin-dashboard-sidebar {
+  background: var(--nw-ink);
+  padding: var(--space-6) var(--space-3);
+  position: sticky;
+  top: var(--nav-height);
+  height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+}
+
+.admin-sidebar-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.35);
+  padding: 0 12px 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin-bottom: 2px;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.admin-sidebar-link.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+}
+
+.admin-sidebar-link--back {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+}
+
+.admin-sidebar-link__icon {
+  margin-right: 8px;
+}
+
+.admin-sidebar-divider {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-sidebar-user {
+  margin-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 12px 0;
+}
+
+.admin-sidebar-user__label {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+}
+
+.admin-sidebar-user__name {
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.admin-sidebar-user__role {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.admin-dashboard-main {
+  padding: var(--space-8);
+  background: var(--nw-surface);
+}
+
+.admin-page-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin-bottom: var(--space-6);
+}
+
+.admin-search-input {
+  max-width: 380px;
+  margin-bottom: var(--space-5);
+}
+
+.admin-status-filters,
+.admin-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-status-filters {
+  margin-bottom: var(--space-5);
+}
+
+.admin-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table {
+  min-width: 720px;
+}
+
+@media (max-width: 1024px) {
+  .admin-dashboard-sidebar {
+    position: static !important;
+    top: auto !important;
+    height: auto !important;
+    padding: var(--space-4);
+  }
+
+  .admin-sidebar-heading,
+  .admin-sidebar-user {
+    display: none;
+  }
+
+  .admin-sidebar-divider {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .admin-sidebar-nav {
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .admin-sidebar-link {
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+
+  .admin-dashboard-main {
+    padding: var(--space-5) var(--space-4);
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard-main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .admin-page-title {
+    font-size: 1.25rem;
+    margin-bottom: var(--space-5);
+  }
+
+  .admin-search-input {
+    max-width: 100%;
+  }
+
+  .admin-table {
+    min-width: 620px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: var(--space-3);
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-dashboard-layout {
+    padding-top: var(--nav-height);
+  }
+
+  .admin-dashboard-main {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .admin-page-title {
+    font-size: 1.1rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .admin-status-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .admin-status-filters .btn {
+    width: 100%;
+  }
+
+  .admin-row-actions {
+    justify-content: flex-end;
+  }
+
+  .admin-row-actions .btn {
+    padding-inline: 10px;
+    min-height: 32px;
+  }
+
+  .admin-table-wrap {
+    overflow: visible;
+  }
+
+  .admin-table {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    border: 1px solid var(--nw-gray-100);
+    border-radius: var(--radius-lg);
+    background: var(--nw-white);
+    margin: 0 0 var(--space-3);
+    padding: 8px 10px;
+  }
+
+  .admin-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .admin-table td {
+    border-bottom: 1px dashed var(--nw-gray-100);
+    padding: 7px 0;
+    font-size: 0.84rem;
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    color: var(--nw-gray-500);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+
+  .admin-table td:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  .admin-table td[colspan] {
+    display: block;
+    border-bottom: 0;
+    padding: 6px 0;
+  }
+
+  .admin-table td[colspan]::before {
+    content: none;
+  }
+
+  .admin-table td .admin-row-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-table td .badge {
+    max-width: max-content;
+  }
+}
+
+/* ============================================
+   Page Header
+   ============================================ */
+.page-header {
+  margin-bottom: var(--space-8);
+}
+
+.page-header__title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--nw-ink);
+  letter-spacing: -0.015em;
+  margin-bottom: var(--space-2);
+}
+
+.page-header__sub {
+  font-size: 0.9375rem;
+  color: var(--nw-gray-500);
+}

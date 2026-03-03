@@ -53,7 +53,6 @@ const wrapEmail = (content) => `
       src="${process.env.CLIENT_URL || ''}/nexwad-logo-full.png"
       alt="NexWAD"
     />
-    <div class="logo">NexWAD<span class="logo-dot"></span></div>
   </div>
   <div class="body">${content}</div>
   <div class="footer">

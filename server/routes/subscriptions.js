@@ -126,12 +126,12 @@ const PLANS = [
 ]
 
 const PLAN_ACCESS = {
-  basic: { role: 'buyer', buyerType: 'regular', sellerTier: 'basic' },
-  premium_buyer: { role: 'buyer', buyerType: 'premium', sellerTier: 'basic' },
+  basic: { role: 'buyer', buyerType: 'regular', sellerTier: undefined },
+  premium_buyer: { role: 'buyer', buyerType: 'premium', sellerTier: undefined },
   seller_basic: { role: 'seller', buyerType: 'regular', sellerTier: 'basic' },
   seller_pro: { role: 'seller', buyerType: 'regular', sellerTier: 'pro' },
   seller_elite: { role: 'seller', buyerType: 'regular', sellerTier: 'elite' },
-  silver: { role: 'buyer', buyerType: 'premium', sellerTier: 'basic' },
+  silver: { role: 'buyer', buyerType: 'premium', sellerTier: undefined },
   gold: { role: 'seller', buyerType: 'regular', sellerTier: 'pro' },
   premium: { role: 'seller', buyerType: 'regular', sellerTier: 'elite' },
 }
@@ -340,6 +340,9 @@ router.post('/apply-seller',
 
       const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
       if (isAdminRole) return res.status(403).json({ error: 'Admin roles cannot apply for seller plans' })
+      if (!String(req.user.matricNumber || '').trim()) {
+        return res.status(400).json({ error: 'Matric number is required to become a seller. Add it in your account settings.' })
+      }
 
       const existingApplication = await SellerApplication.findOne({ user: req.user._id })
       if (existingApplication?.status === 'approved') {
@@ -405,7 +408,7 @@ router.post('/apply-seller',
       await User.findByIdAndUpdate(req.user._id, {
         role: 'buyer',
         buyerType: req.user.buyerType || 'regular',
-        sellerTier: 'basic',
+        sellerTier: undefined,
         subscriptionStatus: 'pending',
         'subscription.active': false,
       })
@@ -436,7 +439,7 @@ router.delete('/current', protect, async (req, res, next) => {
     await User.findByIdAndUpdate(req.user._id, {
       role: isAdminRole ? req.user.role : 'buyer',
       buyerType: isAdminRole ? req.user.buyerType : 'regular',
-      sellerTier: isAdminRole ? req.user.sellerTier : 'basic',
+      sellerTier: isAdminRole ? req.user.sellerTier : undefined,
       subscriptionStatus: 'cancelled',
       subscriptionExpiry: new Date(),
       'subscription.active': false,

@@ -15,11 +15,20 @@ function enforceApiKey(options = {}) {
   const enabled = String(options.enabled ?? process.env.API_KEY_PROTECTION ?? 'true').toLowerCase() !== 'false'
   const configuredKeys = parseApiKeys(options.keys ?? process.env.API_KEYS ?? process.env.API_KEY)
   const skipPaths = options.skipPaths || ['/health', '/pins/paystack-webhook', '/pins/credits/paystack-webhook']
+  const publicGetPaths = options.publicGetPaths || [
+    '/listings',
+    '/posts/feed',
+    '/posts',
+    '/lostfound',
+    '/users/search',
+    '/users',
+  ]
 
   return (req, res, next) => {
     if (!enabled) return next()
     if (req.method === 'OPTIONS') return next()
     if (shouldSkipPath(req.path, skipPaths)) return next()
+    if (req.method === 'GET' && shouldSkipPath(req.path, publicGetPaths)) return next()
 
     if (configuredKeys.length === 0) {
       logger.error('API key protection is enabled but API_KEYS is not configured')

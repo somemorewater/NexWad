@@ -26,6 +26,12 @@ const lostFoundSchema = new mongoose.Schema({
   resolvedAt: { type: Date },
 
   views: { type: Number, default: 0 },
+  reportCount: { type: Number, default: 0 },
+  reports: [{
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true, maxlength: 500 },
+    createdAt: { type: Date, default: Date.now },
+  }],
   expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // 30 days
 }, { timestamps: true })
 

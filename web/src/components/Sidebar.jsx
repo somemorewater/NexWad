@@ -2,7 +2,10 @@ import { Fragment, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useLayout } from '../context/LayoutContext'
-import { getPrimaryNavForUser, isSellerRole } from '../utils/roleRouting'
+import { getPrimaryNavForUser, isSellerRole, normalizeRole } from '../utils/roleRouting'
+import { getUserPath } from '../utils/userPath'
+import { getVerificationBadge } from '../utils/verification'
+import VerificationBadge from './VerificationBadge'
 
 function HomeIcon() {
   return <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -34,6 +37,8 @@ export default function Sidebar({ messageBadge = 0 }) {
   const location = useLocation()
   const { sidebarOpen, closeSidebar } = useLayout()
   const isGuest = !user
+  const normalizedRole = normalizeRole(user?.role)
+  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizedRole)
   const primaryNav = getPrimaryNavForUser(user)
   const navItems = isGuest ? [
     {
@@ -57,6 +62,7 @@ export default function Sidebar({ messageBadge = 0 }) {
       label: 'Main',
       links: [
         { to: primaryNav.to, label: primaryNav.label, icon: HomeIcon },
+        ...(isAdminAccount ? [{ to: '/home', label: 'Buyer Hub', icon: HomeIcon }] : []),
         { to: '/social', label: 'Social Feed', icon: GridIcon },
         { to: '/marketplace', label: 'Marketplace', icon: ShopIcon },
         { to: '/lost-found', label: 'Lost & Found', icon: AlertIcon },
@@ -76,12 +82,14 @@ export default function Sidebar({ messageBadge = 0 }) {
   const avatarInitials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NW'
+  const userBadge = getVerificationBadge(user)
   const sections = navItems.map(section => {
     if (section.label !== 'Account' || isGuest) return section
     return {
       ...section,
       links: [
         ...section.links,
+        ...(isSellerRole(user?.role) ? [{ to: '/profile/seller-tools', label: 'Seller Tools', icon: StarIcon }] : []),
         ...(!isSellerRole(user?.role) ? [{ to: '/profile/become-seller', label: 'Become Seller', icon: ShopIcon }] : []),
       ],
     }
@@ -133,14 +141,17 @@ export default function Sidebar({ messageBadge = 0 }) {
               </div>
             </div>
           ) : (
-            <NavLink to={`/profile/${user?._id}`} className="sidebar__user" onClick={closeSidebar}>
+            <NavLink to={getUserPath(user)} className="sidebar__user" onClick={closeSidebar}>
               <div className="avatar avatar-sm">
                 {user?.avatar
                   ? <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                   : avatarInitials}
               </div>
               <div className="sidebar__user-info">
-                <div className="sidebar__user-name">{user?.name}</div>
+                <div className="sidebar__user-name" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {user?.name}
+                  {userBadge && <VerificationBadge variant={userBadge.variant} label={userBadge.label} size={12} />}
+                </div>
                 <div className="sidebar__user-role">
                   {user?.subscription?.plan === 'premium_buyer' || user?.subscription?.plan === 'premium'
                     ? <>

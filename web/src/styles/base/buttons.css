@@ -1,0 +1,70 @@
+/* ============================================
+   Base Buttons
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-primary {
+  background: var(--nw-primary);
+  color: white;
+  box-shadow: var(--shadow-primary);
+}
+.btn-primary:hover {
+  background: var(--nw-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(37, 99, 255, 0.4);
+}
+
+.btn-secondary {
+  background: var(--nw-white);
+  color: var(--nw-ink);
+  border: 1px solid var(--nw-gray-200);
+  box-shadow: var(--shadow-sm);
+}
+.btn-secondary:hover {
+  background: var(--nw-gray-50);
+  border-color: var(--nw-gray-300);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--nw-gray-600);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover {
+  background: var(--nw-gray-100);
+  color: var(--nw-ink);
+}
+
+.btn-danger {
+  background: var(--nw-red);
+  color: white;
+}
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-sm { padding: 6px 14px; font-size: 0.8125rem; }
+.btn-lg { padding: 14px 28px; font-size: 1rem; }
+.btn-icon { padding: 8px; border-radius: var(--radius-md); }
+

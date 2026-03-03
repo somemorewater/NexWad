@@ -1,0 +1,221 @@
+/* ============================================
+   NexWAD Design System — main.css
+   ============================================ */
+
+:root {
+  /* Brand Colors */
+  --nw-ink: #0a0a0f;
+  --nw-ink-soft: #1c1c2e;
+  --nw-surface: #f5f4f0;
+  --nw-white: #ffffff;
+
+  --nw-primary: #2563ff;
+  --nw-primary-dark: #1a4ae8;
+  --nw-primary-light: #dce8ff;
+  --nw-primary-glow: rgba(37, 99, 255, 0.18);
+
+  --nw-accent: #ff5c35;
+  --nw-accent-light: #fff0ec;
+
+  --nw-gold: #f59e0b;
+  --nw-gold-light: #fef3c7;
+
+  --nw-green: #10b981;
+  --nw-green-light: #d1fae5;
+
+  --nw-red: #ef4444;
+  --nw-red-light: #fee2e2;
+
+  /* Neutrals */
+  --nw-gray-50: #f9f9f7;
+  --nw-gray-100: #f0efe9;
+  --nw-gray-200: #e4e3db;
+  --nw-gray-300: #cbc9be;
+  --nw-gray-400: #9b9990;
+  --nw-gray-500: #6b6962;
+  --nw-gray-600: #4b4945;
+  --nw-gray-700: #333230;
+  --nw-gray-800: #1e1d1c;
+  --nw-gray-900: #0f0e0d;
+
+  /* Typography */
+  --font-display: 'IBM Plex Sans', sans-serif;
+  --font-body: 'Source Sans 3', sans-serif;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(10, 10, 15, 0.08), 0 1px 2px rgba(10, 10, 15, 0.06);
+  --shadow-md: 0 4px 12px rgba(10, 10, 15, 0.1), 0 2px 6px rgba(10, 10, 15, 0.07);
+  --shadow-lg: 0 12px 32px rgba(10, 10, 15, 0.12), 0 4px 12px rgba(10, 10, 15, 0.08);
+  --shadow-xl: 0 24px 64px rgba(10, 10, 15, 0.15);
+  --shadow-primary: 0 4px 20px rgba(37, 99, 255, 0.3);
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --transition-fast: 150ms var(--ease-out);
+  --transition-base: 250ms var(--ease-out);
+  --transition-slow: 400ms var(--ease-out);
+
+  /* Layout */
+  --nav-height: 92px;
+  --sidebar-width: 240px;
+  --container-max: 1200px;
+}
+
+:root[data-theme='dark'],
+:root[data-theme='red-dark'],
+:root[data-theme='blue-dark'],
+:root[data-theme='green-dark'],
+:root[data-theme='yellow-dark'] {
+  --nw-ink: #eef2ff;
+  --nw-ink-soft: #d4dcff;
+  --nw-surface: #0b1020;
+  --nw-white: #121a2b;
+
+  --nw-primary: #6ea8ff;
+  --nw-primary-dark: #4c8fff;
+  --nw-primary-light: rgba(110, 168, 255, 0.16);
+  --nw-primary-glow: rgba(110, 168, 255, 0.35);
+
+  --nw-accent: #ff8e76;
+  --nw-accent-light: rgba(255, 142, 118, 0.18);
+
+  --nw-gold: #fbbf24;
+  --nw-gold-light: rgba(251, 191, 36, 0.2);
+
+  --nw-green: #34d399;
+  --nw-green-light: rgba(52, 211, 153, 0.2);
+
+  --nw-red: #f87171;
+  --nw-red-light: rgba(248, 113, 113, 0.2);
+
+  --nw-gray-50: #0f172a;
+  --nw-gray-100: #172235;
+  --nw-gray-200: #233149;
+  --nw-gray-300: #344763;
+  --nw-gray-400: #7f93b4;
+  --nw-gray-500: #a6b4cc;
+  --nw-gray-600: #c7d2e5;
+  --nw-gray-700: #d8e0f0;
+  --nw-gray-800: #e5ebf7;
+  --nw-gray-900: #f4f7ff;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 6px 14px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.42), 0 6px 16px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 26px 70px rgba(0, 0, 0, 0.48);
+}
+
+:root[data-theme='dark'] {
+  --nw-primary: #6ea8ff;
+  --nw-primary-dark: #4c8fff;
+  --nw-primary-light: rgba(110, 168, 255, 0.16);
+  --nw-primary-glow: rgba(110, 168, 255, 0.35);
+
+  --nw-accent: #ff8e76;
+  --nw-accent-light: rgba(255, 142, 118, 0.18);
+  --shadow-primary: 0 4px 20px rgba(110, 168, 255, 0.35);
+}
+
+:root[data-theme='red'] {
+  --nw-primary: #dc2626;
+  --nw-primary-dark: #b91c1c;
+  --nw-primary-light: #fee2e2;
+  --nw-primary-glow: rgba(220, 38, 38, 0.18);
+  --nw-accent: #fb7185;
+  --nw-accent-light: #ffe4ea;
+  --shadow-primary: 0 4px 20px rgba(220, 38, 38, 0.3);
+}
+
+:root[data-theme='blue'] {
+  --nw-primary: #2563eb;
+  --nw-primary-dark: #1d4ed8;
+  --nw-primary-light: #dbeafe;
+  --nw-primary-glow: rgba(37, 99, 235, 0.2);
+  --nw-accent: #0ea5e9;
+  --nw-accent-light: #e0f2fe;
+  --shadow-primary: 0 4px 20px rgba(37, 99, 235, 0.32);
+}
+
+:root[data-theme='green'] {
+  --nw-primary: #15803d;
+  --nw-primary-dark: #166534;
+  --nw-primary-light: #dcfce7;
+  --nw-primary-glow: rgba(21, 128, 61, 0.2);
+  --nw-accent: #0d9488;
+  --nw-accent-light: #ccfbf1;
+  --shadow-primary: 0 4px 20px rgba(21, 128, 61, 0.32);
+}
+
+:root[data-theme='yellow'] {
+  --nw-primary: #b7791f;
+  --nw-primary-dark: #975a16;
+  --nw-primary-light: #fef3c7;
+  --nw-primary-glow: rgba(183, 121, 31, 0.22);
+  --nw-accent: #f59e0b;
+  --nw-accent-light: #ffedd5;
+  --shadow-primary: 0 4px 20px rgba(183, 121, 31, 0.3);
+}
+
+:root[data-theme='red-dark'] {
+  --nw-primary: #f87171;
+  --nw-primary-dark: #ef4444;
+  --nw-primary-light: rgba(248, 113, 113, 0.2);
+  --nw-primary-glow: rgba(248, 113, 113, 0.35);
+  --nw-accent: #fb7185;
+  --nw-accent-light: rgba(251, 113, 133, 0.2);
+  --shadow-primary: 0 4px 20px rgba(248, 113, 113, 0.32);
+}
+
+:root[data-theme='blue-dark'] {
+  --nw-primary: #60a5fa;
+  --nw-primary-dark: #3b82f6;
+  --nw-primary-light: rgba(96, 165, 250, 0.2);
+  --nw-primary-glow: rgba(96, 165, 250, 0.35);
+  --nw-accent: #38bdf8;
+  --nw-accent-light: rgba(56, 189, 248, 0.2);
+  --shadow-primary: 0 4px 20px rgba(96, 165, 250, 0.32);
+}
+
+:root[data-theme='green-dark'] {
+  --nw-primary: #4ade80;
+  --nw-primary-dark: #22c55e;
+  --nw-primary-light: rgba(74, 222, 128, 0.2);
+  --nw-primary-glow: rgba(74, 222, 128, 0.35);
+  --nw-accent: #2dd4bf;
+  --nw-accent-light: rgba(45, 212, 191, 0.2);
+  --shadow-primary: 0 4px 20px rgba(74, 222, 128, 0.32);
+}
+
+:root[data-theme='yellow-dark'] {
+  --nw-primary: #fbbf24;
+  --nw-primary-dark: #f59e0b;
+  --nw-primary-light: rgba(251, 191, 36, 0.2);
+  --nw-primary-glow: rgba(251, 191, 36, 0.35);
+  --nw-accent: #f59e0b;
+  --nw-accent-light: rgba(245, 158, 11, 0.2);
+  --shadow-primary: 0 4px 20px rgba(251, 191, 36, 0.32);
+}
+

@@ -123,7 +123,22 @@ async function buildListingFeed(viewerUser, {
     const user = await User.findById(viewerUser._id).select('savedListings')
     query._id = { $in: user.savedListings }
   }
-  if (q) query.$text = { $search: q }
+  if (q) {
+    const escaped = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(escaped, 'i')
+    const sellers = await User.find({
+      banned: false,
+      $or: [{ name: regex }, { username: regex }],
+    }).select('_id').limit(40).lean()
+    const sellerIds = sellers.map((s) => s._id)
+    const clauses = [
+      { title: regex },
+      { description: regex },
+      { tags: regex },
+    ]
+    if (sellerIds.length) clauses.push({ seller: { $in: sellerIds } })
+    query.$or = clauses
+  }
 
   let mongoSort = { createdAt: -1 }
   if (sort === 'price_asc') mongoSort = { price: 1 }

@@ -10,6 +10,10 @@ const { enforceApiKey } = require('../middleware/apiKey')
 
 const app = express()
 const isProd = process.env.NODE_ENV === 'production'
+const toNumber = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
 
 // ─── Security ─────────────────────────────────
 app.use(helmet())
@@ -20,20 +24,33 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
 }))
 
-// ─── Global rate limiter ──────────────────────
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || (isProd ? 100 : 1000),
+// ─── Read/Write rate limiting ─────────────────
+const rateWindowMs = toNumber(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000)
+const readLimiter = rateLimit({
+  windowMs: rateWindowMs,
+  // Browsing/search can trigger many GETs quickly (especially mobile guest mode).
+  max: toNumber(process.env.READ_RATE_LIMIT_MAX, isProd ? 800 : 6000),
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests. Please try again later.' },
+  skip: (req) => req.method !== 'GET',
+  message: { error: 'Too many read requests. Please try again shortly.' },
 })
-app.use('/api/', limiter)
+
+const writeLimiter = rateLimit({
+  windowMs: rateWindowMs,
+  max: toNumber(process.env.WRITE_RATE_LIMIT_MAX, toNumber(process.env.RATE_LIMIT_MAX, isProd ? 240 : 2000)),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method),
+  message: { error: 'Too many write requests. Please try again later.' },
+})
+app.use('/api/', readLimiter)
+app.use('/api/', writeLimiter)
 
 // Stricter limiter for auth endpoints
 const authLimiter = rateLimit({
-  windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || (isProd ? 20 : 200),
+  windowMs: toNumber(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  max: toNumber(process.env.AUTH_RATE_LIMIT_MAX, isProd ? 40 : 300),
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -65,6 +82,7 @@ app.use('/api/chat', require('../routes/chat'))
 app.use('/api/subscriptions', require('../routes/subscriptions'))
 app.use('/api/pins', require('../routes/pins'))
 app.use('/api/user-logs', require('../routes/userLogs'))
+app.use('/api/notifications', require('../routes/notifications'))
 app.use('/api/admin', require('../routes/admin'))
 
 // ─── Health check ─────────────────────────────

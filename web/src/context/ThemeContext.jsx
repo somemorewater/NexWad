@@ -3,7 +3,18 @@ import { createContext, useEffect, useMemo, useState } from 'react'
 export const ThemeContext = createContext(null)
 
 const STORAGE_KEY = 'nexwad_theme'
-const THEMES = ['original', 'dark', 'red', 'blue', 'green', 'yellow']
+const THEMES = [
+  'original',
+  'dark',
+  'red',
+  'red-dark',
+  'blue',
+  'blue-dark',
+  'green',
+  'green-dark',
+  'yellow',
+  'yellow-dark',
+]
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState('original')

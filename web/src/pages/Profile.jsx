@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
-import { ListingCard } from '../components/Card'
+import { ListingCard, PostCard } from '../components/Card'
 import { useAuth } from '../hooks/useAuth'
-import { usersAPI, listingsAPI, subscriptionsAPI, chatAPI } from '../api/endpoints'
+import { usersAPI, listingsAPI, subscriptionsAPI, chatAPI, postsAPI } from '../api/endpoints'
 import Modal from '../components/Modal'
 import toast from 'react-hot-toast'
 import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
 import { getDefaultRouteForUser } from '../utils/roleRouting'
+import { getUserPath } from '../utils/userPath'
+import { getVerificationBadge } from '../utils/verification'
+import VerificationBadge from '../components/VerificationBadge'
+import { DEPARTMENTS, LEVEL_OPTIONS } from '../constants/academics'
+import ReportActionMenu from '../components/ReportActionMenu'
 
 const PLAN_INFO = {
   basic: { name: 'Regular Buyer', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
@@ -21,37 +26,134 @@ const PLAN_INFO = {
   premium: { name: 'Elite Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
 }
 
+function normalizeWebsiteUrl(website) {
+  const raw = String(website || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw
+  return `https://${raw}`
+}
+
 export default function Profile() {
-  const { userId } = useParams()
+  const { userId, username } = useParams()
   const { user: currentUser, updateUser, loading: authLoading } = useAuth()
   const navigate = useNavigate()
-  const isOwn = !userId || userId === currentUser?._id
+  const profileIdentifier = userId || username
+  const isOwn = !profileIdentifier || (
+    Boolean(currentUser?._id) && (
+      profileIdentifier === currentUser._id
+      || profileIdentifier.toLowerCase() === String(currentUser.username || '').toLowerCase()
+    )
+  )
 
   const [profile, setProfile] = useState(isOwn ? currentUser : null)
   const [listings, setListings] = useState([])
-  const [loading, setLoading] = useState(!isOwn)
+  const [posts, setPosts] = useState([])
+  const [savedListings, setSavedListings] = useState([])
+  const [savedLoading, setSavedLoading] = useState(false)
+  const [loading, setLoading] = useState(Boolean(profileIdentifier) && !isOwn)
   const [activeTab, setActiveTab] = useState('listings')
   const [showSubModal, setShowSubModal] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({})
+  const [editAvatarFile, setEditAvatarFile] = useState(null)
+  const [editAvatarPreview, setEditAvatarPreview] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [followingAction, setFollowingAction] = useState(false)
   const [messagingAction, setMessagingAction] = useState(false)
 
   useEffect(() => {
-    if (!isOwn && userId) {
-      usersAPI.getProfile(userId)
-        .then(({ data }) => setProfile(data.user))
-        .catch(() => navigate(getDefaultRouteForUser(currentUser)))
-        .finally(() => setLoading(false))
+    let mounted = true
+
+    const loadProfile = async () => {
+      if (!profileIdentifier) {
+        setProfile(currentUser || null)
+        if (currentUser?._id) {
+          try {
+            const [listingsRes, postsRes] = await Promise.allSettled([
+              listingsAPI.getAll({ seller: currentUser._id }),
+              postsAPI.getMine(),
+            ])
+            if (mounted) {
+              setListings(listingsRes.status === 'fulfilled' ? (listingsRes.value?.data?.listings || []) : [])
+              setPosts(postsRes.status === 'fulfilled' ? (postsRes.value?.data?.posts || []) : [])
+            }
+          } catch {
+            if (mounted) {
+              setListings([])
+              setPosts([])
+            }
+          }
+        } else if (mounted) {
+          setListings([])
+          setPosts([])
+        }
+        if (mounted) setLoading(false)
+        return
+      }
+
+      if (isOwn && currentUser?._id) {
+        setProfile(currentUser)
+        try {
+          const [listingsRes, postsRes] = await Promise.allSettled([
+            listingsAPI.getAll({ seller: currentUser._id }),
+            postsAPI.getMine(),
+          ])
+          if (mounted) {
+            setListings(listingsRes.status === 'fulfilled' ? (listingsRes.value?.data?.listings || []) : [])
+            setPosts(postsRes.status === 'fulfilled' ? (postsRes.value?.data?.posts || []) : [])
+          }
+        } catch {
+          if (mounted) {
+            setListings([])
+            setPosts([])
+          }
+        }
+        if (mounted) setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      try {
+        const { data } = await usersAPI.getProfile(profileIdentifier)
+        if (!mounted) return
+        setProfile(data.user)
+        const [listingsRes, postsRes] = await Promise.allSettled([
+          listingsAPI.getAll({ seller: data.user?._id }),
+          postsAPI.getByAuthor(data.user?.username || data.user?._id),
+        ])
+        if (mounted) {
+          setListings(listingsRes.status === 'fulfilled' ? (listingsRes.value?.data?.listings || []) : [])
+          setPosts(postsRes.status === 'fulfilled' ? (postsRes.value?.data?.posts || []) : [])
+        }
+      } catch {
+        if (mounted) navigate(getDefaultRouteForUser(currentUser))
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
-    const uid = isOwn ? currentUser?._id : userId
-    if (uid) {
-      listingsAPI.getAll({ seller: uid })
-        .then(({ data }) => setListings(data.listings || []))
-        .catch(() => {})
-    }
-  }, [userId, isOwn, currentUser, navigate])
+
+    loadProfile()
+    return () => { mounted = false }
+  }, [profileIdentifier, isOwn, currentUser, navigate])
+
+  useEffect(() => {
+    if (!isOwn || activeTab !== 'saved') return
+    let mounted = true
+    setSavedLoading(true)
+    listingsAPI.getSaved()
+      .then(({ data }) => {
+        if (!mounted) return
+        setSavedListings(data.listings || [])
+      })
+      .catch(() => {
+        if (!mounted) return
+        setSavedListings([])
+      })
+      .finally(() => {
+        if (mounted) setSavedLoading(false)
+      })
+    return () => { mounted = false }
+  }, [isOwn, activeTab])
 
   useEffect(() => {
     if (!profile && !currentUser) return
@@ -62,13 +164,28 @@ export default function Profile() {
       title: `${p.name} - NexWAD Profile`,
       description: p.bio || `${p.name}'s profile on NexWAD`,
       image: p.avatar || '/nexwad-social.png',
-      url: `/profile/${p._id}`,
+      url: getUserPath(p),
       type: 'profile',
     })
     return () => resetSocialMeta()
   }, [profile, currentUser])
 
+  useEffect(() => {
+    const currentProfile = profile || currentUser
+    const sellerProfile = currentProfile?.role === 'seller'
+    const tabs = sellerProfile
+      ? ['listings', 'posts', 'about', ...(isOwn ? ['saved'] : [])]
+      : ['posts', 'about', ...(isOwn ? ['saved'] : [])]
+    const defaultTab = sellerProfile ? 'listings' : 'posts'
+    if (!tabs.includes(activeTab)) setActiveTab(defaultTab)
+  }, [activeTab, profile, currentUser, isOwn])
+
   const handleFollow = async () => {
+    if (!currentUser?._id) {
+      toast.error('Login required to follow users')
+      navigate('/login')
+      return
+    }
     if (!profile?._id || followingAction) return
     setFollowingAction(true)
     try {
@@ -96,6 +213,11 @@ export default function Profile() {
   }
 
   const handleMessageUser = async () => {
+    if (!currentUser?._id) {
+      toast.error('Login required to message users')
+      navigate('/login')
+      return
+    }
     const targetId = (profile || currentUser)?._id
     if (!targetId || messagingAction) return
     setMessagingAction(true)
@@ -112,12 +234,27 @@ export default function Profile() {
   const handleSaveEdit = async () => {
     setSavingEdit(true)
     try {
+      let latestUser = null
+
+      if (editAvatarFile) {
+        const fd = new FormData()
+        fd.append('avatar', editAvatarFile)
+        const avatarRes = await usersAPI.uploadAvatar(fd)
+        latestUser = avatarRes?.data?.user || latestUser
+      }
+
       const { data } = await usersAPI.updateProfile(editForm)
-      updateUser(data.user)
-      setProfile(data.user)
+      latestUser = data?.user || latestUser
+
+      if (latestUser) {
+        updateUser(latestUser)
+        setProfile(latestUser)
+      }
       setEditMode(false)
+      setEditAvatarFile(null)
+      setEditAvatarPreview('')
       toast.success('Profile updated')
-    } catch { toast.error('Failed to update') }
+    } catch (err) { toast.error(err?.error || err?.message || 'Failed to update') }
     finally { setSavingEdit(false) }
   }
 
@@ -128,7 +265,7 @@ export default function Profile() {
       const mode = await shareLink({
         title: `${p.name} - NexWAD`,
         text: `Check out ${p.name}'s profile on NexWAD`,
-        url: `/profile/${p._id}`,
+        url: getUserPath(p),
       })
       if (mode === 'copied') toast.success('Profile link copied')
       if (mode === 'unsupported') toast.error('Sharing not supported on this device')
@@ -144,6 +281,104 @@ export default function Profile() {
   const p = profile || currentUser
   const plan = PLAN_INFO[p?.subscription?.plan || 'basic']
   const initials = p?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+  const isSellerProfile = p?.role === 'seller'
+  const sellerCategories = [...new Set((listings || []).map((item) => item?.category).filter(Boolean))].slice(0, 4)
+  const sellerSince = p?.createdAt
+    ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short' })
+    : null
+  const verification = getVerificationBadge(p)
+  const websiteHref = normalizeWebsiteUrl(p?.website)
+  const profileTabs = isSellerProfile
+    ? ['listings', 'posts', 'about', ...(isOwn ? ['saved'] : [])]
+    : ['posts', 'about', ...(isOwn ? ['saved'] : [])]
+
+  const likePost = async (postId, wasLiked) => {
+    if (wasLiked) await postsAPI.unlike(postId)
+    else await postsAPI.like(postId)
+    setPosts(prev => prev.map((post) => (
+      post._id === postId
+        ? {
+            ...post,
+            isLiked: !wasLiked,
+            likeCount: Math.max(0, (post.likeCount ?? post.likes?.length ?? 0) + (wasLiked ? -1 : 1)),
+          }
+        : post
+    )))
+  }
+
+  const openPostComments = (postId) => {
+    navigate(`/social/post/${encodeURIComponent(postId)}`)
+  }
+
+  const reportProfile = async (reason) => {
+    if (!currentUser?._id) throw new Error('Login required to report profiles')
+    if (!p?._id) return
+    await usersAPI.report(p._id, reason)
+  }
+
+  const renderProfileActions = (buttonSize = 'btn-sm') => {
+    if (isOwn) {
+      return (
+        <>
+          <button
+            type="button"
+            className={`btn btn-secondary ${buttonSize}`}
+            onClick={() => {
+              if (!p) return
+              setEditMode(true)
+              setEditForm({
+                name: p.name || '',
+                username: p.username || '',
+                bio: p.bio || '',
+                phone: p.phone || '',
+                website: p.website || '',
+                department: p.department || '',
+                level: p.level || '',
+              })
+              setEditAvatarFile(null)
+              setEditAvatarPreview(p.avatar || '')
+            }}
+            disabled={!p}
+          >
+            Edit Profile
+          </button>
+          <button type="button" className={`btn btn-ghost ${buttonSize}`} onClick={handleShareProfile} disabled={!p?._id}>
+            Share Profile
+          </button>
+          {isSellerProfile && (
+            <button
+              type="button"
+              className={`btn btn-secondary ${buttonSize}`}
+              onClick={() => navigate('/profile/seller-tools')}
+              disabled={!p?._id}
+            >
+              Seller Tools
+            </button>
+          )}
+          <button type="button" className={`btn btn-ghost ${buttonSize}`} onClick={() => setShowSubModal(true)} disabled={!p}>
+            {p?.subscription?.plan ? 'Manage Plan' : <><i className="fa-solid fa-star" aria-hidden="true" /> Go Premium</>}
+          </button>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <button type="button" className={`btn btn-primary ${buttonSize}`} onClick={handleMessageUser} disabled={messagingAction || !p?._id}>
+          {messagingAction ? 'Opening...' : (isSellerProfile ? 'Message Seller' : 'Message')}
+        </button>
+        <button type="button" className={`btn btn-secondary ${buttonSize}`} onClick={handleShareProfile} disabled={!p?._id}>Share</button>
+        <button
+          type="button"
+          className={`btn ${buttonSize} ${profile?.isFollowing ? 'btn-secondary' : 'btn-primary'}`}
+          onClick={handleFollow}
+          disabled={followingAction || !p?._id}
+        >
+          {profile?.isFollowing ? 'Unfollow' : 'Follow'}
+        </button>
+      </>
+    )
+  }
 
   return (
     <div>
@@ -152,88 +387,125 @@ export default function Profile() {
         <Sidebar />
         <main className="page-main">
           {/* Profile Header */}
-          <div className="card card-body profile-header" style={{ marginBottom: 'var(--space-6)' }}>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div className="avatar avatar-xl" style={{ width: 88, height: 88, fontSize: '2rem' }}>
-                {p?.avatar ? <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
-                  <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.375rem' }}>{p?.name}</h1>
-                  <span className="badge" style={{ background: plan.bg, color: plan.color }}>
-                    {(p?.subscription?.plan === 'premium_buyer' || p?.subscription?.plan === 'silver') && (
-                      <svg
-                        viewBox="0 0 22 22"
-                        aria-label="Verified account"
-                        role="img"
-                        style={{ width: 14, height: 14, marginRight: 6, display: 'inline-block' }}
-                      >
-                        <g>
-                          <path
-                            fill="currentColor"
-                            d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"
-                          />
-                        </g>
-                      </svg>
+          {isSellerProfile ? (
+            <section className="seller-showcase" style={{ marginBottom: 'var(--space-6)' }}>
+              <div className="seller-showcase__hero">
+                <div className="seller-showcase__identity">
+                  <div className="avatar avatar-xl seller-showcase__avatar" style={{ width: 96, height: 96, fontSize: '2.2rem' }}>
+                    {p?.avatar ? <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}
+                  </div>
+                  <div className="seller-showcase__meta">
+                    <p className="seller-showcase__eyebrow">Campus Storefront</p>
+                    <h1 className="seller-showcase__title">
+                      {p?.name}
+                      {verification && <VerificationBadge variant={verification.variant} label={verification.label} size={16} className="ml-1" />}
+                    </h1>
+                    {p?.username && <p className="seller-showcase__handle">@{p.username}</p>}
+                    <p className="seller-showcase__sub">
+                      {(p?.department || 'AFIT Kaduna')} {p?.level ? `· ${p.level}L` : ''} {sellerSince ? `· Selling since ${sellerSince}` : ''}
+                    </p>
+                    {websiteHref && (
+                      <a href={websiteHref} target="_blank" rel="noreferrer" className="seller-showcase__handle" style={{ display: 'inline-block' }}>
+                        {p?.website}
+                      </a>
                     )}
-                    {plan.name}
-                  </span>
+                    <div className="seller-showcase__badges">
+                      <span className="badge badge-gray"><i className="fa-solid fa-store" aria-hidden="true" /> Seller</span>
+                      <span className="badge" style={{ background: plan.bg, color: plan.color }}>{plan.name}</span>
+                    </div>
+                  </div>
                 </div>
-                <p style={{ color: 'var(--nw-gray-500)', fontSize: '0.9rem', marginBottom: 8 }}>
-                  {p?.department} · {p?.level} · AFIT Kaduna
-                </p>
-                {p?.bio && <p style={{ color: 'var(--nw-gray-600)', fontSize: '0.9375rem', marginBottom: 12, maxWidth: 520 }}>{p.bio}</p>}
-                <div style={{ display: 'flex', gap: 'var(--space-6)', fontSize: '0.875rem', color: 'var(--nw-gray-500)' }}>
-                  <span><strong style={{ color: 'var(--nw-ink)' }}>{listings.length}</strong> Listings</span>
-                  <span><strong style={{ color: 'var(--nw-ink)' }}>{p?.followerCount || 0}</strong> Followers</span>
-                  <span><strong style={{ color: 'var(--nw-ink)' }}>{p?.followingCount || 0}</strong> Following</span>
+                <div className="seller-showcase__actions">
+                  {!isOwn && (
+                    <ReportActionMenu
+                      onReport={reportProfile}
+                      entityLabel="profile"
+                      buttonClassName="post-card__menu-btn"
+                    />
+                  )}
+                  {renderProfileActions()}
                 </div>
               </div>
-              <div className="profile-header__actions" style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
-                {isOwn ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => {
-                        if (!p) return
-                        setEditMode(true)
-                        setEditForm({ name: p.name || '', bio: p.bio || '', phone: p.phone || '' })
-                      }}
-                      disabled={!p}
-                    >
-                      Edit Profile
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleShareProfile} disabled={!p?._id}>
-                      Share Profile
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowSubModal(true)} disabled={!p}>
-                      {p?.subscription?.plan ? 'Manage Plan' : <><i className="fa-solid fa-star" aria-hidden="true" /> Go Premium</>}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={handleMessageUser} disabled={messagingAction || !p?._id}>
-                      {messagingAction ? 'Opening...' : 'Message'}
-                    </button>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={handleShareProfile} disabled={!p?._id}>Share</button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${profile?.isFollowing ? 'btn-secondary' : 'btn-primary'}`}
-                      onClick={handleFollow}
-                      disabled={followingAction || !p?._id}
-                    >
-                      {profile?.isFollowing ? 'Unfollow' : 'Follow'}
-                    </button>
-                  </>
+              <div className="seller-showcase__stats">
+                <article className="seller-stat-card">
+                  <div className="seller-stat-card__label">Active Listings</div>
+                  <div className="seller-stat-card__value">{listings.length}</div>
+                </article>
+                <article className="seller-stat-card">
+                  <div className="seller-stat-card__label">Followers</div>
+                  <div className="seller-stat-card__value">{p?.followerCount || 0}</div>
+                </article>
+                <article className="seller-stat-card">
+                  <div className="seller-stat-card__label">Store Rating</div>
+                  <div className="seller-stat-card__value">
+                    {p?.rating ? `${Number(p.rating).toFixed(1)}★` : 'New'}
+                  </div>
+                </article>
+                <article className="seller-stat-card">
+                  <div className="seller-stat-card__label">Community</div>
+                  <div className="seller-stat-card__value">{p?.followingCount || 0} Following</div>
+                </article>
+              </div>
+              <div className="seller-showcase__story">
+                <h3>About This Store</h3>
+                <p>{p?.bio || 'Trusted campus seller. Explore listings for quality items and quick responses.'}</p>
+                {sellerCategories.length > 0 && (
+                  <div className="seller-showcase__chips">
+                    {sellerCategories.map((category) => (
+                      <span key={category} className="seller-chip">{category}</span>
+                    ))}
+                  </div>
                 )}
               </div>
+            </section>
+          ) : (
+            <div className="card card-body profile-header" style={{ marginBottom: 'var(--space-6)' }}>
+              <div className="profile-header__layout" style={{ display: 'flex', gap: 'var(--space-6)', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div className="avatar avatar-xl" style={{ width: 88, height: 88, fontSize: '2rem' }}>
+                  {p?.avatar ? <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.375rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {p?.name}
+                      {verification && <VerificationBadge variant={verification.variant} label={verification.label} size={15} />}
+                    </h1>
+                    <span className="badge" style={{ background: plan.bg, color: plan.color }}>{plan.name}</span>
+                  </div>
+                  {p?.username && (
+                    <p style={{ color: 'var(--nw-primary)', fontSize: '0.9rem', marginBottom: 6, fontWeight: 600 }}>@{p.username}</p>
+                  )}
+                  {websiteHref && (
+                    <a href={websiteHref} target="_blank" rel="noreferrer" style={{ color: 'var(--nw-primary)', fontSize: '0.875rem', marginBottom: 8, display: 'inline-block', fontWeight: 600 }}>
+                      {p?.website}
+                    </a>
+                  )}
+                  <p style={{ color: 'var(--nw-gray-500)', fontSize: '0.9rem', marginBottom: 8 }}>
+                    {p?.department} · {p?.level} · AFIT Kaduna
+                  </p>
+                  {p?.bio && <p style={{ color: 'var(--nw-gray-600)', fontSize: '0.9375rem', marginBottom: 12, maxWidth: 520 }}>{p.bio}</p>}
+                  <div style={{ display: 'flex', gap: 'var(--space-6)', fontSize: '0.875rem', color: 'var(--nw-gray-500)', flexWrap: 'wrap' }}>
+                    <span><strong style={{ color: 'var(--nw-ink)' }}>{p?.followerCount || 0}</strong> Followers</span>
+                    <span><strong style={{ color: 'var(--nw-ink)' }}>{p?.followingCount || 0}</strong> Following</span>
+                  </div>
+                </div>
+                <div className="profile-header__actions" style={{ display: 'flex', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
+                  {!isOwn && (
+                    <ReportActionMenu
+                      onReport={reportProfile}
+                      entityLabel="profile"
+                      buttonClassName="post-card__menu-btn"
+                    />
+                  )}
+                  {renderProfileActions()}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Tabs */}
           <div className="tabs" style={{ marginBottom: 'var(--space-6)' }}>
-            {['listings', 'about', ...(isOwn ? ['saved'] : [])].map(t => (
+            {profileTabs.map(t => (
               <button key={t} className={`tab ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
@@ -258,28 +530,70 @@ export default function Profile() {
               <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>About</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', fontSize: '0.9rem' }}>
                 {[
-                  ['Department', p?.department],
-                  ['Level', p?.level ? `${p.level}L` : null],
-                  ['Matric Number', p?.matricNumber],
-                  ['Member Since', p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long' }) : null],
-                  ['Rating', p?.rating ? `${p.rating}/5` : 'No ratings yet'],
-                ].filter(([, v]) => v).map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--nw-gray-100)', paddingBottom: 'var(--space-3)' }}>
-                    <span style={{ color: 'var(--nw-gray-500)' }}>{label}</span>
-                    <span style={{ fontWeight: 500 }}>{value}</span>
+                  { label: 'Department', value: p?.department },
+                  { label: 'Level', value: p?.level ? `${p.level}L` : null },
+                  ...(isOwn ? [{ label: 'Matric Number', value: p?.matricNumber }] : []),
+                  { label: 'Website', value: p?.website, href: websiteHref },
+                  { label: 'Member Since', value: p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long' }) : null },
+                  { label: 'Rating', value: p?.rating ? `${p.rating}/5` : 'No ratings yet' },
+                ].filter((item) => item.value).map((item) => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--nw-gray-100)', paddingBottom: 'var(--space-3)' }}>
+                    <span style={{ color: 'var(--nw-gray-500)' }}>{item.label}</span>
+                    {item.href ? (
+                      <a href={item.href} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: 'var(--nw-primary)' }}>
+                        {item.value}
+                      </a>
+                    ) : (
+                      <span style={{ fontWeight: 500 }}>{item.value}</span>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {activeTab === 'posts' && (
+            posts.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-comments" aria-hidden="true" /></div>
+                <div className="empty-state__title">No posts yet</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+                {posts.map((post) => (
+                  <PostCard
+                    key={post._id}
+                    post={post}
+                    onLike={likePost}
+                    onComment={openPostComments}
+                  />
+                ))}
+              </div>
+            )
+          )}
+
+          {activeTab === 'saved' && isOwn && (
+            savedLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>
+            ) : savedListings.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-bookmark" aria-hidden="true" /></div>
+                <div className="empty-state__title">No saved listings yet</div>
+              </div>
+            ) : (
+              <div className="grid-3">
+                {savedListings.map((item) => <ListingCard key={item._id} listing={item} />)}
+              </div>
+            )
+          )}
         </main>
       </div>
 
       {/* Edit Profile Modal */}
-      <Modal isOpen={editMode} onClose={() => setEditMode(false)} title="Edit Profile"
+      <Modal isOpen={editMode} onClose={() => { setEditMode(false); setEditAvatarFile(null); setEditAvatarPreview('') }} title="Edit Profile"
         footer={
           <>
-            <button className="btn btn-secondary" onClick={() => setEditMode(false)}>Cancel</button>
+            <button className="btn btn-secondary" onClick={() => { setEditMode(false); setEditAvatarFile(null); setEditAvatarPreview('') }}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSaveEdit} disabled={savingEdit}>
               {savingEdit ? <span className="spinner" style={{ width: 18, height: 18 }} /> : 'Save Changes'}
             </button>
@@ -288,8 +602,47 @@ export default function Profile() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div className="form-group">
+            <label className="form-label">Profile Photo</label>
+            <label className="upload-area" htmlFor="profile-avatar-upload" style={{ cursor: 'pointer', padding: 'var(--space-5)' }}>
+              {editAvatarPreview ? (
+                <img
+                  src={editAvatarPreview}
+                  alt="Avatar preview"
+                  style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--nw-gray-200)' }}
+                />
+              ) : (
+                <>
+                  <div className="upload-area__icon"><i className="fa-solid fa-camera" aria-hidden="true" /></div>
+                  <div style={{ fontWeight: 500 }}>Tap to upload photo</div>
+                </>
+              )}
+              <input
+                id="profile-avatar-upload"
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setEditAvatarFile(file)
+                  setEditAvatarPreview(URL.createObjectURL(file))
+                }}
+              />
+            </label>
+          </div>
+          <div className="form-group">
             <label className="form-label">Display Name</label>
             <input type="text" className="form-input" value={editForm.name || ''} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="your_handle"
+              value={editForm.username || ''}
+              onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Bio</label>
@@ -298,6 +651,42 @@ export default function Profile() {
           <div className="form-group">
             <label className="form-label">Phone</label>
             <input type="tel" className="form-input" placeholder="+234 800 000 0000" value={editForm.phone || ''} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Website (optional)</label>
+            <input
+              type="url"
+              className="form-input"
+              placeholder="https://your-site.com"
+              value={editForm.website || ''}
+              onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Department</label>
+            <select
+              className="form-select"
+              value={editForm.department || ''}
+              onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
+            >
+              <option value="">Select department</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Level</label>
+            <select
+              className="form-select"
+              value={editForm.level || ''}
+              onChange={e => setEditForm(f => ({ ...f, level: e.target.value }))}
+            >
+              <option value="">Select level</option>
+              {LEVEL_OPTIONS.map((v) => (
+                <option key={v} value={v}>{v}L</option>
+              ))}
+            </select>
           </div>
         </div>
       </Modal>
