@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { subscriptionsAPI } from '../api/endpoints'
@@ -11,6 +11,7 @@ const SELLER_PLANS = ['seller_basic', 'seller_pro', 'seller_elite']
 
 export default function BecomeSeller() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [plans, setPlans] = useState([])
   const [application, setApplication] = useState(null)
@@ -37,6 +38,7 @@ export default function BecomeSeller() {
   const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizeRole(user?.role))
   const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
   const hasPriorSellerApproval = application?.status === 'approved'
+  const hasMatricNumber = Boolean(String(user?.matricNumber || '').trim())
 
   const load = async () => {
     setLoading(true)
@@ -236,8 +238,11 @@ export default function BecomeSeller() {
     return Math.max(0, Math.round((targetPrice - currentPrice) * remainingRatio))
   }, [selected, hasPriorSellerApproval, currentSub, plans])
   const actionDisabled = !selected || submitting || application?.status === 'pending' || loading || isAdminRole
+    || !hasMatricNumber
   const actionDisabledReason = isAdminRole
     ? 'Admin roles cannot apply for seller plans.'
+    : !hasMatricNumber
+      ? 'Matric number is required. Add it in Account Manager before applying.'
     : application?.status === 'pending'
       ? 'You already have a pending seller application.'
       : !selected
@@ -263,6 +268,17 @@ export default function BecomeSeller() {
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
               <div style={{ fontWeight: 700 }}>Seller Application Unavailable</div>
               <div className="caption">Admin roles are not allowed to apply for seller plans.</div>
+            </div>
+          )}
+          {!isAdminRole && !hasMatricNumber && (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+              <div style={{ fontWeight: 700 }}>Matric Number Required</div>
+              <div className="caption">Add your matric number in Account Manager before applying to become a seller.</div>
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate('/profile/account-manager')}>
+                  Open Account Manager
+                </button>
+              </div>
             </div>
           )}
 
@@ -345,7 +361,7 @@ export default function BecomeSeller() {
                 placeholder="e.g. Musa Gadgets"
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 'var(--space-4)' }}>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 'var(--space-4)' }}>
               <div className="form-group">
                 <label className="form-label">NIN *</label>
                 <input

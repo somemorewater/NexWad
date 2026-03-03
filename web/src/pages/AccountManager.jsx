@@ -5,8 +5,7 @@ import Sidebar from '../components/Sidebar'
 import { usersAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-
-const LEVEL_OPTIONS = ['100', '200', '300', '400', '500']
+import { DEPARTMENTS, LEVEL_OPTIONS, MATRIC_PATTERN } from '../constants/academics'
 
 export default function AccountManager() {
   const { user, updateUser, logout } = useAuth()
@@ -15,8 +14,11 @@ export default function AccountManager() {
   const [activeTab, setActiveTab] = useState('details')
   const [detailsForm, setDetailsForm] = useState({
     name: user?.name || '',
+    username: user?.username || '',
     bio: user?.bio || '',
     phone: user?.phone || '',
+    website: user?.website || '',
+    matricNumber: user?.matricNumber || '',
     department: user?.department || '',
     level: user?.level || '',
   })
@@ -41,8 +43,10 @@ export default function AccountManager() {
   const setDelete = (key) => (e) => setDeleteForm((prev) => ({ ...prev, [key]: e.target.value }))
 
   const canSaveDetails = useMemo(() => {
-    return Boolean(detailsForm.name?.trim()) && !savingDetails
-  }, [detailsForm.name, savingDetails])
+    const matric = String(detailsForm.matricNumber || '').trim().toUpperCase()
+    const isMatricValid = !matric || MATRIC_PATTERN.test(matric)
+    return Boolean(detailsForm.name?.trim()) && Boolean(detailsForm.username?.trim()) && isMatricValid && !savingDetails
+  }, [detailsForm.name, detailsForm.username, detailsForm.matricNumber, savingDetails])
 
   const canChangePassword = useMemo(() => {
     return Boolean(
@@ -90,9 +94,21 @@ export default function AccountManager() {
       toast.error('Full name is required')
       return
     }
+    if (!detailsForm.username?.trim()) {
+      toast.error('Username is required')
+      return
+    }
+    const normalizedMatric = String(detailsForm.matricNumber || '').trim().toUpperCase()
+    if (normalizedMatric && !MATRIC_PATTERN.test(normalizedMatric)) {
+      toast.error('Invalid matric format. Use U[year][dept][no], e.g. U24PH1025')
+      return
+    }
     setSavingDetails(true)
     try {
-      const { data } = await usersAPI.updateProfile(detailsForm)
+      const { data } = await usersAPI.updateProfile({
+        ...detailsForm,
+        matricNumber: normalizedMatric,
+      })
       updateUser(data.user)
       toast.success('Account details updated')
       exitToSettings()
@@ -202,22 +218,37 @@ export default function AccountManager() {
                   <label className="form-label">Full Name</label>
                   <input className="form-input" value={detailsForm.name} onChange={setDetails('name')} />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Username</label>
+                  <input className="form-input" value={detailsForm.username} onChange={setDetails('username')} placeholder="your_handle" />
+                </div>
 
-                <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 1fr' }}>
+                <div className="form-grid-2" style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 1fr' }}>
                   <div className="form-group">
                     <label className="form-label">Email</label>
                     <input className="form-input" value={user?.email || ''} readOnly />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Matric Number</label>
-                    <input className="form-input" value={user?.matricNumber || ''} readOnly />
+                    <label className="form-label">Matric Number (optional)</label>
+                    <input
+                      className="form-input"
+                      value={detailsForm.matricNumber}
+                      onChange={setDetails('matricNumber')}
+                      placeholder="U24PH1025"
+                    />
+                    <div className="form-hint">Needed to become a seller.</div>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 1fr' }}>
+                <div className="form-grid-2" style={{ display: 'grid', gap: 'var(--space-4)', gridTemplateColumns: '1fr 1fr' }}>
                   <div className="form-group">
                     <label className="form-label">Department</label>
-                    <input className="form-input" value={detailsForm.department} onChange={setDetails('department')} />
+                    <select className="form-select" value={detailsForm.department} onChange={setDetails('department')}>
+                      <option value="">Select department</option>
+                      {DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Level</label>
@@ -233,6 +264,11 @@ export default function AccountManager() {
                 <div className="form-group">
                   <label className="form-label">Phone</label>
                   <input className="form-input" value={detailsForm.phone} onChange={setDetails('phone')} placeholder="+234..." />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Website (optional)</label>
+                  <input className="form-input" value={detailsForm.website} onChange={setDetails('website')} placeholder="https://your-site.com" />
                 </div>
 
                 <div className="form-group">

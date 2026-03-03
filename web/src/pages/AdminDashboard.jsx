@@ -23,43 +23,39 @@ export default function AdminDashboard() {
   return (
     <div>
       <Navbar />
-      <div style={{ paddingTop: 'var(--nav-height)', display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: '100vh' }}>
-        <aside style={{ background: 'var(--nw-ink)', padding: 'var(--space-6) var(--space-3)', position: 'sticky', top: 'var(--nav-height)', height: 'calc(100vh - var(--nav-height))', overflowY: 'auto' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', padding: '0 12px 16px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+      <div className="admin-layout admin-dashboard-layout">
+        <aside className="admin-layout__sidebar admin-dashboard-sidebar">
+          <div className="admin-sidebar-heading">
             {isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel'}
           </div>
-          {adminNavItems.map(item => (
-            <NavLink key={item.to} to={item.to} end={item.end}
-              style={({ isActive }) => ({ display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 'var(--radius-md)', color: isActive ? 'white' : 'rgba(255,255,255,0.5)', background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', fontSize: '0.9rem', fontWeight: isActive ? 600 : 400, marginBottom: 2, transition: 'all 0.15s', textDecoration: 'none' })}
-            >{item.label}</NavLink>
-          ))}
-          <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-4)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="admin-sidebar-nav">
+            {adminNavItems.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) => `admin-sidebar-link${isActive ? ' active' : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="admin-sidebar-divider">
             <NavLink
               to="/home"
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-md)',
-                color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
-                background: isActive ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                transition: 'all 0.15s',
-                textDecoration: 'none',
-              })}
+              className={({ isActive }) => `admin-sidebar-link admin-sidebar-link--back${isActive ? ' active' : ''}`}
             >
-              <i className="fa-solid fa-arrow-left" aria-hidden="true" style={{ marginRight: 8 }} />
-              Back to App
+              <i className="fa-solid fa-arrow-left admin-sidebar-link__icon" aria-hidden="true" />
+              Buyer Hub
             </NavLink>
           </div>
-          <div style={{ marginTop: 32, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, padding: '16px 12px 0' }}>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem' }}>Signed in as</div>
-            <div style={{ color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>{user?.name}</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>{user?.role?.replace('_', ' ')}</div>
+          <div className="admin-sidebar-user">
+            <div className="admin-sidebar-user__label">Signed in as</div>
+            <div className="admin-sidebar-user__name">{user?.name}</div>
+            <div className="admin-sidebar-user__role">{user?.role?.replace('_', ' ')}</div>
           </div>
         </aside>
-        <main style={{ padding: 'var(--space-8)', background: 'var(--nw-surface)' }}>
+        <main className="admin-layout__main admin-dashboard-main">
           <Routes>
             <Route path="/" element={<AdminOverview />} />
             <Route path="/users" element={<AdminUsers isSuperAdmin={isSuperAdmin} />} />
@@ -92,7 +88,7 @@ function AdminOverview() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-8)' }}>Platform Overview</h1>
+      <h1 className="admin-page-title">Platform Overview</h1>
       {!stats ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="spinner" style={{ width: 32, height: 32 }} /></div>
       ) : (
@@ -109,20 +105,22 @@ function AdminOverview() {
             <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--nw-gray-100)' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>Recent Registrations</h3>
             </div>
-            <table className="admin-table">
-              <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Joined</th><th>Plan</th></tr></thead>
-              <tbody>
-                {(stats.recentUsers || []).map(u => (
-                  <tr key={u._id}>
-                    <td style={{ fontWeight: 500 }}>{u.name}</td>
-                    <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.email}</td>
-                    <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.department}</td>
-                    <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{formatDistanceToNow(new Date(u.createdAt), { addSuffix: true })}</td>
-                    <td><span className="badge badge-primary">{u.subscription?.plan || 'basic'}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Joined</th><th>Plan</th></tr></thead>
+                <tbody>
+                  {(stats.recentUsers || []).map(u => (
+                    <tr key={u._id}>
+                      <td data-label="Name" style={{ fontWeight: 500 }}>{u.name}</td>
+                      <td data-label="Email" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.email}</td>
+                      <td data-label="Department" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.department}</td>
+                      <td data-label="Joined" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{formatDistanceToNow(new Date(u.createdAt), { addSuffix: true })}</td>
+                      <td data-label="Plan"><span className="badge badge-primary">{u.subscription?.plan || 'basic'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -154,6 +152,22 @@ function AdminUsers({ isSuperAdmin }) {
     catch { toast.error('Failed') }
   }
 
+  const warn = async (userId, name) => {
+    const reason = window.prompt(`Warning reason for ${name}:`, 'Please follow community guidelines.')
+    if (!reason) return
+    try {
+      const { data } = await adminAPI.warnUser(userId, reason)
+      setUsers((prev) => prev.map((u) => (
+        u._id === userId
+          ? { ...u, warningsCount: data?.warningCount ?? ((u.warningsCount || 0) + 1) }
+          : u
+      )))
+      toast.success('Warning sent')
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to warn user')
+    }
+  }
+
   const changeRole = async (userId, role) => {
     if (!isSuperAdmin) {
       toast.error('Only super admin can change roles')
@@ -165,49 +179,55 @@ function AdminUsers({ isSuperAdmin }) {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>User Management</h1>
+      <h1 className="admin-page-title">User Management</h1>
       {!isSuperAdmin && (
         <div className="card card-body" style={{ marginBottom: 'var(--space-5)' }}>
           <div style={{ fontWeight: 700 }}>Role changes restricted</div>
           <div className="caption">Only super admin can change user roles.</div>
         </div>
       )}
-      <input type="text" className="form-input" placeholder="Search by name, email, or matric…" value={q} onChange={e => setQ(e.target.value)} style={{ maxWidth: 380, marginBottom: 'var(--space-5)' }} />
+      <input type="text" className="form-input admin-search-input" placeholder="Search by name, email, or matric…" value={q} onChange={e => setQ(e.target.value)} />
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
-          <table className="admin-table">
-            <thead><tr><th>User</th><th>Matric</th><th>Role</th><th>Plan</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u._id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className="avatar avatar-sm">{u.avatar ? <img src={u.avatar} alt="" style={{ width: '100%', borderRadius: '50%' }} /> : u.name?.[0]}</div>
-                      <div><div style={{ fontWeight: 500 }}>{u.name}</div><div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{u.email}</div></div>
-                    </div>
-                  </td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.matricNumber}</td>
-                  <td>
-                    <select
-                      value={u.role || 'user'}
-                      onChange={e => changeRole(u._id, e.target.value)}
-                      disabled={!isSuperAdmin}
-                      style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 6, padding: '4px 8px', fontSize: '0.8125rem', fontFamily: 'var(--font-body)', cursor: isSuperAdmin ? 'pointer' : 'not-allowed', outline: 'none', opacity: isSuperAdmin ? 1 : 0.7 }}
-                    >
-                      {['user', 'cs', 'moderator', 'admin', 'super_admin'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
-                    </select>
-                  </td>
-                  <td><span className="badge badge-primary">{u.subscription?.plan || 'basic'}</span></td>
-                  <td><span className={`badge ${u.banned ? 'badge-red' : 'badge-green'}`}>{u.banned ? 'Banned' : 'Active'}</span></td>
-                  <td>
-                    {u.banned
-                      ? <button className="btn btn-ghost btn-sm" onClick={() => unban(u._id)}>Unban</button>
-                      : <button className="btn btn-danger btn-sm" onClick={() => ban(u._id, u.name)}>Ban</button>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>User</th><th>Matric</th><th>Role</th><th>Plan</th><th>Warnings</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u._id}>
+                    <td data-label="User">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="avatar avatar-sm">{u.avatar ? <img src={u.avatar} alt="" style={{ width: '100%', borderRadius: '50%' }} /> : u.name?.[0]}</div>
+                        <div><div style={{ fontWeight: 500 }}>{u.name}</div><div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{u.email}</div></div>
+                      </div>
+                    </td>
+                    <td data-label="Matric" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{u.matricNumber}</td>
+                    <td data-label="Role">
+                      <select
+                        value={u.role || 'user'}
+                        onChange={e => changeRole(u._id, e.target.value)}
+                        disabled={!isSuperAdmin}
+                        style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 6, padding: '4px 8px', fontSize: '0.8125rem', fontFamily: 'var(--font-body)', cursor: isSuperAdmin ? 'pointer' : 'not-allowed', outline: 'none', opacity: isSuperAdmin ? 1 : 0.7 }}
+                      >
+                        {['user', 'cs', 'moderator', 'admin', 'super_admin'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                      </select>
+                    </td>
+                    <td data-label="Plan"><span className="badge badge-primary">{u.subscription?.plan || 'basic'}</span></td>
+                    <td data-label="Warnings"><span className="badge badge-accent">{u.warningsCount || 0}</span></td>
+                    <td data-label="Status"><span className={`badge ${u.banned ? 'badge-red' : 'badge-green'}`}>{u.banned ? 'Banned' : 'Active'}</span></td>
+                    <td data-label="Actions">
+                      <div className="admin-row-actions">
+                        <button className="btn btn-ghost btn-sm" onClick={() => warn(u._id, u.name)}>Warn</button>
+                        {u.banned
+                          ? <button className="btn btn-ghost btn-sm" onClick={() => unban(u._id)}>Unban</button>
+                          : <button className="btn btn-danger btn-sm" onClick={() => ban(u._id, u.name)}>Ban</button>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -266,10 +286,10 @@ function AdminSellerApplications() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>
+      <h1 className="admin-page-title">
         Seller Applications
       </h1>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 'var(--space-5)' }}>
+      <div className="admin-status-filters">
         {['pending', 'approved', 'rejected'].map(s => (
           <button key={s} className={`btn ${status === s ? 'btn-primary' : 'btn-secondary'} btn-sm`} onClick={() => setStatus(s)}>
             {s[0].toUpperCase() + s.slice(1)}
@@ -278,52 +298,54 @@ function AdminSellerApplications() {
       </div>
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
-          <table className="admin-table">
-            <thead><tr><th>Applicant</th><th>Plan</th><th>Amount</th><th>Reference</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {applications.length === 0 ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--nw-gray-500)' }}>No applications found.</td></tr>
-              ) : applications.map(app => (
-                <tr key={app._id}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{app.user?.name || 'Unknown user'}</div>
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{app.user?.email || 'No email'}</div>
-                  </td>
-                  <td><span className="badge badge-primary">{app.plan}</span></td>
-                  <td>₦{(app.amount || 0).toLocaleString()}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.paymentReference}</td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}</td>
-                  <td>
-                    <span className={`badge ${app.status === 'approved' ? 'badge-green' : app.status === 'rejected' ? 'badge-red' : 'badge-accent'}`}>
-                      {app.status}
-                    </span>
-                  </td>
-                  <td>
-                    {app.status === 'pending' ? (
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
-                          Review
-                        </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => approve(app._id)} disabled={actingId === app._id}>
-                          {actingId === app._id ? '...' : 'Approve'}
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => reject(app._id)} disabled={actingId === app._id}>
-                          {actingId === app._id ? '...' : 'Reject'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
-                          Review
-                        </button>
-                        <span className="caption">{app.rejectionReason || 'No pending action'}</span>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Applicant</th><th>Plan</th><th>Amount</th><th>Reference</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {applications.length === 0 ? (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--nw-gray-500)' }}>No applications found.</td></tr>
+                ) : applications.map(app => (
+                  <tr key={app._id}>
+                    <td data-label="Applicant">
+                      <div style={{ fontWeight: 600 }}>{app.user?.name || 'Unknown user'}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--nw-gray-500)' }}>{app.user?.email || 'No email'}</div>
+                    </td>
+                    <td data-label="Plan"><span className="badge badge-primary">{app.plan}</span></td>
+                    <td data-label="Amount">₦{(app.amount || 0).toLocaleString()}</td>
+                    <td data-label="Reference" style={{ fontFamily: 'monospace', fontSize: '0.75rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.paymentReference}</td>
+                    <td data-label="Submitted" style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}</td>
+                    <td data-label="Status">
+                      <span className={`badge ${app.status === 'approved' ? 'badge-green' : app.status === 'rejected' ? 'badge-red' : 'badge-accent'}`}>
+                        {app.status}
+                      </span>
+                    </td>
+                    <td data-label="Actions">
+                      {app.status === 'pending' ? (
+                        <div className="admin-row-actions">
+                          <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
+                            Review
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => approve(app._id)} disabled={actingId === app._id}>
+                            {actingId === app._id ? '...' : 'Approve'}
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => reject(app._id)} disabled={actingId === app._id}>
+                            {actingId === app._id ? '...' : 'Reject'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="admin-row-actions">
+                          <button className="btn btn-ghost btn-sm" onClick={() => setSelectedApp(app)}>
+                            Review
+                          </button>
+                          <span className="caption">{app.rejectionReason || 'No pending action'}</span>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -336,7 +358,7 @@ function AdminSellerApplications() {
         {selectedApp && (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <div className="admin-modal-grid">
                 <Detail label="Applicant" value={selectedApp.user?.name || 'Unknown'} />
                 <Detail label="Email" value={selectedApp.user?.email || 'No email'} />
                 <Detail label="Plan" value={selectedApp.plan} />
@@ -348,7 +370,7 @@ function AdminSellerApplications() {
 
             <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 'var(--space-3)' }}>Application Details</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <div className="admin-modal-grid">
                 <Detail label="Full Name" value={selectedApp.application?.fullName} />
                 <Detail label="Store Name" value={selectedApp.application?.storeName} />
                 <Detail label="Phone" value={selectedApp.application?.phone} />
@@ -415,28 +437,30 @@ function AdminListings() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>Listings</h1>
+      <h1 className="admin-page-title">Listings</h1>
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
-          <table className="admin-table">
-            <thead><tr><th>Title</th><th>Seller</th><th>Price</th><th>Category</th><th>Status</th><th>Featured</th></tr></thead>
-            <tbody>
-              {listings.map(l => (
-                <tr key={l._id}>
-                  <td style={{ fontWeight: 500, maxWidth: 200 }}>{l.title}</td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{l.seller?.name}</td>
-                  <td style={{ fontWeight: 600 }}>₦{l.price?.toLocaleString()}</td>
-                  <td><span className="badge badge-gray">{l.category}</span></td>
-                  <td><span className={`badge ${l.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{l.status}</span></td>
-                  <td>
-                    <button className={`btn btn-sm ${l.isPremium ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => toggle(l._id, l.isPremium)}>
-                      {l.isPremium ? <><i className="fa-solid fa-star" aria-hidden="true" /> Featured</> : 'Feature'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Title</th><th>Seller</th><th>Price</th><th>Category</th><th>Status</th><th>Featured</th></tr></thead>
+              <tbody>
+                {listings.map(l => (
+                  <tr key={l._id}>
+                    <td data-label="Title" style={{ fontWeight: 500, maxWidth: 200 }}>{l.title}</td>
+                    <td data-label="Seller" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{l.seller?.name}</td>
+                    <td data-label="Price" style={{ fontWeight: 600 }}>₦{l.price?.toLocaleString()}</td>
+                    <td data-label="Category"><span className="badge badge-gray">{l.category}</span></td>
+                    <td data-label="Status"><span className={`badge ${l.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{l.status}</span></td>
+                    <td data-label="Featured">
+                      <button className={`btn btn-sm ${l.isPremium ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => toggle(l._id, l.isPremium)}>
+                        {l.isPremium ? <><i className="fa-solid fa-star" aria-hidden="true" /> Featured</> : 'Feature'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -458,32 +482,35 @@ function AdminReports() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>Reports</h1>
+      <h1 className="admin-page-title">Reports</h1>
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
-          <table className="admin-table">
-            <thead><tr><th>Type</th><th>Reason</th><th>Reporter</th><th>Target</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {reports.map(r => (
-                <tr key={r._id}>
-                  <td><span className="badge badge-gray">{r.targetType}</span></td>
-                  <td style={{ maxWidth: 180, color: 'var(--nw-gray-600)', fontSize: '0.875rem' }}>{r.reason}</td>
-                  <td style={{ fontSize: '0.875rem' }}>{r.reporter?.name}</td>
-                  <td style={{ fontSize: '0.875rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.targetName || '—'}</td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}</td>
-                  <td><span className={`badge ${r.status === 'open' ? 'badge-accent' : 'badge-green'}`}>{r.status}</span></td>
-                  <td>
-                    {r.status === 'open' && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => resolve(r._id, 'dismiss', r.targetType, r.targetId)}>Dismiss</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => resolve(r._id, 'remove', r.targetType, r.targetId)}>Remove</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Type</th><th>Reason</th><th>Reporter</th><th>Target</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {reports.map(r => (
+                  <tr key={r._id}>
+                    <td data-label="Type"><span className="badge badge-gray">{r.targetType}</span></td>
+                    <td data-label="Reason" style={{ maxWidth: 180, color: 'var(--nw-gray-600)', fontSize: '0.875rem' }}>{r.reason}</td>
+                    <td data-label="Reporter" style={{ fontSize: '0.875rem' }}>{r.reporter?.name}</td>
+                    <td data-label="Target" style={{ fontSize: '0.875rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.targetName || '—'}</td>
+                    <td data-label="Date" style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}</td>
+                    <td data-label="Status"><span className={`badge ${r.status === 'open' ? 'badge-accent' : 'badge-green'}`}>{r.status}</span></td>
+                    <td data-label="Actions">
+                      {r.status === 'open' && (
+                        <div className="admin-row-actions">
+                          <button className="btn btn-ghost btn-sm" onClick={() => resolve(r._id, 'dismiss', r.targetType, r.targetId)}>Dismiss</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => resolve(r._id, 'warn', r.targetType, r.targetId)}>Warn</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => resolve(r._id, 'remove', r.targetType, r.targetId)}>Remove</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -497,27 +524,29 @@ function AdminLogs() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.5rem', marginBottom: 'var(--space-6)' }}>Audit Logs</h1>
+      <h1 className="admin-page-title">Audit Logs</h1>
       <div className="card" style={{ overflow: 'hidden' }}>
         {loading ? <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div> : (
-          <table className="admin-table">
-            <thead><tr><th>Admin</th><th>Action</th><th>Target</th><th>Details</th><th>IP</th><th>Date</th></tr></thead>
-            <tbody>
-              {logs.map(log => (
-                <tr key={log._id}>
-                  <td>
-                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{log.admin?.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--nw-gray-500)' }}>{log.admin?.role}</div>
-                  </td>
-                  <td><span className="badge badge-primary">{log.action}</span></td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem', maxWidth: 160 }}>{log.target}</td>
-                  <td style={{ color: 'var(--nw-gray-600)', fontSize: '0.8125rem', maxWidth: 200 }}>{log.details}</td>
-                  <td style={{ color: 'var(--nw-gray-400)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{log.ip}</td>
-                  <td style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Admin</th><th>Action</th><th>Target</th><th>Details</th><th>IP</th><th>Date</th></tr></thead>
+              <tbody>
+                {logs.map(log => (
+                  <tr key={log._id}>
+                    <td data-label="Admin">
+                      <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{log.admin?.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--nw-gray-500)' }}>{log.admin?.role}</div>
+                    </td>
+                    <td data-label="Action"><span className="badge badge-primary">{log.action}</span></td>
+                    <td data-label="Target" style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem', maxWidth: 160 }}>{log.target}</td>
+                    <td data-label="Details" style={{ color: 'var(--nw-gray-600)', fontSize: '0.8125rem', maxWidth: 200 }}>{log.details}</td>
+                    <td data-label="IP" style={{ color: 'var(--nw-gray-400)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{log.ip}</td>
+                    <td data-label="Date" style={{ color: 'var(--nw-gray-500)', fontSize: '0.8125rem' }}>{formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

@@ -211,7 +211,7 @@ export default function Dashboard() {
 
           <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-3)' }}>Seller Controls</h2>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <div className="action-wrap">
               <button className="btn btn-primary" onClick={() => navigate('/marketplace?create=true')}>
                 + New Listing
               </button>
@@ -232,7 +232,7 @@ export default function Dashboard() {
 
           <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-3)' }}>Pin Status</h2>
-            <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="action-wrap" style={{ marginBottom: 12, alignItems: 'center', gap: 8 }}>
               <span className="badge badge-primary">Credits: {pinUsage?.credits?.balance || 0}</span>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => buyCredits(1)} disabled={Boolean(pinActionId)}>
                 {pinActionId === 'buy-1' ? 'Processing...' : 'Buy 1 Credit (₦500)'}
@@ -291,7 +291,7 @@ export default function Dashboard() {
           />
 
           <div style={{ marginBottom: 'var(--space-6)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+            <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem' }}>My Posts</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/social')}>Open Social</button>
             </div>
@@ -343,7 +343,7 @@ export default function Dashboard() {
         title="Pin Content"
         size="lg"
       >
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div className="action-wrap" style={{ gap: 8, marginBottom: 12 }}>
           <button
             type="button"
             className={`btn btn-sm ${pinPickerType === 'listing' ? 'btn-primary' : 'btn-ghost'}`}
@@ -432,7 +432,7 @@ export default function Dashboard() {
 function Section({ title, loading, items, emptyText, onViewAll }) {
   return (
     <div style={{ marginBottom: 'var(--space-6)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+      <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem' }}>{title}</h2>
         <button className="btn btn-ghost btn-sm" onClick={onViewAll}>View all</button>
       </div>
