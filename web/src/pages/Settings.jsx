@@ -13,9 +13,13 @@ export default function Settings() {
     { id: 'original', label: 'Original', desc: 'Current NexWAD look', colors: ['#2563ff', '#ff5c35', '#f5f4f0'] },
     { id: 'dark', label: 'Dark', desc: 'Low-light interface', colors: ['#6ea8ff', '#ff8e76', '#0b1020'] },
     { id: 'red', label: 'Red', desc: 'Bold warm palette', colors: ['#dc2626', '#fb7185', '#fef2f2'] },
+    { id: 'red-dark', label: 'Red Dark', desc: 'Bold warm in low-light', colors: ['#f87171', '#fb7185', '#0b1020'] },
     { id: 'blue', label: 'Blue', desc: 'Cool modern palette', colors: ['#2563eb', '#0ea5e9', '#eff6ff'] },
+    { id: 'blue-dark', label: 'Blue Dark', desc: 'Cool modern in low-light', colors: ['#60a5fa', '#38bdf8', '#0b1020'] },
     { id: 'green', label: 'Green', desc: 'Fresh natural palette', colors: ['#15803d', '#0d9488', '#f0fdf4'] },
+    { id: 'green-dark', label: 'Green Dark', desc: 'Fresh natural in low-light', colors: ['#4ade80', '#2dd4bf', '#0b1020'] },
     { id: 'yellow', label: 'Yellow', desc: 'Bright energetic palette', colors: ['#b7791f', '#f59e0b', '#fffbeb'] },
+    { id: 'yellow-dark', label: 'Yellow Dark', desc: 'Bright energetic in low-light', colors: ['#fbbf24', '#f59e0b', '#0b1020'] },
   ]
 
   const applyTheme = (themeId) => {
@@ -100,6 +104,20 @@ export default function Settings() {
             <div style={{ marginTop: 'var(--space-4)' }}>
               <Link to="/legal" className="btn btn-secondary">
                 Open Legal Page
+              </Link>
+            </div>
+          </div>
+
+          <div className="card card-body" style={{ maxWidth: 920, marginTop: 'var(--space-5)' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', marginBottom: 'var(--space-2)' }}>
+              Info
+            </h2>
+            <p style={{ color: 'var(--nw-gray-500)' }}>
+              See every feature currently available on your account and a quick guide on how to use each one.
+            </p>
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <Link to="/profile/features" className="btn btn-primary">
+                Open Feature Guide
               </Link>
             </div>
           </div>
