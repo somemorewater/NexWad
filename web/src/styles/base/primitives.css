@@ -1,0 +1,103 @@
+/* ============================================
+   Cards
+   ============================================ */
+.card {
+  background: var(--nw-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--nw-gray-100);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-elevated {
+  box-shadow: var(--shadow-md);
+}
+.card-elevated:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card-body {
+  padding: var(--space-6);
+}
+
+/* ============================================
+   Badges & Tags
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-primary { background: var(--nw-primary-light); color: var(--nw-primary); }
+.badge-accent { background: var(--nw-accent-light); color: var(--nw-accent); }
+.badge-gold { background: var(--nw-gold-light); color: #92400e; }
+.badge-green { background: var(--nw-green-light); color: #065f46; }
+.badge-red { background: var(--nw-red-light); color: #991b1b; }
+.badge-gray { background: var(--nw-gray-100); color: var(--nw-gray-600); }
+.badge-verified {
+  background: #dbeafe;
+  color: #1d4ed8;
+  gap: 6px;
+}
+
+.verification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.verification-badge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.verification-badge--gold { color: #b7791f; }
+.verification-badge--blue { color: #2563eb; }
+.verification-badge--black { color: #111111; }
+
+.ml-1 { margin-left: 4px; }
+
+/* ============================================
+   Avatar
+   ============================================ */
+.avatar {
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--nw-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--nw-primary);
+}
+
+.avatar-sm { width: 32px; height: 32px; font-size: 0.8125rem; }
+.avatar-md { width: 40px; height: 40px; font-size: 1rem; }
+.avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; }
+.avatar-xl { width: 80px; height: 80px; font-size: 1.75rem; }
+
+/* ============================================
+   Divider
+   ============================================ */
+.divider {
+  height: 1px;
+  background: var(--nw-gray-100);
+  margin: var(--space-6) 0;
+}
+

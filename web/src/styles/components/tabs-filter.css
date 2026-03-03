@@ -1,0 +1,227 @@
+/* ============================================
+   Tabs
+   ============================================ */
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--nw-gray-100);
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 8px 18px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--nw-gray-500);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.tab.active {
+  background: var(--nw-white);
+  color: var(--nw-ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.product-details-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--space-6);
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 1024px) {
+  .product-details-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-layout__sidebar {
+    position: static !important;
+    height: auto !important;
+  }
+
+  .admin-layout__main {
+    padding: var(--space-5) var(--space-4) !important;
+  }
+
+  .admin-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .tab {
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-3);
+  }
+}
+
+/* ============================================
+   Empty States
+   ============================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-16) var(--space-6);
+  gap: var(--space-4);
+}
+
+.empty-state__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-2xl);
+  background: var(--nw-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nw-gray-400);
+}
+
+.empty-state__title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--nw-ink);
+}
+
+.empty-state__text {
+  font-size: 0.9rem;
+  color: var(--nw-gray-500);
+  max-width: 300px;
+}
+
+/* ============================================
+   Upload Area
+   ============================================ */
+.upload-area {
+  border: 2px dashed var(--nw-gray-200);
+  border-radius: var(--radius-xl);
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+  border-color: var(--nw-primary);
+  background: var(--nw-primary-light);
+}
+
+.upload-area__icon {
+  color: var(--nw-gray-400);
+  margin-bottom: var(--space-3);
+}
+
+.upload-area:hover .upload-area__icon,
+.upload-area.dragover .upload-area__icon {
+  color: var(--nw-primary);
+}
+
+/* ============================================
+   Search & Filter Bar
+   ============================================ */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.page-header-actions,
+.action-wrap {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.marketplace-sort {
+  width: auto;
+  min-width: 170px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--nw-gray-200);
+  background: var(--nw-white);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--nw-gray-600);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.filter-chip:hover {
+  border-color: var(--nw-primary);
+  color: var(--nw-primary);
+}
+
+.filter-chip.active {
+  background: var(--nw-primary);
+  border-color: var(--nw-primary);
+  color: white;
+}
+

@@ -1,0 +1,155 @@
+/* ============================================
+   Card Component
+   ============================================ */
+.listing-card {
+  background: var(--nw-white);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--nw-gray-100);
+  overflow: hidden;
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.listing-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.listing-card__image {
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: var(--nw-gray-100);
+  position: relative;
+}
+
+.listing-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.listing-card:hover .listing-card__image img {
+  transform: scale(1.03);
+}
+
+.listing-card__premium-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  background: var(--nw-gold);
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pin-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  background: var(--nw-gold-light);
+  color: #92400e;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pinned-card {
+  border-color: #f4d89d;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+}
+
+.listing-card__save-btn {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: all var(--transition-fast);
+  color: var(--nw-gray-500);
+}
+
+.listing-card__save-btn:hover,
+.listing-card__save-btn.saved {
+  color: var(--nw-accent);
+  transform: scale(1.1);
+}
+
+.listing-card__body {
+  padding: var(--space-4);
+}
+
+.listing-card__category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--nw-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
+}
+
+.listing-card__title {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--nw-ink);
+  margin-bottom: var(--space-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.listing-card__price {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--nw-ink);
+}
+
+.listing-card__price span {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--nw-gray-500);
+  text-decoration: line-through;
+  margin-left: var(--space-2);
+}
+
+.listing-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--nw-gray-100);
+}
+
+.listing-card__seller {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--nw-gray-500);
+}
+
