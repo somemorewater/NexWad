@@ -3,9 +3,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { SocketContext } from '../context/SocketContext'
 import { useLayout } from '../context/LayoutContext'
-import NotificationPanel from './Notification'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 import { getDefaultRouteForUser, getPrimaryNavForUser, isSellerRole } from '../utils/roleRouting'
+import { getUserPath } from '../utils/userPath'
 
 function SearchIcon() {
   return (
@@ -63,18 +63,19 @@ export default function Navbar() {
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState('')
   const [showMobileSearch, setShowMobileSearch] = useState(false)
-  const [showNotifs, setShowNotifs] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   )
-  const notifRef = useRef(null)
+  const [isTabletOrSmaller, setIsTabletOrSmaller] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
+  )
   const userMenuRef = useRef(null)
 
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      navigate(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`)
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
       setShowMobileSearch(false)
     }
   }
@@ -82,7 +83,6 @@ export default function Navbar() {
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false)
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setShowUserMenu(false)
     }
     document.addEventListener('mousedown', handler)
@@ -90,7 +90,10 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    const onResize = () => {
+      setIsMobile(window.innerWidth <= 768)
+      setIsTabletOrSmaller(window.innerWidth <= 1024)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
@@ -105,13 +108,15 @@ export default function Navbar() {
   const canSell = isSellerRole(user?.role)
   const defaultRoute = isAuthenticated ? getDefaultRouteForUser(user) : '/'
   const primaryNav = getPrimaryNavForUser(user)
+  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(String(user?.role || '').toLowerCase())
 
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname)
   const hasGuestSidebar = location.pathname === '/marketplace'
     || location.pathname === '/social'
     || location.pathname === '/lost-found'
+    || location.pathname === '/search'
     || location.pathname.startsWith('/marketplace/')
-  const canToggleSidebar = isMobile && (isAuthenticated || hasGuestSidebar)
+  const canToggleSidebar = isTabletOrSmaller && (isAuthenticated || hasGuestSidebar)
   const canGoBack = isAuthenticated && !isPublicPage && location.pathname !== defaultRoute
 
   const handleBack = () => {
@@ -149,29 +154,26 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Search (only when authenticated) */}
-        {isAuthenticated && (
-          <div className="navbar__search">
-            <span className="navbar__search-icon">
-              <SearchIcon />
-            </span>
-            <form onSubmit={handleSearch}>
-              <input
-                type="text"
-                placeholder="Search marketplace, people…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </form>
-          </div>
-        )}
+        <div className="navbar__search">
+          <span className="navbar__search-icon">
+            <SearchIcon />
+          </span>
+          <form onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="Search marketplace, people…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </form>
+        </div>
 
         {/* Actions */}
         <div className="navbar__actions">
           {isAuthenticated ? (
             <>
               <button
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-sm navbar__page-title"
                 onClick={() => navigate(primaryNav.to)}
               >
                 {primaryNav.label}
@@ -208,19 +210,14 @@ export default function Navbar() {
               </button>
 
               {/* Notifications */}
-              <div ref={notifRef} style={{ position: 'relative' }}>
-                <button
-                  className="navbar__icon-btn"
-                  onClick={() => setShowNotifs(v => !v)}
-                  aria-label="Notifications"
-                >
-                  <BellIcon />
-                  {unreadCount > 0 && <span className="navbar__notif-dot" />}
-                </button>
-                {showNotifs && (
-                  <NotificationPanel onClose={() => setShowNotifs(false)} />
-                )}
-              </div>
+              <button
+                className="navbar__icon-btn"
+                onClick={() => navigate('/notifications')}
+                aria-label="Notifications"
+              >
+                <BellIcon />
+                {unreadCount > 0 && <span className="navbar__notif-dot" />}
+              </button>
 
               {/* User Menu */}
               <div ref={userMenuRef} style={{ position: 'relative' }}>
@@ -244,7 +241,7 @@ export default function Navbar() {
                     borderRadius: 'var(--radius-lg)',
                     border: '1px solid var(--nw-gray-100)',
                     boxShadow: 'var(--shadow-lg)',
-                    minWidth: 200,
+                    minWidth: isMobile ? 170 : 200,
                     zIndex: 5100,
                     overflow: 'hidden',
                     animation: 'fadeIn 0.15s var(--ease-out)',
@@ -255,7 +252,8 @@ export default function Navbar() {
                     </div>
                     {[
                       { label: primaryNav.label, to: primaryNav.to },
-                      { label: 'My Profile', to: `/profile/${user?._id}` },
+                      ...(isAdminAccount ? [{ label: 'Buyer Hub', to: '/home' }] : []),
+                      { label: 'My Profile', to: getUserPath(user) },
                       { label: 'My Listings', to: '/marketplace?mine=true' },
                       { label: 'Saved Items', to: '/marketplace?saved=true' },
                       { label: 'Settings', to: '/profile/settings' },
@@ -302,13 +300,22 @@ export default function Navbar() {
             </>
           ) : (
             <>
+              {isMobile && (
+                <button
+                  className="navbar__icon-btn"
+                  onClick={() => setShowMobileSearch(v => !v)}
+                  aria-label="Search"
+                >
+                  <SearchIcon />
+                </button>
+              )}
               <Link to="/login" className="btn btn-ghost btn-sm">Sign in</Link>
               <Link to="/signup" className="btn btn-primary btn-sm">Join NexWAD</Link>
             </>
           )}
         </div>
       </div>
-      {isAuthenticated && isMobile && showMobileSearch && (
+      {isMobile && showMobileSearch && (
         <div className="navbar__search-mobile">
           <span className="navbar__search-icon">
             <SearchIcon />

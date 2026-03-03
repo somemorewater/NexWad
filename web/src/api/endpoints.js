@@ -12,7 +12,12 @@ export const usersAPI = {
   unfollow: (userId) => api.delete(`/users/${userId}/follow`),
   getFollowers: (userId) => api.get(`/users/${userId}/followers`),
   getFollowing: (userId) => api.get(`/users/${userId}/following`),
+  report: (userId, reason) => api.post(`/users/${userId}/report`, { reason }),
   search: (q) => api.get('/users/search', { params: { q } }),
+  getPoster: (userIdOrUsername) => api.get(`/users/${userIdOrUsername}/poster`),
+  generatePoster: () => api.post('/users/me/poster/generate'),
+  deletePoster: () => api.delete('/users/me/poster'),
+  setFeaturedProducts: (productIds) => api.put('/users/me/poster/featured', { productIds }),
 }
 
 // ─── User Logs ────────────────────────────────
@@ -20,6 +25,12 @@ export const userLogsAPI = {
   getMine: (params) => api.get('/user-logs/me', { params }),
   event: (data) => api.post('/user-logs/event', data),
   getAdmin: (params) => api.get('/user-logs/admin', { params }),
+}
+
+// ─── Notifications ───────────────────────────
+export const notificationsAPI = {
+  getAll: () => api.get('/notifications'),
+  readAll: () => api.put('/notifications/read-all'),
 }
 
 // ─── Listings ─────────────────────────────────
@@ -41,6 +52,7 @@ export const listingsAPI = {
 export const postsAPI = {
   getFeed: (params) => api.get('/posts/feed', { params }),
   getMine: () => api.get('/posts/mine'),
+  getByAuthor: (userIdOrUsername) => api.get(`/posts/user/${userIdOrUsername}`),
   getById: (id) => api.get(`/posts/${id}`),
   getComments: (id) => api.get(`/posts/${id}/comments`),
   create: (formData) =>
@@ -63,6 +75,7 @@ export const lostFoundAPI = {
   delete: (id) => api.delete(`/lostfound/${id}`),
   claim: (id) => api.post(`/lostfound/${id}/claim`),
   markResolved: (id) => api.post(`/lostfound/${id}/resolve`),
+  report: (id, reason) => api.post(`/lostfound/${id}/report`, { reason }),
 }
 
 // ─── Chat ─────────────────────────────────────
@@ -110,9 +123,10 @@ export const adminAPI = {
   getUsers: (params) => api.get('/admin/users', { params }),
   updateUserRole: (userId, role) => api.put(`/admin/users/${userId}/role`, { role }),
   banUser: (userId, reason) => api.post(`/admin/users/${userId}/ban`, { reason }),
+  warnUser: (userId, reason) => api.post(`/admin/users/${userId}/warn`, { reason }),
   unbanUser: (userId) => api.delete(`/admin/users/${userId}/ban`),
   getReports: (params) => api.get('/admin/reports', { params }),
-  resolveReport: (reportId, action) => api.put(`/admin/reports/${reportId}`, { action }),
+  resolveReport: (reportId, payload) => api.put(`/admin/reports/${reportId}`, payload),
   getLogs: (params) => api.get('/admin/logs', { params }),
   getListings: (params) => api.get('/admin/listings', { params }),
   featureListing: (id, featured) => api.put(`/admin/listings/${id}/feature`, { featured }),
