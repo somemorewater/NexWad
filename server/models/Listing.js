@@ -9,7 +9,7 @@ const listingSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Electronics', 'Textbooks', 'Hostel', 'Clothing', 'Food', 'Services', 'Other'],
+    enum: ['Electronics', 'Textbooks', 'Fashion', 'Footwares', 'Fragrance', 'Food', 'Services', 'Other'],
   },
   condition: {
     type: String,
