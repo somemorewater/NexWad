@@ -57,7 +57,7 @@ const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts. Try again in 15 minutes.' },
 })
 app.use('/api/auth/', authLimiter)
-app.use('/api', enforceApiKey())
+//app.use('/api', enforceApiKey())
 
 // ─── Body parsing ─────────────────────────────
 app.use(compression())
