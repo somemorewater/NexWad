@@ -12,7 +12,7 @@ const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadAvatar, deleteAsset } = require('../utils/cloudinary')
 const { notifyNewFollower } = require('../utils/notifications')
 const { body, validate } = require('../middleware/validate')
-const { canExposeSellerPoster, ensureSellerPoster, generateSellerPoster, posterProfileLink, fetchAssetBuffer } = require('../utils/sellerPoster')
+const { canExposeSellerPoster, ensureSellerPoster, generateSellerPoster, profileUrl, fetchAssetBuffer } = require('../utils/sellerPoster')
 
 function userIdentifierQuery(identifierRaw) {
   const identifier = String(identifierRaw || '').trim()
@@ -268,7 +268,7 @@ router.post('/me/poster/generate', protect, async (req, res, next) => {
       posterImageUrl: poster.url,
       posterLastGeneratedAt: poster.generatedAt,
       posterTemplateStyle: poster.style,
-      profileUrl: posterProfileLink(user),
+      profileUrl: profileUrl(user),
     })
   } catch (err) { next(err) }
 })
@@ -314,7 +314,7 @@ router.get('/:id/poster', optionalAuth, async (req, res, next) => {
       posterImageUrl: poster.url,
       posterLastGeneratedAt: poster.generatedAt,
       posterTemplateStyle: poster.style,
-      profileUrl: posterProfileLink(user),
+      profileUrl: profileUrl(user),
     })
   } catch (err) { next(err) }
 })
