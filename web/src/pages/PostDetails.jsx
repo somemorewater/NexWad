@@ -108,7 +108,16 @@ export default function PostDetails() {
               </div>
             ) : (
               <>
-                <PostCard post={post} onLike={handleLike} onComment={focusComments} />
+                <PostCard
+                  post={post}
+                  onLike={handleLike}
+                  onComment={focusComments}
+                  onUpdated={(updated) => setPost((prev) => ({ ...prev, ...updated }))}
+                  onDeleted={() => {
+                    toast.success('Post deleted')
+                    navigate('/social')
+                  }}
+                />
                 <section ref={commentsRef} className="card card-body">
                   <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', marginBottom: 'var(--space-3)' }}>
                     Comments ({commentsCount})

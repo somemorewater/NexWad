@@ -8,14 +8,41 @@ import { chatAPI, listingsAPI } from '../api/endpoints'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { formatPinTimeLeft } from '../utils/pins'
+import imageCompression from 'browser-image-compression'
+import { LISTING_CATEGORIES, MARKETPLACE_FILTER_CATEGORIES } from '../constants/categories'
 
-const CATEGORIES = ['All', 'Electronics', 'Textbooks', 'Hostel', 'Clothing', 'Food', 'Services', 'Other']
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'price_asc', label: 'Price: Low to High' },
   { value: 'price_desc', label: 'Price: High to Low' },
   { value: 'popular', label: 'Most Popular' },
 ]
+const MAX_LISTING_IMAGES = 4
+const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 1,
+  maxWidthOrHeight: 1280,
+  // Sequential compression is more stable on low-memory mobile devices.
+  useWebWorker: false,
+}
+const MAX_UPLOAD_RETRIES = 2
+const TOTAL_UPLOAD_ATTEMPTS = MAX_UPLOAD_RETRIES + 1
+const SUPPORTED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+])
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif'])
+
+function isSupportedImageFile(file) {
+  const mime = String(file?.type || '').toLowerCase()
+  if (mime && SUPPORTED_IMAGE_MIME_TYPES.has(mime)) return true
+  const name = String(file?.name || '')
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : ''
+  return SUPPORTED_IMAGE_EXTENSIONS.has(ext)
+}
 
 export default function Marketplace() {
   const { user, isAuthenticated } = useAuth()
@@ -131,7 +158,7 @@ export default function Marketplace() {
 
           {/* Filters */}
           <div className="filter-bar">
-            {CATEGORIES.map(c => (
+            {MARKETPLACE_FILTER_CATEGORIES.map(c => (
               <button
                 key={c}
                 className={`filter-chip ${category === c ? 'active' : ''}`}
@@ -206,7 +233,11 @@ export default function Marketplace() {
               <div className="grid-3">
                 {listings.map((l, i) => (
                   <div key={l._id} className="animate-fade-in" style={{ animationDelay: `${(i % 12) * 0.04}s` }}>
-                    <ListingCard listing={l} />
+                    <ListingCard
+                      listing={l}
+                      onUpdated={(updated) => setListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))}
+                      onDeleted={(listingId) => setListings((prev) => prev.filter((entry) => entry._id !== listingId))}
+                    />
                   </div>
                 ))}
               </div>
@@ -279,14 +310,66 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
     category: '', condition: 'good', images: [],
   })
   const [loading, setLoading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadAttempt, setUploadAttempt] = useState(0)
   const [imagePreviews, setImagePreviews] = useState([])
 
   const set = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }))
 
-  const handleImages = (e) => {
-    const files = Array.from(e.target.files).slice(0, 5)
-    setForm(prev => ({ ...prev, images: files }))
-    setImagePreviews(files.map(f => URL.createObjectURL(f)))
+  useEffect(() => () => {
+    imagePreviews.forEach((src) => URL.revokeObjectURL(src))
+  }, [imagePreviews])
+
+  const handleImages = async (e) => {
+    const selectedFiles = Array.from(e.target.files || [])
+    if (selectedFiles.length === 0) return
+
+    if (selectedFiles.length > MAX_LISTING_IMAGES) {
+      toast.error(`You can upload up to ${MAX_LISTING_IMAGES} images per listing`)
+    }
+    const files = selectedFiles.slice(0, MAX_LISTING_IMAGES)
+
+    const invalidType = files.find((file) => !isSupportedImageFile(file))
+    if (invalidType) {
+      toast.error(`"${invalidType.name}" is not supported. Use JPG, PNG, WEBP, or GIF`)
+      return
+    }
+
+    const tooLarge = files.find((file) => file.size > MAX_IMAGE_SIZE_BYTES)
+    if (tooLarge) {
+      toast.error(`"${tooLarge.name}" is too large. Max size is 4MB per image`)
+      return
+    }
+
+    setCompressing(true)
+    try {
+      const processedFiles = []
+      let compressionFailures = 0
+
+      for (const file of files) {
+        try {
+          const compressed = await imageCompression(file, COMPRESSION_OPTIONS)
+          processedFiles.push(compressed)
+        } catch (err) {
+          compressionFailures += 1
+          // Fallback to original file so multi-image selection does not fail as a whole.
+          processedFiles.push(file)
+          console.warn('Image compression failed for file:', file?.name, err?.message || err)
+        }
+      }
+
+      if (compressionFailures > 0) {
+        toast.error(`${compressionFailures} image(s) could not be compressed. Uploading original for those files.`)
+      }
+
+      setForm((prev) => ({ ...prev, images: processedFiles }))
+      setImagePreviews(processedFiles.map((file) => URL.createObjectURL(file)))
+    } catch (err) {
+      toast.error(err?.message || 'Image compression failed')
+    } finally {
+      setCompressing(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -295,19 +378,49 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
       toast.error('Fill in all required fields')
       return
     }
+    if (!form.images?.length) {
+      toast.error('Add at least one image before publishing')
+      return
+    }
+
     setLoading(true)
+    setUploadProgress(0)
     try {
-      const fd = new FormData()
-      Object.entries(form).forEach(([k, v]) => {
-        if (k === 'images') v.forEach(img => fd.append('images', img))
-        else fd.append(k, v)
-      })
-      const { data } = await listingsAPI.create(fd)
+      let data
+      for (let attempt = 0; attempt <= MAX_UPLOAD_RETRIES; attempt += 1) {
+        setUploadAttempt(attempt + 1)
+        const fd = new FormData()
+        Object.entries(form).forEach(([k, v]) => {
+          if (k === 'images') v.forEach((img) => fd.append('images', img))
+          else fd.append(k, v)
+        })
+        try {
+          const res = await listingsAPI.create(fd, {
+            timeout: 120000,
+            onUploadProgress: (progressEvent) => {
+              if (!progressEvent?.total) return
+              const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              setUploadProgress(percent)
+            },
+          })
+          data = res.data
+          break
+        } catch (err) {
+          if (attempt < MAX_UPLOAD_RETRIES) {
+            toast.error(`Upload failed. Retrying (${attempt + 1}/${MAX_UPLOAD_RETRIES})...`)
+            continue
+          }
+          throw err
+        }
+      }
+
       toast.success('Listing created!')
       onCreated?.(data.listing)
       onClose()
       setForm({ title: '', description: '', price: '', originalPrice: '', category: '', condition: 'good', images: [] })
       setImagePreviews([])
+      setUploadProgress(0)
+      setUploadAttempt(0)
     } catch (err) {
       toast.error(err?.error || err?.message || 'Failed to create listing')
     } finally {
@@ -320,8 +433,8 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
       footer={
         <>
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? <span className="spinner" style={{ width: 18, height: 18 }} /> : 'Publish Listing'}
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading || compressing}>
+            {loading ? <span className="spinner" style={{ width: 18, height: 18 }} /> : compressing ? 'Compressing...' : 'Publish Listing'}
           </button>
         </>
       }
@@ -329,7 +442,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
       <form style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         {/* Image upload */}
         <div className="form-group">
-          <label className="form-label">Photos (up to 5)</label>
+          <label className="form-label">Photos (up to 4)</label>
           <label className="upload-area" htmlFor="listing-images" style={{ cursor: 'pointer' }}>
             {imagePreviews.length > 0 ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -342,11 +455,30 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
               <>
                 <div className="upload-area__icon"><i className="fa-solid fa-camera" aria-hidden="true" /></div>
                 <div style={{ fontWeight: 500, marginBottom: 4 }}>Drop photos here or click to browse</div>
-                <div className="caption">PNG, JPG, WEBP up to 10MB each</div>
+                <div className="caption">PNG, JPG, WEBP up to 4MB each. Files are compressed before upload.</div>
               </>
             )}
-            <input id="listing-images" type="file" accept="image/*" multiple hidden onChange={handleImages} />
+            <input id="listing-images" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={handleImages} />
           </label>
+          {(compressing || loading) && (
+            <div className="caption" style={{ marginTop: 8 }}>
+              {compressing
+                ? 'Compressing images...'
+                : `Uploading... ${uploadProgress}%${uploadAttempt ? ` (attempt ${uploadAttempt}/${TOTAL_UPLOAD_ATTEMPTS})` : ''}`}
+            </div>
+          )}
+          {!compressing && loading && (
+            <div style={{ marginTop: 8, height: 8, background: 'var(--nw-gray-200)', borderRadius: 99, overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${uploadProgress}%`,
+                  height: '100%',
+                  background: 'var(--nw-primary)',
+                  transition: 'width 0.2s ease',
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -370,7 +502,7 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
             <label className="form-label">Category *</label>
             <select className="form-select" value={form.category} onChange={set('category')}>
               <option value="">Select category</option>
-              {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+              {LISTING_CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div className="form-group">
