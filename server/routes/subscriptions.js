@@ -3,6 +3,8 @@ const router = express.Router()
 const Subscription = require('../models/Subscription')
 const SellerApplication = require('../models/SellerApplication')
 const User = require('../models/User')
+const Listing = require('../models/Listing')
+const Pin = require('../models/Pin')
 const { handleUpload, uploadSellerId } = require('../utils/cloudinary')
 const { protect } = require('../middleware/auth')
 const { body, validate } = require('../middleware/validate')
@@ -190,8 +192,33 @@ router.get('/plans', (req, res) => {
 // ─── GET /api/subscriptions/current ──────────
 router.get('/current', protect, async (req, res, next) => {
   try {
-    const sub = await Subscription.findOne({ user: req.user._id, status: 'active' })
+    const now = new Date()
+    await Subscription.updateMany(
+      { user: req.user._id, status: 'active', expiresAt: { $lte: now } },
+      { $set: { status: 'expired', cancelledAt: now, cancelReason: 'Subscription expired' } }
+    )
+
+    const sub = await Subscription.findOne({ user: req.user._id, status: 'active', expiresAt: { $gt: now } })
       .sort({ createdAt: -1 })
+    const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
+    if (!sub && !isAdminRole) {
+      await Promise.all([
+        Listing.updateMany(
+          { seller: req.user._id, status: 'active' },
+          { $set: { status: 'paused' } }
+        ),
+        Pin.updateMany(
+          { user: req.user._id, targetType: 'listing', status: 'active' },
+          {
+            $set: {
+              status: 'cancelled',
+              cancelledAt: now,
+              cancelReason: 'subscription_inactive',
+            },
+          }
+        ),
+      ])
+    }
     const application = await SellerApplication.findOne({ user: req.user._id, status: 'pending' })
       .sort({ createdAt: -1 })
     res.json({ subscription: sub, application })
@@ -431,21 +458,48 @@ router.get('/my-application', protect, async (req, res, next) => {
 // ─── DELETE /api/subscriptions/current ────────
 router.delete('/current', protect, async (req, res, next) => {
   try {
+    const now = new Date()
     await Subscription.updateMany(
       { user: req.user._id, status: 'active' },
-      { status: 'cancelled', cancelledAt: new Date(), cancelReason: 'User requested cancellation', autoRenew: false }
+      { status: 'cancelled', cancelledAt: now, cancelReason: 'User requested cancellation', autoRenew: false }
     )
     const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
-    await User.findByIdAndUpdate(req.user._id, {
-      role: isAdminRole ? req.user.role : 'buyer',
-      buyerType: isAdminRole ? req.user.buyerType : 'regular',
-      sellerTier: isAdminRole ? req.user.sellerTier : undefined,
-      subscriptionStatus: 'cancelled',
-      subscriptionExpiry: new Date(),
-      'subscription.active': false,
-      'subscription.plan': 'basic',
-    })
-    res.json({ message: 'Subscription cancelled. Your benefits remain until the end of the billing period.' })
+    const updates = [
+      User.findByIdAndUpdate(req.user._id, {
+        role: isAdminRole ? req.user.role : 'buyer',
+        buyerType: isAdminRole ? req.user.buyerType : 'regular',
+        sellerTier: isAdminRole ? req.user.sellerTier : undefined,
+        subscriptionStatus: 'cancelled',
+        subscriptionExpiry: now,
+        'subscription.active': false,
+        'subscription.plan': 'basic',
+        'subscription.expiresAt': now,
+      }),
+    ]
+
+    if (!isAdminRole) {
+      updates.push(
+        Listing.updateMany(
+          { seller: req.user._id, status: 'active' },
+          { $set: { status: 'paused' } }
+        )
+      )
+      updates.push(
+        Pin.updateMany(
+          { user: req.user._id, targetType: 'listing', status: 'active' },
+          {
+            $set: {
+              status: 'cancelled',
+              cancelledAt: now,
+              cancelReason: 'subscription_cancelled',
+            },
+          }
+        )
+      )
+    }
+
+    await Promise.all(updates)
+    res.json({ message: 'Subscription cancelled. Seller listings were paused and listing pins were removed.' })
   } catch (err) { next(err) }
 })
 

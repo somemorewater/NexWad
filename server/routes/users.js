@@ -13,6 +13,9 @@ const { handleUpload, uploadAvatar, deleteAsset } = require('../utils/cloudinary
 const { notifyNewFollower } = require('../utils/notifications')
 const { body, validate } = require('../middleware/validate')
 const { canExposeSellerPoster, ensureSellerPoster, generateSellerPoster, profileUrl, fetchAssetBuffer } = require('../utils/sellerPoster')
+const { LISTING_CATEGORIES } = require('../constants/categories')
+const { responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
+const { serializeQuery } = require('../utils/cacheKey')
 
 function userIdentifierQuery(identifierRaw) {
   const identifier = String(identifierRaw || '').trim()
@@ -25,6 +28,35 @@ function userIdentifierQuery(identifierRaw) {
 // ─── GET /api/users/search ────────────────────
 router.get('/search', optionalAuth, async (req, res, next) => {
   try {
+    if (!req.user) {
+      const cacheKey = responseCacheKey(['users', 'search', serializeQuery(req.query)])
+      const { value } = await responseCacheRemember({
+        key: cacheKey,
+        ttlSeconds: 60,
+        namespaces: ['users:public-profile'],
+        compute: async () => {
+          const { q } = req.query
+          if (!q) return { users: [] }
+          const escapedQuery = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const regex = new RegExp(escapedQuery, 'i')
+          const query = {
+            verified: true,
+            banned: false,
+            $or: [
+              { username: regex },
+              { name: regex },
+              { bio: regex },
+            ],
+          }
+          const users = await User.find(query)
+            .select('name username avatar department level subscription rating role buyerType sellerTier sellerCategories')
+            .limit(20)
+          return { users }
+        },
+      })
+      return res.json(value)
+    }
+
     const { q } = req.query
     if (!q) return res.json({ users: [] })
     const escapedQuery = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -41,7 +73,7 @@ router.get('/search', optionalAuth, async (req, res, next) => {
     if (req.user?._id) query._id = { $ne: req.user._id }
 
     const users = await User.find(query)
-      .select('name username avatar department level subscription rating role buyerType sellerTier')
+      .select('name username avatar department level subscription rating role buyerType sellerTier sellerCategories')
       .limit(20)
     res.json({ users })
   } catch (err) { next(err) }
@@ -50,6 +82,28 @@ router.get('/search', optionalAuth, async (req, res, next) => {
 // ─── GET /api/users/:id ───────────────────────
 router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
+    if (!req.user) {
+      const cacheKey = responseCacheKey(['users', 'public-profile', String(req.params.id || '').trim().toLowerCase()])
+      const { value } = await responseCacheRemember({
+        key: cacheKey,
+        ttlSeconds: 90,
+        namespaces: ['users:public-profile'],
+        compute: async () => {
+          const { query } = userIdentifierQuery(req.params.id)
+
+          const user = await User.findOne({ $or: query })
+            .select('-password -passwordResetToken -passwordResetExpires -savedListings -warnings -reports -reportCount -warningsCount -banReason')
+          if (!user || user.banned) return null
+
+          const payload = { ...user.toObject(), isFollowing: false }
+          delete payload.matricNumber
+          return { user: payload }
+        },
+      })
+      if (!value) return res.status(404).json({ error: 'User not found' })
+      return res.json(value)
+    }
+
     const { query } = userIdentifierQuery(req.params.id)
 
     const user = await User.findOne({ $or: query })
@@ -79,6 +133,18 @@ router.put('/me', protect,
       .withMessage('Invalid matric format. Use U[year][dept][no], e.g. U24PH1025'),
     body('department').optional().trim(),
     body('level').optional({ values: 'falsy' }).isIn(['100', '200', '300', '400', '500']),
+    body('sellerCategories')
+      .optional()
+      .isArray({ max: 8 })
+      .withMessage('sellerCategories must be an array with up to 8 categories'),
+    body('sellerCategories.*')
+      .optional()
+      .isIn(LISTING_CATEGORIES)
+      .withMessage('Invalid seller category'),
+    body('sellerCategory')
+      .optional({ values: 'falsy' })
+      .isIn(LISTING_CATEGORIES)
+      .withMessage('Invalid seller category'),
     body('username')
       .optional({ values: 'falsy' })
       .trim()
@@ -100,6 +166,14 @@ router.put('/me', protect,
       const allowed = ['name', 'username', 'bio', 'phone', 'website', 'department', 'level']
       const updates = {}
       allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f] })
+      if (req.body.sellerCategories !== undefined && req.user.role === 'seller') {
+        const normalized = Array.isArray(req.body.sellerCategories)
+          ? [...new Set(req.body.sellerCategories.map((value) => String(value || '').trim()).filter(Boolean))]
+          : []
+        updates.sellerCategories = normalized
+      } else if (req.body.sellerCategory !== undefined && req.user.role === 'seller') {
+        updates.sellerCategories = req.body.sellerCategory ? [String(req.body.sellerCategory).trim()] : []
+      }
       if (req.body.matricNumber !== undefined) {
         const matric = String(req.body.matricNumber || '').trim().toUpperCase()
         updates.matricNumber = matric || undefined
@@ -110,6 +184,7 @@ router.put('/me', protect,
 
       const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true })
         .select('-password')
+      await responseCacheInvalidate('users:public-profile')
       res.json({ user })
     } catch (err) { next(err) }
   }
@@ -159,6 +234,7 @@ router.post('/me/upgrade-seller', protect, async (req, res, next) => {
       },
       { new: true, runValidators: true }
     ).select('-password')
+    await responseCacheInvalidate('users:public-profile')
 
     res.json({ user, message: 'Account upgraded to seller' })
   } catch (err) { next(err) }
@@ -213,6 +289,7 @@ router.post('/me/avatar', protect, handleUpload(uploadAvatar), async (req, res, 
       },
       { new: true }
     ).select('-password')
+    await responseCacheInvalidate('users:public-profile')
 
     res.json({ user })
   } catch (err) { next(err) }
@@ -247,6 +324,7 @@ router.put('/me/poster/featured', protect, async (req, res, next) => {
       },
       { new: true, runValidators: true }
     ).select('-password')
+    await responseCacheInvalidate('users:public-profile')
 
     res.json({ featuredProducts: user.featuredProducts, user })
   } catch (err) { next(err) }
@@ -358,6 +436,7 @@ router.post('/:id/report', protect,
       target.reports.push({ reporter: req.user._id, reason: req.body.reason })
       target.reportCount = (target.reportCount || 0) + 1
       await target.save()
+      await responseCacheInvalidate('users:public-profile')
 
       res.json({ message: 'Report submitted' })
     } catch (err) { next(err) }
@@ -380,6 +459,7 @@ router.post('/:id/follow', protect, async (req, res, next) => {
       User.findByIdAndUpdate(req.params.id, { $addToSet: { followers: req.user._id } }),
       User.findByIdAndUpdate(req.user._id, { $addToSet: { following: req.params.id } }),
     ])
+    await responseCacheInvalidate('users:public-profile')
 
     notifyNewFollower(req.params.id, req.user.name, req.user._id)
 
@@ -403,6 +483,7 @@ router.delete('/:id/follow', protect, async (req, res, next) => {
       User.findByIdAndUpdate(req.params.id, { $pull: { followers: req.user._id } }),
       User.findByIdAndUpdate(req.user._id, { $pull: { following: req.params.id } }),
     ])
+    await responseCacheInvalidate('users:public-profile')
 
     const updated = await User.findById(req.params.id)
       .select('_id followers following')

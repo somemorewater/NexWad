@@ -7,9 +7,10 @@ const { handleUpload, uploadPostImage, deleteAsset } = require('../utils/cloudin
 const { paginationRules, validate, body } = require('../middleware/validate')
 const { buildPostFeed } = require('../utils/feedAlgorithm')
 const { notifyLike } = require('../utils/notifications')
-const { invalidateFeedCache, getCachedFeed, cacheFeed } = require('../utils/redis')
+const { invalidateFeedCache, getCachedFeed, cacheFeed, responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
 const { attachPinsAndSort } = require('../utils/pins')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
+const { serializeQuery } = require('../utils/cacheKey')
 
 // ─── GET /api/posts/feed ─────────────────────
 router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, next) => {
@@ -66,30 +67,38 @@ router.get('/feed', optionalAuth, paginationRules, validate, async (req, res, ne
       return res.json(payload)
     }
 
-    // Public feed for guests
-    const skip = (p - 1) * l
-    const [posts, total] = await Promise.all([
-      Post.find({ removed: false })
-        .populate('author', 'name username avatar subscription department role buyerType sellerTier')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(l)
-        .lean(),
-      Post.countDocuments({ removed: false }),
-    ])
-    const result = {
-      posts: posts.map((post) => ({
-        ...post,
-        isLiked: false,
-        likeCount: post.likes?.length || 0,
-        commentCount: post.comments?.length || 0,
-      })),
-      hasMore: total > skip + posts.length,
-      page: p,
-    }
+    const cacheKey = responseCacheKey(['posts', 'public-feed', serializeQuery(req.query)])
+    const { value } = await responseCacheRemember({
+      key: cacheKey,
+      ttlSeconds: 60,
+      namespaces: ['posts:public-feed'],
+      compute: async () => {
+        const skip = (p - 1) * l
+        const [posts, total] = await Promise.all([
+          Post.find({ removed: false })
+            .populate('author', 'name username avatar subscription department role buyerType sellerTier')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l)
+            .lean(),
+          Post.countDocuments({ removed: false }),
+        ])
+        const result = {
+          posts: posts.map((post) => ({
+            ...post,
+            isLiked: false,
+            likeCount: post.likes?.length || 0,
+            commentCount: post.comments?.length || 0,
+          })),
+          hasMore: total > skip + posts.length,
+          page: p,
+        }
 
-    const { items, pinnedItems } = await attachPinsAndSort(result.posts || [], 'post')
-    res.json({ ...result, posts: items, pinnedPosts: pinnedItems })
+        const { items, pinnedItems } = await attachPinsAndSort(result.posts || [], 'post')
+        return { ...result, posts: items, pinnedPosts: pinnedItems }
+      },
+    })
+    res.json(value)
   } catch (err) { next(err) }
 })
 
@@ -184,9 +193,54 @@ router.post('/', protect, handleUpload(uploadPostImage), async (req, res, next) 
     })
     const populated = await post.populate('author', 'name username avatar subscription department role buyerType sellerTier')
     await invalidateFeedCache(req.user._id)
+    await responseCacheInvalidate('posts:public-feed')
     res.status(201).json({ post: { ...populated.toObject(), isLiked: false, likeCount: 0, commentCount: 0 } })
   } catch (err) { next(err) }
 })
+
+// ─── PUT /api/posts/:id ──────────────────────
+router.put('/:id', protect, handleUpload(uploadPostImage),
+  [body('content').optional().isLength({ max: 5000 })], validate,
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id)
+      if (!post || post.removed) return res.status(404).json({ error: 'Not found' })
+      if (post.author.toString() !== req.user._id.toString() && !['admin', 'superadmin', 'super_admin', 'moderator'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Not authorized' })
+      }
+
+      if (req.body.content !== undefined) {
+        post.content = String(req.body.content || '').trim()
+      }
+      const removeImage = String(req.body.removeImage || '').toLowerCase() === 'true'
+      if (removeImage && post.imagePublicId) {
+        await deleteAsset(post.imagePublicId)
+        post.image = undefined
+        post.imagePublicId = undefined
+      }
+      if (req.file) {
+        if (post.imagePublicId) await deleteAsset(post.imagePublicId)
+        post.image = req.file.path
+        post.imagePublicId = req.file.filename
+      }
+      if (!post.content?.trim() && !post.image) {
+        return res.status(400).json({ error: 'Post must have content or an image' })
+      }
+      await post.save()
+      const populated = await post.populate('author', 'name username avatar subscription department role buyerType sellerTier')
+      await invalidateFeedCache(req.user._id)
+      await responseCacheInvalidate('posts:public-feed')
+      res.json({
+        post: {
+          ...populated.toObject(),
+          isLiked: false,
+          likeCount: populated.likes?.length || 0,
+          commentCount: populated.comments?.length || 0,
+        },
+      })
+    } catch (err) { next(err) }
+  }
+)
 
 // ─── DELETE /api/posts/:id ───────────────────
 router.delete('/:id', protect, async (req, res, next) => {
@@ -199,6 +253,7 @@ router.delete('/:id', protect, async (req, res, next) => {
     if (post.imagePublicId) await deleteAsset(post.imagePublicId)
     await post.deleteOne()
     await invalidateFeedCache(req.user._id)
+    await responseCacheInvalidate('posts:public-feed')
     res.json({ message: 'Post deleted' })
   } catch (err) { next(err) }
 })
@@ -215,6 +270,7 @@ router.post('/:id/like', protect, async (req, res, next) => {
     if (post.author.toString() !== req.user._id.toString()) {
       notifyLike(post.author.toString(), req.user.name, post._id)
     }
+    await responseCacheInvalidate('posts:public-feed')
     res.json({ likeCount: post.likes.length })
   } catch (err) { next(err) }
 })
@@ -227,6 +283,7 @@ router.delete('/:id/like', protect, async (req, res, next) => {
       { $pull: { likes: req.user._id } },
       { new: true }
     )
+    await responseCacheInvalidate('posts:public-feed')
     res.json({ likeCount: post?.likes.length || 0 })
   } catch (err) { next(err) }
 })
@@ -243,6 +300,7 @@ router.post('/:id/comments', protect,
       ).populate('comments.author', 'name username avatar')
       if (!post) return res.status(404).json({ error: 'Not found' })
       const comment = post.comments[post.comments.length - 1]
+      await responseCacheInvalidate('posts:public-feed')
       res.status(201).json({ comment, commentCount: post.comments.length })
     } catch (err) { next(err) }
   }
@@ -270,6 +328,7 @@ router.delete('/:postId/comments/:commentId', protect, async (req, res, next) =>
     }
     comment.deleteOne()
     await post.save()
+    await responseCacheInvalidate('posts:public-feed')
     res.json({ message: 'Comment deleted', commentCount: post.comments.length })
   } catch (err) { next(err) }
 })
