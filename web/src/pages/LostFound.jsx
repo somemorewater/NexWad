@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { canPinContent, formatPinTimeLeft } from '../utils/pins'
 import ReportActionMenu from '../components/ReportActionMenu'
+import { LOST_FOUND_CATEGORIES, lostFoundCategoryIcon } from '../constants/categories'
 
 const TABS = ['All', 'Lost', 'Found', 'Resolved']
 const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports Complex', 'Library', 'Cafeteria', 'Car Park', 'Other']
@@ -65,11 +66,7 @@ export default function LostFound() {
                 {items.filter((item) => item.isPinned).map((item) => (
                   <div key={`pin-${item._id}`} className="pin-strip__item">
                     <div className="pin-strip__thumb">
-                      {item.image ? (
-                        <img src={item.image} alt={item.title} />
-                      ) : (
-                        <i className="fa-solid fa-image" aria-hidden="true" />
-                      )}
+                      <i className={lostFoundCategoryIcon(item.category)} aria-hidden="true" />
                     </div>
                     <div className="pin-strip__content">
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
@@ -126,6 +123,10 @@ function LFCard({ item, delay }) {
   const { user, isAuthenticated } = useAuth()
   const [pinData, setPinData] = useState(item.pin || null)
   const [pinLoading, setPinLoading] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', location: '', description: '', category: '' })
+  const [deleting, setDeleting] = useState(false)
   const isLost = item.type === 'lost'
   const isResolved = item.status === 'resolved'
   const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
@@ -169,15 +170,64 @@ function LFCard({ item, delay }) {
     }
   }
 
+  const openEditModal = () => {
+    if (!isOwner) return
+    setEditForm({
+      title: item.title || '',
+      location: item.location || '',
+      description: item.description || '',
+      category: item.category || 'Other',
+    })
+    setShowEditModal(true)
+  }
+
+  const submitEdit = async () => {
+    if (!isOwner || editing) return
+    const nextTitle = String(editForm.title || '').trim()
+    if (!nextTitle) {
+      toast.error('Title is required')
+      return
+    }
+
+    setEditing(true)
+    try {
+      const payload = {
+        title: nextTitle,
+        location: String(editForm.location || '').trim(),
+        description: String(editForm.description || '').trim(),
+        category: String(editForm.category || 'Other').trim(),
+      }
+      await lostFoundAPI.update(item._id, payload)
+      toast.success('Report updated')
+      setShowEditModal(false)
+      window.location.reload()
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not update report')
+    } finally {
+      setEditing(false)
+    }
+  }
+
+  const deleteReport = async () => {
+    if (!isOwner || deleting) return
+    if (!window.confirm('Delete this lost/found report?')) return
+    setDeleting(true)
+    try {
+      await lostFoundAPI.delete(item._id)
+      toast.success('Report deleted')
+      window.location.reload()
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not delete report')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className={`lf-card animate-fade-in ${isPinned ? 'pinned-card' : ''}`} style={{ animationDelay: `${delay}s` }}>
-      {item.image ? (
-        <img src={item.image} alt={item.title} className="lf-card__image" />
-      ) : (
-        <div className="lf-card__image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', background: isLost ? 'var(--nw-accent-light)' : 'var(--nw-green-light)' }}>
-          {isLost ? <i className="fa-solid fa-circle-exclamation" aria-hidden="true" /> : <i className="fa-solid fa-circle-check" aria-hidden="true" />}
-        </div>
-      )}
+      <div className="lf-card__image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', background: isLost ? 'var(--nw-accent-light)' : 'var(--nw-green-light)' }}>
+        <i className={lostFoundCategoryIcon(item.category)} aria-hidden="true" />
+      </div>
       <div className="lf-card__content">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div className={`lf-card__status lf-card__status--${isResolved ? 'found' : item.type}`}>
@@ -187,13 +237,32 @@ function LFCard({ item, delay }) {
                 ? <><i className="fa-solid fa-triangle-exclamation" aria-hidden="true" /> Lost</>
                 : <><i className="fa-solid fa-circle-dot" aria-hidden="true" /> Found</>}
           </div>
-          {!isOwner && (
-            <ReportActionMenu
-              onReport={reportLostFound}
-              entityLabel="lost and found report"
-              buttonClassName="post-card__menu-btn"
-            />
-          )}
+          <ReportActionMenu
+            actions={isOwner ? [
+              ...(!isResolved ? [{
+                key: 'pin',
+                label: isPinned ? 'Unpin' : 'Pin',
+                onClick: () => togglePin(),
+                disabled: pinLoading || !canPin,
+              }] : []),
+              {
+                key: 'edit',
+                label: 'Edit',
+                onClick: () => openEditModal(),
+                disabled: editing,
+              },
+              {
+                key: 'delete',
+                label: 'Delete',
+                danger: true,
+                onClick: () => deleteReport(),
+                disabled: deleting,
+              },
+            ] : []}
+            onReport={!isOwner ? reportLostFound : undefined}
+            entityLabel="lost and found report"
+            buttonClassName="post-card__menu-btn"
+          />
         </div>
         {isPinned && (
           <div style={{ marginBottom: 6 }}>
@@ -203,6 +272,7 @@ function LFCard({ item, delay }) {
           </div>
         )}
         <h3 className="lf-card__title">{item.title}</h3>
+        <div className="caption" style={{ marginBottom: 6 }}>{item.category || 'Other'}</div>
         {item.description && (
           <p style={{ fontSize: '0.875rem', color: 'var(--nw-gray-500)', marginBottom: 8 }}>{item.description}</p>
         )}
@@ -216,43 +286,84 @@ function LFCard({ item, delay }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
           <button className="btn btn-primary btn-sm">Contact</button>
           {item.type === 'lost' && <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.8125rem' }}>I Found It</button>}
-          {canPin && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={togglePin} disabled={pinLoading}>
-              {pinLoading ? '...' : isPinned ? 'Unpin' : 'Pin'}
-            </button>
-          )}
         </div>
       )}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Report"
+        footer={(
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)} disabled={editing}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-primary" onClick={submitEdit} disabled={editing}>
+              {editing ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        )}
+      >
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div className="form-group">
+            <label className="form-label">Item Name</label>
+            <input
+              type="text"
+              className="form-input"
+              value={editForm.title}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Location</label>
+            <input
+              type="text"
+              className="form-input"
+              value={editForm.location}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, location: e.target.value }))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <textarea
+              className="form-textarea"
+              rows={4}
+              value={editForm.description}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Category</label>
+            <select
+              className="form-select"
+              value={editForm.category}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+            >
+              {LOST_FOUND_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
 
 function ReportModal({ isOpen, onClose, type, onCreated, locations }) {
-  const [form, setForm] = useState({ title: '', description: '', location: '', image: null })
-  const [preview, setPreview] = useState(null)
+  const [form, setForm] = useState({ title: '', description: '', location: '', category: LOST_FOUND_CATEGORIES[0] })
   const [loading, setLoading] = useState(false)
 
   const set = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }))
-
-  const handleImage = (e) => {
-    const file = e.target.files[0]
-    if (file) { setForm(p => ({ ...p, image: file })); setPreview(URL.createObjectURL(file)) }
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.title) { toast.error('Title is required'); return }
     setLoading(true)
     try {
-      const fd = new FormData()
-      fd.append('type', type)
-      Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v) })
-      const { data } = await lostFoundAPI.create(fd)
+      const payload = { ...form, type }
+      const { data } = await lostFoundAPI.create(payload)
       toast.success(type === 'lost' ? 'Lost item reported!' : 'Found item reported!')
       onCreated?.(data.item)
       onClose()
-      setForm({ title: '', description: '', location: '', image: null })
-      setPreview(null)
+      setForm({ title: '', description: '', location: '', category: LOST_FOUND_CATEGORIES[0] })
     } catch (err) {
       toast.error(err?.message || 'Failed to report')
     } finally {
@@ -290,18 +401,10 @@ function ReportModal({ isOpen, onClose, type, onCreated, locations }) {
           <textarea className="form-textarea" placeholder="Add identifying details to help verification..." value={form.description} onChange={set('description')} rows={3} />
         </div>
         <div className="form-group">
-          <label className="form-label">Photo (optional)</label>
-          <label className="upload-area" htmlFor="lf-image" style={{ cursor: 'pointer', padding: 'var(--space-6)' }}>
-            {preview ? (
-              <img src={preview} alt="" style={{ maxHeight: 120, borderRadius: 8 }} />
-            ) : (
-              <>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}><i className="fa-solid fa-camera" aria-hidden="true" /></div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>Upload photo</div>
-              </>
-            )}
-            <input id="lf-image" type="file" accept="image/*" hidden onChange={handleImage} />
-          </label>
+          <label className="form-label">Category</label>
+          <select className="form-select" value={form.category} onChange={set('category')}>
+            {LOST_FOUND_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+          </select>
         </div>
       </form>
     </Modal>

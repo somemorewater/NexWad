@@ -8,6 +8,7 @@ import { SocketContext } from '../context/SocketContext'
 import { isPremiumBuyer } from '../utils/roleRouting'
 import { formatPinTimeLeft, runPaystackCharge } from '../utils/pins'
 import toast from 'react-hot-toast'
+import { lostFoundCategoryIcon } from '../constants/categories'
 
 export default function BuyerHub() {
   const { user } = useAuth()
@@ -48,7 +49,7 @@ export default function BuyerHub() {
   const pinnedHighlights = [
     ...preview.listings.filter((item) => item.isPinned).map((item) => ({ type: 'Listing', title: item.title, image: item.images?.[0], expiresAt: item.pin?.expiresAt })),
     ...preview.posts.filter((item) => item.isPinned).map((item) => ({ type: 'Post', title: item.content?.slice(0, 54) || `${item.author?.name || 'Student'} post`, image: item.image, expiresAt: item.pin?.expiresAt })),
-    ...preview.items.filter((item) => item.isPinned).map((item) => ({ type: 'Lost & Found', title: item.title, image: item.image, expiresAt: item.pin?.expiresAt })),
+    ...preview.items.filter((item) => item.isPinned).map((item) => ({ type: 'Lost & Found', title: item.title, icon: lostFoundCategoryIcon(item.category), expiresAt: item.pin?.expiresAt })),
   ]
 
   const buyCredits = async (units) => {
@@ -144,6 +145,8 @@ export default function BuyerHub() {
                     <div className="pin-strip__thumb">
                       {item.image ? (
                         <img src={item.image} alt={item.title} />
+                      ) : item.icon ? (
+                        <i className={item.icon} aria-hidden="true" />
                       ) : (
                         <i className="fa-solid fa-image" aria-hidden="true" />
                       )}
