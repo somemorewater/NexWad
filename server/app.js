@@ -7,6 +7,7 @@ const { initSocket } = require('./socket')
 const logger = require('./utils/logger')
 
 const PORT = process.env.PORT || 5000
+const REQUEST_TIMEOUT_MS = 120000
 
 async function bootstrap() {
   // Connect datastores
@@ -15,13 +16,16 @@ async function bootstrap() {
 
   // Create HTTP server
   const server = http.createServer(app)
+  server.requestTimeout = REQUEST_TIMEOUT_MS
+  server.headersTimeout = REQUEST_TIMEOUT_MS + 5000
+  server.timeout = REQUEST_TIMEOUT_MS
 
   // Attach Socket.io
   initSocket(server)
 
   server.listen(PORT, () => {
     logger.info(`NexWAD server running on port ${PORT} [${process.env.NODE_ENV}]`)
-  })
+  });
 
   // Graceful shutdown
   const shutdown = async (signal) => {
