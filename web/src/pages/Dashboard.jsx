@@ -9,6 +9,7 @@ import { ListingCard } from '../components/Card'
 import { formatPinTimeLeft, runPaystackCharge } from '../utils/pins'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
+import { lostFoundCategoryIcon } from '../constants/categories'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -254,6 +255,22 @@ export default function Dashboard() {
                           alt={pin.targetPreview?.title || 'Pinned content'}
                           style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--nw-gray-200)' }}
                         />
+                      ) : pin.targetType === 'lostfound' ? (
+                        <div
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid var(--nw-gray-200)',
+                            background: 'var(--nw-gray-100)',
+                            color: 'var(--nw-gray-500)',
+                          }}
+                        >
+                          <i className={lostFoundCategoryIcon(pin.targetPreview?.category)} aria-hidden="true" />
+                        </div>
                       ) : null}
                       <div style={{ fontWeight: 600 }}>
                         {String(pin.targetType || '').toUpperCase()} · {pin.targetPreview?.title || pin.targetId}
