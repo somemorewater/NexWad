@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { LISTING_CATEGORIES } = require('../constants/categories')
 
 const listingSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 200 },
@@ -9,7 +10,7 @@ const listingSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Electronics', 'Textbooks', 'Fashion', 'Footwares', 'Fragrance', 'Food', 'Services', 'Other'],
+    enum: LISTING_CATEGORIES,
   },
   condition: {
     type: String,
@@ -27,6 +28,7 @@ const listingSchema = new mongoose.Schema({
     enum: ['active', 'sold', 'paused', 'removed'],
     default: 'active',
   },
+  subscriptionPaused: { type: Boolean, default: false },
 
   // Premium / boost
   isPremium: { type: Boolean, default: false },

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const { LISTING_CATEGORIES } = require('../constants/categories')
 
 const ADMIN_ROLES = new Set(['admin', 'superadmin', 'super_admin', 'moderator', 'cs'])
 
@@ -20,6 +21,11 @@ const userSchema = new mongoose.Schema({
   matricNumber: { type: String, unique: true, sparse: true, trim: true, uppercase: true },
   department: { type: String, trim: true },
   level: { type: String, enum: ['100', '200', '300', '400', '500'] },
+  sellerCategories: [{
+    type: String,
+    trim: true,
+    enum: LISTING_CATEGORIES,
+  }],
   phone: { type: String, trim: true },
   website: { type: String, trim: true, maxlength: 300 },
   avatar: { type: String },
@@ -176,10 +182,22 @@ userSchema.methods.applyPlanAccess = function (plan) {
 }
 
 userSchema.methods.checkSubscription = async function () {
+  if (!this.subscription || typeof this.subscription !== 'object') {
+    this.subscription = { plan: 'basic', active: false }
+  }
+
+  const previousRole = this.role
+  const previousTier = this.sellerTier
+  const previousPlan = String(this.subscription?.plan || '').toLowerCase()
   const expiry = this.subscriptionExpiry || this.subscription?.expiresAt
   if (!expiry) return
 
-  if (new Date() > expiry) {
+  const now = new Date()
+  if (now > expiry) {
+    const wasSellerAccess = previousRole === 'seller'
+      || ['seller_basic', 'seller_pro', 'seller_elite', 'gold', 'premium'].includes(previousPlan)
+      || ['basic', 'pro', 'elite'].includes(String(previousTier || '').toLowerCase())
+
     this.subscriptionStatus = 'expired'
     this.subscriptionExpiry = expiry
     this.subscription.active = false
@@ -192,7 +210,46 @@ userSchema.methods.checkSubscription = async function () {
       this.sellerTier = undefined
     }
 
-    await this.save()
+    const Subscription = mongoose.model('Subscription')
+    const Listing = mongoose.model('Listing')
+    const Pin = mongoose.model('Pin')
+
+    const updates = [
+      this.save(),
+      Subscription.updateMany(
+        { user: this._id, status: 'active', expiresAt: { $lte: now } },
+        {
+          $set: {
+            status: 'expired',
+            cancelledAt: now,
+            cancelReason: 'Subscription expired',
+          },
+        }
+      ),
+    ]
+
+    if (wasSellerAccess && !ADMIN_ROLES.has(previousRole)) {
+      updates.push(
+        Listing.updateMany(
+          { seller: this._id, status: 'active' },
+          { $set: { status: 'paused', subscriptionPaused: true } }
+        )
+      )
+      updates.push(
+        Pin.updateMany(
+          { user: this._id, targetType: 'listing', status: 'active' },
+          {
+            $set: {
+              status: 'cancelled',
+              cancelledAt: now,
+              cancelReason: 'subscription_expired',
+            },
+          }
+        )
+      )
+    }
+
+    await Promise.all(updates)
     return
   }
 
