@@ -63,8 +63,8 @@ app.use('/api/auth/', authLimiter)
 app.use(compression())
 app.use('/api/pins/paystack-webhook', express.raw({ type: 'application/json' }))
 app.use('/api/pins/credits/paystack-webhook', express.raw({ type: 'application/json' }))
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(logRequestActivity)
 
 // ─── Logging ──────────────────────────────────
