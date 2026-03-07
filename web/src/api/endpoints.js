@@ -1,5 +1,12 @@
 import api from './index'
 
+function toMultipartIfFormData(data) {
+  if (typeof FormData !== 'undefined' && data instanceof FormData) {
+    return { headers: { 'Content-Type': 'multipart/form-data' } }
+  }
+  return {}
+}
+
 // ─── Users ───────────────────────────────────
 export const usersAPI = {
   getProfile: (userId) => api.get(`/users/${userId}`),
@@ -37,9 +44,15 @@ export const notificationsAPI = {
 export const listingsAPI = {
   getAll: (params) => api.get('/listings', { params }),
   getById: (id) => api.get(`/listings/${id}`),
-  create: (formData) =>
-    api.post('/listings', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  update: (id, data) => api.put(`/listings/${id}`, data),
+  create: (formData, config = {}) =>
+    api.post('/listings', formData, {
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(config.headers || {}),
+      },
+    }),
+  update: (id, data) => api.put(`/listings/${id}`, data, toMultipartIfFormData(data)),
   delete: (id) => api.delete(`/listings/${id}`),
   save: (id) => api.post(`/listings/${id}/save`),
   unsave: (id) => api.delete(`/listings/${id}/save`),
@@ -57,6 +70,7 @@ export const postsAPI = {
   getComments: (id) => api.get(`/posts/${id}/comments`),
   create: (formData) =>
     api.post('/posts', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, data) => api.put(`/posts/${id}`, data, toMultipartIfFormData(data)),
   delete: (id) => api.delete(`/posts/${id}`),
   like: (id) => api.post(`/posts/${id}/like`),
   unlike: (id) => api.delete(`/posts/${id}/like`),
@@ -69,11 +83,10 @@ export const postsAPI = {
 export const lostFoundAPI = {
   getAll: (params) => api.get('/lostfound', { params }),
   getById: (id) => api.get(`/lostfound/${id}`),
-  create: (formData) =>
-    api.post('/lostfound', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  update: (id, data) => api.put(`/lostfound/${id}`, data),
+  create: (data) => api.post('/lostfound', data),
+  update: (id, data) => api.put(`/lostfound/${id}`, data, toMultipartIfFormData(data)),
   delete: (id) => api.delete(`/lostfound/${id}`),
-  claim: (id) => api.post(`/lostfound/${id}/claim`),
+  claim: (id, data = {}) => api.post(`/lostfound/${id}/claim`, data),
   markResolved: (id) => api.post(`/lostfound/${id}/resolve`),
   report: (id, reason) => api.post(`/lostfound/${id}/report`, { reason }),
 }
