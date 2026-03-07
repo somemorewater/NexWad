@@ -1,6 +1,7 @@
 const { emitToUser } = require('../socket')
 const { cacheGet, cacheSet } = require('./redis')
 const logger = require('./logger')
+const { enqueueBackgroundJob } = require('./jobQueue')
 
 /**
  * Send a real-time notification to a user via Socket.io
@@ -18,20 +19,24 @@ async function notify(userId, { type, title, body, link, data }) {
     read: false,
   }
 
-  // Emit real-time
-  try {
-    emitToUser(userId.toString(), 'notification', notification)
-  } catch { /* socket may not be initialised yet */ }
+  enqueueBackgroundJob('notification-delivery', async () => {
+    // Emit real-time
+    try {
+      emitToUser(userId.toString(), 'notification', notification)
+    } catch { /* socket may not be initialised yet */ }
 
-  // Persist to Redis list (last 50 per user)
-  try {
-    const key = `notifs:${userId}`
-    const existing = await cacheGet(key) || []
-    const updated = [notification, ...existing].slice(0, 50)
-    await cacheSet(key, updated, 7 * 24 * 3600) // 7 days TTL
-  } catch (err) {
-    logger.error('notify persist error:', err)
-  }
+    // Persist to Redis list (last 50 per user)
+    try {
+      const key = `notifs:${userId}`
+      const existing = await cacheGet(key) || []
+      const updated = [notification, ...existing].slice(0, 50)
+      await cacheSet(key, updated, 7 * 24 * 3600) // 7 days TTL
+    } catch (err) {
+      logger.error('notify persist error:', err)
+    }
+  }, { retries: 2 })
+
+  return notification
 }
 
 async function getNotifications(userId) {

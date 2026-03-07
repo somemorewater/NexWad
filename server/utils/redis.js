@@ -4,6 +4,8 @@ const logger = require('./logger')
 const OTP_PREFIX = 'otp:'
 const FEED_CACHE_PREFIX = 'feed:'
 const SESSION_PREFIX = 'session:'
+const RESPONSE_CACHE_PREFIX = 'rcache:'
+const RESPONSE_CACHE_INDEX_PREFIX = 'rcacheidx:'
 
 // ─── OTP ──────────────────────────────────────
 
@@ -101,6 +103,69 @@ async function cacheDel(key) {
   } catch { /* silent */ }
 }
 
+// ─── HTTP response cache ──────────────────────
+
+function responseCacheKey(parts = []) {
+  const normalized = Array.isArray(parts) ? parts : [parts]
+  return `${RESPONSE_CACHE_PREFIX}${normalized.map((part) => String(part || '').trim()).join(':')}`
+}
+
+async function responseCacheSet(key, value, ttlSeconds = 120, namespaces = []) {
+  try {
+    const redis = getRedis()
+    if (!redis) return
+    await redis.setEx(key, ttlSeconds, JSON.stringify(value))
+    const tags = Array.isArray(namespaces) ? namespaces.filter(Boolean) : [namespaces].filter(Boolean)
+    if (tags.length) {
+      await Promise.all(tags.map(async (namespace) => {
+        const indexKey = `${RESPONSE_CACHE_INDEX_PREFIX}${namespace}`
+        await redis.sAdd(indexKey, key)
+        // Keep index sets alive slightly longer than data keys to allow invalidation.
+        await redis.expire(indexKey, Math.max(ttlSeconds * 4, 600))
+      }))
+    }
+  } catch (err) {
+    logger.error('responseCacheSet error:', err)
+  }
+}
+
+async function responseCacheGet(key) {
+  try {
+    const redis = getRedis()
+    if (!redis) return null
+    const v = await redis.get(key)
+    return v ? JSON.parse(v) : null
+  } catch {
+    return null
+  }
+}
+
+async function responseCacheInvalidate(namespaces = []) {
+  try {
+    const redis = getRedis()
+    if (!redis) return
+    const tags = Array.isArray(namespaces) ? namespaces.filter(Boolean) : [namespaces].filter(Boolean)
+    if (!tags.length) return
+
+    for (const namespace of tags) {
+      const indexKey = `${RESPONSE_CACHE_INDEX_PREFIX}${namespace}`
+      const keys = await redis.sMembers(indexKey)
+      if (keys?.length) await redis.del(keys)
+      await redis.del(indexKey)
+    }
+  } catch (err) {
+    logger.error('responseCacheInvalidate error:', err)
+  }
+}
+
+async function responseCacheRemember({ key, ttlSeconds = 120, namespaces = [], compute }) {
+  const cached = await responseCacheGet(key)
+  if (cached !== null) return { value: cached, hit: true }
+  const value = await compute()
+  await responseCacheSet(key, value, ttlSeconds, namespaces)
+  return { value, hit: false }
+}
+
 // ─── Token blacklist (for logout) ─────────────
 async function blacklistToken(token, expirySeconds = 7 * 24 * 3600) {
   try {
@@ -124,5 +189,6 @@ module.exports = {
   storeOTP, verifyOTP, deleteOTP,
   cacheFeed, getCachedFeed, invalidateFeedCache,
   cacheSet, cacheGet, cacheDel,
+  responseCacheKey, responseCacheSet, responseCacheGet, responseCacheRemember, responseCacheInvalidate,
   blacklistToken, isTokenBlacklisted,
 }
