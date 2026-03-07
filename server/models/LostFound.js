@@ -1,7 +1,9 @@
 const mongoose = require('mongoose')
+const { LOST_FOUND_CATEGORIES } = require('../constants/categories')
 
 const lostFoundSchema = new mongoose.Schema({
   type: { type: String, enum: ['lost', 'found'], required: true },
+  category: { type: String, enum: LOST_FOUND_CATEGORIES, required: true },
   title: { type: String, required: true, trim: true, maxlength: 200 },
   description: { type: String, trim: true, maxlength: 2000 },
   location: { type: String, trim: true },
