@@ -8,11 +8,20 @@ const { listingRules, validate, paginationRules } = require('../middleware/valid
 const { buildListingFeed } = require('../utils/feedAlgorithm')
 const { attachPinsAndSort } = require('../utils/pins')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
+const { responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
+const { serializeQuery } = require('../utils/cacheKey')
 
 const MONTHLY_UPLOAD_LIMITS = {
   basic: 12,
   pro: 17,
   elite: 23,
+}
+const MAX_LISTING_IMAGES = 4
+
+function asArray(value) {
+  if (Array.isArray(value)) return value
+  if (value === undefined || value === null || value === '') return []
+  return [value]
 }
 
 function resolveSellerTier(user) {
@@ -55,6 +64,36 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     // Explicit seller filter must always return that seller's listings
     // (including for authenticated users, bypassing personalized feed ranking).
     if (seller) {
+      if (!req.user) {
+        const cacheKey = responseCacheKey(['listings', 'seller', serializeQuery(req.query)])
+        const { value } = await responseCacheRemember({
+          key: cacheKey,
+          ttlSeconds: 75,
+          namespaces: ['listings:list'],
+          compute: async () => {
+            const query = { status: 'active', seller }
+            if (category && category !== 'All') query.category = category
+            const searchClause = await buildListingSearchClause(q)
+            if (searchClause) Object.assign(query, searchClause)
+
+            const skip = (parsedPage - 1) * parsedLimit
+            const [listings, total] = await Promise.all([
+              Listing.find(query)
+                .populate('seller', 'name username avatar subscription role buyerType sellerTier')
+                .sort({ isPremium: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(parsedLimit)
+                .lean(),
+              Listing.countDocuments(query),
+            ])
+
+            const { items, pinnedItems } = await attachPinsAndSort(listings, 'listing')
+            return { listings: items, pinnedListings: pinnedItems, hasMore: total > skip + listings.length, page: parsedPage }
+          },
+        })
+        return res.json(value)
+      }
+
       const query = { status: 'active', seller }
       if (category && category !== 'All') query.category = category
       const searchClause = await buildListingSearchClause(q)
@@ -97,16 +136,26 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
     const searchClause = await buildListingSearchClause(q)
     if (searchClause) Object.assign(query, searchClause)
 
-    const skip = (parsedPage - 1) * parsedLimit
-    const [listings, total] = await Promise.all([
-      Listing.find(query)
-        .populate('seller', 'name username avatar subscription role buyerType sellerTier')
-        .sort({ isPremium: -1, createdAt: -1 })
-        .skip(skip).limit(parsedLimit),
-      Listing.countDocuments(query),
-    ])
-    const { items, pinnedItems } = await attachPinsAndSort(listings.map((listing) => listing.toObject?.() || listing), 'listing')
-    res.json({ listings: items, pinnedListings: pinnedItems, hasMore: total > skip + listings.length, page: parsedPage })
+    const cacheKey = responseCacheKey(['listings', 'public', serializeQuery(req.query)])
+    const { value } = await responseCacheRemember({
+      key: cacheKey,
+      ttlSeconds: 75,
+      namespaces: ['listings:list'],
+      compute: async () => {
+        const skip = (parsedPage - 1) * parsedLimit
+        const [listings, total] = await Promise.all([
+          Listing.find(query)
+            .populate('seller', 'name username avatar subscription role buyerType sellerTier')
+            .sort({ isPremium: -1, createdAt: -1 })
+            .skip(skip).limit(parsedLimit),
+          Listing.countDocuments(query),
+        ])
+        const serialized = listings.map((listing) => listing.toObject?.() || listing)
+        const { items, pinnedItems } = await attachPinsAndSort(serialized, 'listing')
+        return { listings: items, pinnedListings: pinnedItems, hasMore: total > skip + listings.length, page: parsedPage }
+      },
+    })
+    res.json(value)
   } catch (err) { next(err) }
 })
 
@@ -166,6 +215,9 @@ router.post('/', protect, handleUpload(uploadListingImages), listingRules, valid
     if (!canSell) {
       return res.status(403).json({ error: 'Upgrade to seller to create listings' })
     }
+    if (!Array.isArray(req.files) || req.files.length === 0) {
+      return res.status(400).json({ error: 'At least one image is required to create a listing' })
+    }
 
     const sellerTier = resolveSellerTier(req.user)
     const monthlyLimit = MONTHLY_UPLOAD_LIMITS[sellerTier] || MONTHLY_UPLOAD_LIMITS.basic
@@ -201,12 +253,13 @@ router.post('/', protect, handleUpload(uploadListingImages), listingRules, valid
     })
 
     const populated = await listing.populate('seller', 'name username avatar subscription role buyerType sellerTier')
+    await responseCacheInvalidate(['listings:list', 'users:public-profile'])
     res.status(201).json({ listing: populated })
   } catch (err) { next(err) }
 })
 
 // ─── PUT /api/listings/:id ────────────────────
-router.put('/:id', protect, async (req, res, next) => {
+router.put('/:id', protect, handleUpload(uploadListingImages), async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id)
     if (!listing) return res.status(404).json({ error: 'Not found' })
@@ -215,7 +268,52 @@ router.put('/:id', protect, async (req, res, next) => {
     }
     const allowed = ['title', 'description', 'price', 'originalPrice', 'category', 'condition', 'status', 'location']
     allowed.forEach(f => { if (req.body[f] !== undefined) listing[f] = req.body[f] })
+
+    const hasImageUpdate = Boolean(req.files?.length)
+      || req.body.retainImagePublicIds !== undefined
+      || req.body.retainImageUrls !== undefined
+    if (hasImageUpdate) {
+      const existingImages = Array.isArray(listing.images) ? listing.images : []
+      const existingPublicIds = Array.isArray(listing.imagePublicIds) ? listing.imagePublicIds : []
+      const retainById = new Set(asArray(req.body.retainImagePublicIds).map((v) => String(v || '').trim()).filter(Boolean))
+      const retainByUrl = new Set(asArray(req.body.retainImageUrls).map((v) => String(v || '').trim()).filter(Boolean))
+      const selectorsProvided = retainById.size > 0 || retainByUrl.size > 0
+
+      const kept = []
+      const removedPublicIds = []
+      existingImages.forEach((url, index) => {
+        const publicId = existingPublicIds[index]
+        const shouldKeep = !selectorsProvided
+          || (publicId && retainById.has(String(publicId)))
+          || retainByUrl.has(String(url))
+        if (shouldKeep) {
+          kept.push({ url, publicId })
+        } else if (publicId) {
+          removedPublicIds.push(publicId)
+        }
+      })
+
+      const newUploads = (req.files || []).map((file) => ({
+        url: file.path,
+        publicId: file.filename,
+      }))
+      const merged = [...kept, ...newUploads]
+      if (merged.length === 0) {
+        return res.status(400).json({ error: 'At least one image is required' })
+      }
+      if (merged.length > MAX_LISTING_IMAGES) {
+        return res.status(400).json({ error: `Maximum ${MAX_LISTING_IMAGES} images allowed` })
+      }
+
+      listing.images = merged.map((item) => item.url)
+      listing.imagePublicIds = merged.map((item) => item.publicId).filter(Boolean)
+      if (removedPublicIds.length) {
+        await Promise.all(removedPublicIds.map((publicId) => deleteAsset(publicId)))
+      }
+    }
+
     await listing.save()
+    await responseCacheInvalidate(['listings:list', 'users:public-profile'])
     res.json({ listing })
   } catch (err) { next(err) }
 })
@@ -231,6 +329,7 @@ router.delete('/:id', protect, async (req, res, next) => {
     // Delete images from Cloudinary
     for (const pid of listing.imagePublicIds || []) await deleteAsset(pid)
     await listing.deleteOne()
+    await responseCacheInvalidate(['listings:list', 'users:public-profile'])
     res.json({ message: 'Listing deleted' })
   } catch (err) { next(err) }
 })

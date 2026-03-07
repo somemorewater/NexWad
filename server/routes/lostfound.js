@@ -2,31 +2,44 @@ const express = require('express')
 const router = express.Router()
 const LostFound = require('../models/LostFound')
 const { protect, optionalAuth } = require('../middleware/auth')
-const { handleUpload, uploadLostFoundImage, deleteAsset } = require('../utils/cloudinary')
+const { deleteAsset } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
 const { notifyLostFoundClaim } = require('../utils/notifications')
 const { attachPinsAndSort } = require('../utils/pins')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
+const { LOST_FOUND_CATEGORIES } = require('../constants/categories')
+const { responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
+const { serializeQuery } = require('../utils/cacheKey')
 
 // ─── GET /api/lostfound ───────────────────────
 router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) => {
   try {
     const { type, status = 'active', page = 1, limit = 20, q } = req.query
-    const query = {}
-    if (type) query.type = type
-    if (status) query.status = status
-    if (q) query.$text = { $search: q }
+    const cacheKey = responseCacheKey(['lostfound', 'list', serializeQuery(req.query)])
+    const { value } = await responseCacheRemember({
+      key: cacheKey,
+      ttlSeconds: 60,
+      namespaces: ['lostfound:list'],
+      compute: async () => {
+        const query = {}
+        if (type) query.type = type
+        if (status) query.status = status
+        if (q) query.$text = { $search: q }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit)
-    const [items, total] = await Promise.all([
-      LostFound.find(query)
-        .populate('reporter', 'name avatar department')
-        .sort({ createdAt: -1 })
-        .skip(skip).limit(parseInt(limit)),
-      LostFound.countDocuments(query),
-    ])
-    const { items: enrichedItems, pinnedItems } = await attachPinsAndSort(items.map((item) => item.toObject?.() || item), 'lostfound')
-    res.json({ items: enrichedItems, pinnedItems, hasMore: total > skip + items.length, total })
+        const skip = (parseInt(page) - 1) * parseInt(limit)
+        const [items, total] = await Promise.all([
+          LostFound.find(query)
+            .populate('reporter', 'name avatar department')
+            .sort({ createdAt: -1 })
+            .skip(skip).limit(parseInt(limit)),
+          LostFound.countDocuments(query),
+        ])
+        const serialized = items.map((item) => item.toObject?.() || item)
+        const { items: enrichedItems, pinnedItems } = await attachPinsAndSort(serialized, 'lostfound')
+        return { items: enrichedItems, pinnedItems, hasMore: total > skip + items.length, total }
+      },
+    })
+    res.json(value)
   } catch (err) { next(err) }
 })
 
@@ -54,19 +67,19 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 })
 
 // ─── POST /api/lostfound ──────────────────────
-router.post('/', protect, handleUpload(uploadLostFoundImage), async (req, res, next) => {
+router.post('/', protect, async (req, res, next) => {
   try {
-    const { type, title, description, location } = req.body
-    if (!type || !title) return res.status(400).json({ error: 'type and title are required' })
+    const { type, category, title, description, location } = req.body
+    if (!type || !category || !title) return res.status(400).json({ error: 'type, category and title are required' })
     if (!['lost', 'found'].includes(type)) return res.status(400).json({ error: 'Invalid type' })
+    if (!LOST_FOUND_CATEGORIES.includes(category)) return res.status(400).json({ error: 'Invalid category' })
 
     const item = await LostFound.create({
-      type, title, description, location,
+      type, category, title, description, location,
       reporter: req.user._id,
-      image: req.file?.path,
-      imagePublicId: req.file?.filename,
     })
     const populated = await item.populate('reporter', 'name avatar department')
+    await responseCacheInvalidate('lostfound:list')
     res.status(201).json({ item: populated })
   } catch (err) { next(err) }
 })
@@ -79,9 +92,13 @@ router.put('/:id', protect, async (req, res, next) => {
     if (item.reporter.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: 'Not your report' })
     }
-    const allowed = ['title', 'description', 'location', 'status']
+    const allowed = ['title', 'description', 'location', 'status', 'category']
     allowed.forEach(f => { if (req.body[f] !== undefined) item[f] = req.body[f] })
+    if (item.category && !LOST_FOUND_CATEGORIES.includes(item.category)) {
+      return res.status(400).json({ error: 'Invalid category' })
+    }
     await item.save()
+    await responseCacheInvalidate('lostfound:list')
     res.json({ item })
   } catch (err) { next(err) }
 })
@@ -96,6 +113,7 @@ router.delete('/:id', protect, async (req, res, next) => {
     }
     if (item.imagePublicId) await deleteAsset(item.imagePublicId)
     await item.deleteOne()
+    await responseCacheInvalidate('lostfound:list')
     res.json({ message: 'Deleted' })
   } catch (err) { next(err) }
 })
@@ -115,6 +133,7 @@ router.post('/:id/claim', protect,
 
       item.claimants.push({ user: req.user._id, message: req.body.message })
       await item.save()
+      await responseCacheInvalidate('lostfound:list')
       notifyLostFoundClaim(item.reporter.toString(), req.user.name, item._id)
       res.json({ message: 'Claim submitted. The reporter will be notified.' })
     } catch (err) { next(err) }
@@ -132,6 +151,7 @@ router.post('/:id/resolve', protect, async (req, res, next) => {
     item.status = 'resolved'
     item.resolvedAt = new Date()
     await item.save()
+    await responseCacheInvalidate('lostfound:list')
     res.json({ item })
   } catch (err) { next(err) }
 })
@@ -153,6 +173,7 @@ router.post('/:id/report', protect,
       item.reports.push({ reporter: req.user._id, reason: req.body.reason })
       item.reportCount = (item.reportCount || 0) + 1
       await item.save()
+      await responseCacheInvalidate('lostfound:list')
       res.json({ message: 'Report submitted' })
     } catch (err) { next(err) }
   }
