@@ -34,7 +34,11 @@ async function optionalAuth(req, res, next) {
     if (!header?.startsWith('Bearer ')) return next()
     const token = header.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = await User.findById(decoded.id).select('-password')
+    const user = await User.findById(decoded.id).select('-password')
+    if (user && !user.banned) {
+      await user.checkSubscription()
+      req.user = user
+    }
     next()
   } catch {
     next()

@@ -1,4 +1,5 @@
 const { validationResult, body, param, query } = require('express-validator')
+const { LISTING_CATEGORIES } = require('../constants/categories')
 
 // Run validation and return errors
 function validate(req, res, next) {
@@ -36,7 +37,7 @@ const loginRules = [
 const listingRules = [
   body('title').trim().notEmpty().withMessage('Title required').isLength({ max: 200 }),
   body('price').isNumeric().withMessage('Price must be a number').isFloat({ min: 0 }),
-  body('category').isIn(['Electronics', 'Textbooks', 'Hostel', 'Clothing', 'Food', 'Services', 'Other']).withMessage('Invalid category'),
+  body('category').isIn(LISTING_CATEGORIES).withMessage('Invalid category'),
   body('condition').optional().isIn(['new', 'excellent', 'good', 'fair']),
   body('description').optional().isLength({ max: 2000 }),
 ]
