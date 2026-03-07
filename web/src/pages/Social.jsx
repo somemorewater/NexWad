@@ -210,15 +210,16 @@ export default function Social() {
                         const canSeePinTime = Boolean(user?._id && item.author?._id && user._id === item.author._id)
                         return (
                           <>
-                      <div className="pin-strip__thumb">
+                      
+                      <div className="pin-strip__content">
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.author?.name || 'Student'}</div>
+                        <div className="pin-strip__thumb">
                         {item.image ? (
                           <img src={item.image} alt={item.author?.name || 'Pinned post'} />
                         ) : (
                           <i className="fa-solid fa-image" aria-hidden="true" />
                         )}
                       </div>
-                      <div className="pin-strip__content">
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.author?.name || 'Student'}</div>
                         <div className="caption">
                           {String(item.content || '').slice(0, 52) || 'Photo post'}
                           {canSeePinTime ? ` · ${formatPinTimeLeft(item.pin?.expiresAt)}` : ''}
@@ -247,7 +248,13 @@ export default function Social() {
                         Sponsored ·
                       </div>
                     )}
-                    <PostCard post={post} onLike={handleLike} onComment={openComments} />
+                    <PostCard
+                      post={post}
+                      onLike={handleLike}
+                      onComment={openComments}
+                      onUpdated={(updated) => setPosts((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))}
+                      onDeleted={(postId) => setPosts((prev) => prev.filter((entry) => entry._id !== postId))}
+                    />
                   </div>
                 ))}
                 {hasMore && (
