@@ -1,5 +1,6 @@
 const UserLog = require('../models/UserLog')
 const logger = require('./logger')
+const { enqueueBackgroundJob } = require('./jobQueue')
 
 function getClientIp(req) {
   const xf = req.headers['x-forwarded-for']
@@ -18,9 +19,7 @@ async function createUserLog(payload = {}) {
 }
 
 function queueUserLog(payload = {}) {
-  setImmediate(() => {
-    createUserLog(payload)
-  })
+  enqueueBackgroundJob('user-log-write', () => createUserLog(payload), { retries: 1 })
 }
 
 function buildRequestLog(req, res, overrides = {}) {
