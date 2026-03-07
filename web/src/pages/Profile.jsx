@@ -14,6 +14,7 @@ import { getVerificationBadge } from '../utils/verification'
 import VerificationBadge from '../components/VerificationBadge'
 import { DEPARTMENTS, LEVEL_OPTIONS } from '../constants/academics'
 import ReportActionMenu from '../components/ReportActionMenu'
+import { LISTING_CATEGORIES } from '../constants/categories'
 
 const PLAN_INFO = {
   basic: { name: 'Regular Buyer', color: 'var(--nw-gray-500)', bg: 'var(--nw-gray-100)' },
@@ -25,7 +26,6 @@ const PLAN_INFO = {
   gold: { name: 'Pro Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
   premium: { name: 'Elite Seller', color: '#92400e', bg: 'var(--nw-gold-light)' },
 }
-
 function normalizeWebsiteUrl(website) {
   const raw = String(website || '').trim()
   if (!raw) return ''
@@ -282,7 +282,9 @@ export default function Profile() {
   const plan = PLAN_INFO[p?.subscription?.plan || 'basic']
   const initials = p?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
   const isSellerProfile = p?.role === 'seller'
-  const sellerCategories = [...new Set((listings || []).map((item) => item?.category).filter(Boolean))].slice(0, 4)
+  const listingCategories = [...new Set((listings || []).map((item) => item?.category).filter(Boolean))].slice(0, 4)
+  const profileSellerCategories = Array.isArray(p?.sellerCategories) ? p.sellerCategories : []
+  const sellerCategories = [...new Set([...profileSellerCategories, ...listingCategories].filter(Boolean))].slice(0, 6)
   const sellerSince = p?.createdAt
     ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short' })
     : null
@@ -334,6 +336,7 @@ export default function Profile() {
                 website: p.website || '',
                 department: p.department || '',
                 level: p.level || '',
+                sellerCategories: Array.isArray(p.sellerCategories) ? p.sellerCategories : [],
               })
               setEditAvatarFile(null)
               setEditAvatarPreview(p.avatar || '')
@@ -402,7 +405,7 @@ export default function Profile() {
                     </h1>
                     {p?.username && <p className="seller-showcase__handle">@{p.username}</p>}
                     <p className="seller-showcase__sub">
-                      {(p?.department || 'AFIT Kaduna')} {p?.level ? `· ${p.level}L` : ''} {sellerSince ? `· Selling since ${sellerSince}` : ''}
+                      {(p?.department || 'AFIT Kaduna')} {p?.level ? `· ${p.level}L` : ''} {profileSellerCategories.length ? `· ${profileSellerCategories.slice(0, 2).join(', ')}` : ''} {sellerSince ? `· Selling since ${sellerSince}` : ''}
                     </p>
                     {websiteHref && (
                       <a href={websiteHref} target="_blank" rel="noreferrer" className="seller-showcase__handle" style={{ display: 'inline-block' }}>
@@ -532,6 +535,7 @@ export default function Profile() {
                 {[
                   { label: 'Department', value: p?.department },
                   { label: 'Level', value: p?.level ? `${p.level}L` : null },
+                  ...(isSellerProfile ? [{ label: 'Seller Categories', value: profileSellerCategories.join(', ') || null }] : []),
                   ...(isOwn ? [{ label: 'Matric Number', value: p?.matricNumber }] : []),
                   { label: 'Website', value: p?.website, href: websiteHref },
                   { label: 'Member Since', value: p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long' }) : null },
@@ -688,6 +692,31 @@ export default function Profile() {
               ))}
             </select>
           </div>
+          {isSellerProfile && (
+            <div className="form-group">
+              <label className="form-label">Seller Categories</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {LISTING_CATEGORIES.map((category) => {
+                  const selected = Array.isArray(editForm.sellerCategories) && editForm.sellerCategories.includes(category)
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      className={`filter-chip ${selected ? 'active' : ''}`}
+                      onClick={() => setEditForm((prev) => {
+                        const current = Array.isArray(prev.sellerCategories) ? prev.sellerCategories : []
+                        return selected
+                          ? { ...prev, sellerCategories: current.filter((item) => item !== category) }
+                          : { ...prev, sellerCategories: [...current, category] }
+                      })}
+                    >
+                      {category}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
