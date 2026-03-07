@@ -32,9 +32,14 @@ function makeStorage(folder, allowedFormats = ['jpg', 'jpeg', 'png', 'webp', 'gi
 
 // ─── Multer upload instances ──────────────────
 const uploadListingImages = multer({
-  storage: makeStorage('listings'),
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
-}).array('images', 5)
+  storage: makeStorage('listings', ['jpg', 'jpeg', 'png', 'webp', 'gif'], {
+    quality: 'auto:good',
+    fetch_format: 'webp',
+    width: 1200,
+    crop: 'limit',
+  }),
+  limits: { fileSize: 4 * 1024 * 1024, files: 4 },
+}).array('images', 4)
 
 const uploadAvatar = multer({
   storage: makeStorage('avatars', ['jpg', 'jpeg', 'png', 'webp'], [
