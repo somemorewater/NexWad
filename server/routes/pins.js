@@ -8,6 +8,7 @@ const Listing = require('../models/Listing')
 const Post = require('../models/Post')
 const LostFound = require('../models/LostFound')
 const { protect } = require('../middleware/auth')
+const { responseCacheInvalidate } = require('../utils/redis')
 const {
   PIN_PRICE_PER_DAY,
   canUserPin,
@@ -17,6 +18,20 @@ const {
 const logger = require('../utils/logger')
 
 const router = express.Router()
+
+async function invalidateTargetCaches(targetType) {
+  if (targetType === 'listing') {
+    await responseCacheInvalidate(['listings:list'])
+    return
+  }
+  if (targetType === 'post') {
+    await responseCacheInvalidate(['posts:public-feed'])
+    return
+  }
+  if (targetType === 'lostfound') {
+    await responseCacheInvalidate(['lostfound:list'])
+  }
+}
 
 async function attachTargetPreview(pins = []) {
   if (!pins.length) return pins
@@ -28,7 +43,7 @@ async function attachTargetPreview(pins = []) {
   const [listings, posts, lostFoundItems] = await Promise.all([
     listingsIds.length ? Listing.find({ _id: { $in: listingsIds } }).select('title price images').lean() : [],
     postIds.length ? Post.find({ _id: { $in: postIds } }).select('content image').lean() : [],
-    lostFoundIds.length ? LostFound.find({ _id: { $in: lostFoundIds } }).select('title type image').lean() : [],
+    lostFoundIds.length ? LostFound.find({ _id: { $in: lostFoundIds } }).select('title type category').lean() : [],
   ])
 
   const listingMap = new Map(listings.map((item) => [String(item._id), item]))
@@ -54,7 +69,7 @@ async function attachTargetPreview(pins = []) {
     const target = lostFoundMap.get(key)
     return {
       ...pin,
-      targetPreview: target ? { title: target.title, type: target.type, image: target.image || null } : null,
+      targetPreview: target ? { title: target.title, type: target.type, category: target.category || 'Other' } : null,
     }
   })
 }
@@ -329,6 +344,7 @@ router.post('/initialize', protect, async (req, res, next) => {
       targetId,
       durationHours,
     })
+    await invalidateTargetCaches(targetType)
 
     const freshUser = await User.findById(req.user._id).select('pinCredits')
     res.status(201).json({ pin, credits: { balance: freshUser?.pinCredits || 0 } })
@@ -360,6 +376,7 @@ router.post('/:id/extend', protect, async (req, res, next) => {
     basePin.expiresAt = new Date(startMs + durationHours * 60 * 60 * 1000)
     basePin.durationHours = Number(basePin.durationHours || 0) + durationHours
     await basePin.save()
+    await invalidateTargetCaches(basePin.targetType)
 
     const freshUser = await User.findById(req.user._id).select('pinCredits')
     res.json({ pin: basePin, credits: { balance: freshUser?.pinCredits || 0 } })
@@ -379,6 +396,7 @@ router.delete('/:id', protect, async (req, res, next) => {
     pin.cancelledAt = new Date()
     pin.cancelReason = 'user_unpinned'
     await pin.save()
+    await invalidateTargetCaches(pin.targetType)
 
     res.json({ message: 'Unpinned successfully' })
   } catch (err) { next(err) }
