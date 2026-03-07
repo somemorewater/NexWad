@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 
 export default function ReportActionMenu({
   onReport,
+  actions = [],
   entityLabel = 'content',
   buttonClassName = 'post-card__menu-btn',
   buttonAriaLabel,
@@ -29,10 +30,20 @@ export default function ReportActionMenu({
     setOpen((prev) => !prev)
   }
 
-  const handleMenuAction = (event, action) => {
+  const handleMenuAction = async (event, action) => {
     if (stopPropagation) event.stopPropagation()
     setOpen(false)
-    if (action === 'report') setShowModal(true)
+    if (action === 'report') {
+      setShowModal(true)
+      return
+    }
+    if (action?.onClick) {
+      try {
+        await action.onClick(event)
+      } catch (err) {
+        if (err?.message) toast.error(err.message)
+      }
+    }
   }
 
   const closeModal = () => {
@@ -79,9 +90,23 @@ export default function ReportActionMenu({
 
       {open && (
         <div className={dropdownClassName} role="menu">
-          <button type="button" className="nw-menu__item nw-menu__item--danger" onClick={(e) => handleMenuAction(e, 'report')} role="menuitem">
-            Report
-          </button>
+          {actions.map((action) => (
+            <button
+              key={action.key || action.label}
+              type="button"
+              className={`nw-menu__item ${action.danger ? 'nw-menu__item--danger' : ''}`}
+              onClick={(e) => handleMenuAction(e, action)}
+              role="menuitem"
+              disabled={Boolean(action.disabled)}
+            >
+              {action.label}
+            </button>
+          ))}
+          {onReport && (
+            <button type="button" className="nw-menu__item nw-menu__item--danger" onClick={(e) => handleMenuAction(e, 'report')} role="menuitem">
+              Report
+            </button>
+          )}
         </div>
       )}
 
