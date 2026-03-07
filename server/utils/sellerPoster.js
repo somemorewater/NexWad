@@ -11,15 +11,15 @@ const { uploadImageBuffer } = require('./cloudinary')
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DIMENSIONS = { width: 1080, height: 1350 }
+const DIMENSIONS = { width: 600, height: 381 }
 const MAX_FEATURED = 3
 const REGEN_COOLDOWN_MS = 60_000
 const ASSET_TIMEOUT_MS = 8_000
 
-const CARD  = { width: 284, height: 290, gap: 20, top: 886, imageHeight: 178 }
-const CARD_START_X = 90
-const AVATAR = { size: 156, x: 97, y: 150 }   // center = 175, 228
-const QR     = { size: 136, x: 872, y: 1162 }
+// Phone illustration avatar composite area (left panel, inside the phone screen)
+// These coordinates map to the phone screen area in the 600×381 SVG
+const AVATAR  = { size: 72, x: 68,  y: 108 }   // avatar circle inside phone screen
+const QR      = { size: 72, x: 492, y: 290 }    // QR in bottom-right corner
 
 // ─── Tier Styles ──────────────────────────────────────────────────────────────
 
@@ -28,7 +28,6 @@ const TIER_STYLES = {
     label: 'Basic',
     bgBase: '#060C1A', bgPanel: '#0A1020',
     headerFrom: '#0D1829', headerTo: '#0F2545',
-    // Mesh blob colors (radial gradients painted full-canvas, then blurred)
     blob1: '#1D4ED8', blob2: '#1E40AF', blob3: '#0EA5E9',
     accent: '#3B82F6', accentAlt: '#60A5FA',
     accentGlowRgba: 'rgba(59,130,246,0.45)',
@@ -37,27 +36,15 @@ const TIER_STYLES = {
     chipBg: 'rgba(59,130,246,0.10)', chipBorder: 'rgba(59,130,246,0.35)',
     chipText: '#60A5FA',
     cardBase: '#111C30',
-    cardGradTop: '#1E3A5F', cardGradMid: '#111827', cardGradBot: '#0A1020',
-    cardBorder: 'rgba(59,130,246,0.22)',
-    imgBase: '#0D1829',
-    imgShineSide: 'rgba(59,130,246,0.15)',
     priceFrom: '#1D4ED8', priceTo: '#0EA5E9',
-    statBase1: '#1E293B', statBase2: '#0F172A',
-    statBorder: 'rgba(59,130,246,0.12)', statBar: null, // null = use priceFrom/priceTo
     textPrimary: '#EFF6FF', textSecondary: '#94A3B8', textMuted: '#475569',
     priceMuted: '#64748B',
-    divider: 'rgba(59,130,246,0.15)', divider2: 'rgba(59,130,246,0.10)',
-    beamColor: '#3B82F6', beamAlt: '#60A5FA',
-    gridColor: '#3B82F6',
-    footBase: '#0A1020', footEnd: '#060C1A',
-    footText: '#334155', footDivider: 'rgba(59,130,246,0.12)',
-    outerBorder: 'rgba(59,130,246,0.14)',
+    divider: 'rgba(59,130,246,0.15)',
+    footText: '#334155',
     sectionLabel: '#3B82F6',
     nexwadColor: '#3B82F6',
     avatarShine: 'rgba(255,255,255,0.18)',
-    imgTopShine: 'rgba(255,255,255,0.14)',
-    cardTopShine: 'rgba(255,255,255,0.09)',
-    cardTopShineEnd: 'rgba(255,210,80,0)', // not golden for basic
+    outerBorder: 'rgba(59,130,246,0.14)',
   },
   pro: {
     label: 'Pro',
@@ -71,27 +58,15 @@ const TIER_STYLES = {
     chipBg: 'rgba(139,92,246,0.10)', chipBorder: 'rgba(139,92,246,0.35)',
     chipText: '#A78BFA',
     cardBase: '#160D36',
-    cardGradTop: '#2D1B69', cardGradMid: '#1A1040', cardGradBot: '#080418',
-    cardBorder: 'rgba(139,92,246,0.22)',
-    imgBase: '#110A2E',
-    imgShineSide: 'rgba(139,92,246,0.18)',
     priceFrom: '#6D28D9', priceTo: '#A78BFA',
-    statBase1: '#1E1B2E', statBase2: '#110A2E',
-    statBorder: 'rgba(139,92,246,0.12)',
     textPrimary: '#F5F3FF', textSecondary: '#7C6FA8', textMuted: '#4C4068',
     priceMuted: '#4C4068',
-    divider: 'rgba(139,92,246,0.15)', divider2: 'rgba(139,92,246,0.10)',
-    beamColor: '#8B5CF6', beamAlt: '#C4B5FD',
-    gridColor: '#8B5CF6',
-    footBase: '#0D0A22', footEnd: '#08041A',
-    footText: '#2D2540', footDivider: 'rgba(139,92,246,0.12)',
-    outerBorder: 'rgba(139,92,246,0.14)',
+    divider: 'rgba(139,92,246,0.15)',
+    footText: '#2D2540',
     sectionLabel: '#8B5CF6',
     nexwadColor: '#8B5CF6',
     avatarShine: 'rgba(255,255,255,0.18)',
-    imgTopShine: 'rgba(255,255,255,0.14)',
-    cardTopShine: 'rgba(255,255,255,0.09)',
-    cardTopShineEnd: 'rgba(255,255,255,0)',
+    outerBorder: 'rgba(139,92,246,0.14)',
   },
   elite: {
     label: 'Elite',
@@ -105,27 +80,15 @@ const TIER_STYLES = {
     chipBg: 'rgba(245,158,11,0.08)', chipBorder: 'rgba(245,158,11,0.35)',
     chipText: '#FBBF24',
     cardBase: '#181400',
-    cardGradTop: '#3D2E00', cardGradMid: '#1C1800', cardGradBot: '#080600',
-    cardBorder: 'rgba(245,158,11,0.25)',
-    imgBase: '#161100',
-    imgShineSide: 'rgba(245,158,11,0.18)',
     priceFrom: '#B45309', priceTo: '#FBBF24',
-    statBase1: '#1C1800', statBase2: '#0F0B00',
-    statBorder: 'rgba(245,158,11,0.10)',
     textPrimary: '#FFFBEB', textSecondary: '#92834A', textMuted: '#4A3A00',
     priceMuted: '#4A3A00',
-    divider: 'rgba(245,158,11,0.15)', divider2: 'rgba(245,158,11,0.10)',
-    beamColor: '#F59E0B', beamAlt: '#FBBF24',
-    gridColor: '#F59E0B',
-    footBase: '#0F0D00', footEnd: '#0A0800',
-    footText: '#2A2000', footDivider: 'rgba(245,158,11,0.12)',
-    outerBorder: 'rgba(245,158,11,0.14)',
+    divider: 'rgba(245,158,11,0.15)',
+    footText: '#2A2000',
     sectionLabel: '#F59E0B',
     nexwadColor: '#F59E0B',
     avatarShine: 'rgba(255,210,80,0.25)',
-    imgTopShine: 'rgba(255,210,80,0.22)',
-    cardTopShine: 'rgba(255,210,80,0.11)',
-    cardTopShineEnd: 'rgba(255,210,80,0)',
+    outerBorder: 'rgba(245,158,11,0.14)',
   },
 }
 
@@ -256,401 +219,327 @@ function buildSignature(user, featured) {
   return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
-
-function cardX(index) {
-  return CARD_START_X + index * (CARD.width + CARD.gap)
-}
-
 // ─── SVG Defs ─────────────────────────────────────────────────────────────────
 
 function buildDefs(s, p) {
-  // p = unique prefix per render to avoid ID collisions if SVGs are ever inlined together
   return `<defs>
-  <!-- Background gradients -->
-  <linearGradient id="${p}Bg" x1="0" y1="0" x2="0.4" y2="1">
-    <stop offset="0%" stop-color="${s.bgBase}"/>
-    <stop offset="100%" stop-color="${s.bgPanel}"/>
+  <linearGradient id="${p}Price" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%"   stop-color="${s.priceFrom}"/>
+    <stop offset="100%" stop-color="${s.priceTo}"/>
   </linearGradient>
-  <linearGradient id="${p}Header" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="${s.headerFrom}"/>
-    <stop offset="100%" stop-color="${s.headerTo}"/>
-  </linearGradient>
-
-  <!-- Card gradient overlay: top accent → midpoint fade → dark base -->
-  <linearGradient id="${p}Card" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="${s.cardGradTop}" stop-opacity="0.45"/>
-    <stop offset="55%"  stop-color="${s.cardGradMid}" stop-opacity="0.15"/>
-    <stop offset="100%" stop-color="${s.cardGradBot}" stop-opacity="0.55"/>
-  </linearGradient>
-  <!-- Card face shine: bright top → transparent -->
-  <linearGradient id="${p}CardShine" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="${s.cardTopShine}"/>
-    <stop offset="40%"  stop-color="rgba(255,255,255,0.02)"/>
-    <stop offset="100%" stop-color="${s.cardTopShineEnd}"/>
-  </linearGradient>
-
-  <!-- Image shine: diagonal top-left highlight -->
-  <linearGradient id="${p}ImgShine" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
-    <stop offset="35%"  stop-color="rgba(255,255,255,0.03)"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-  </linearGradient>
-  <!-- Image side accent light leak -->
-  <linearGradient id="${p}ImgSide" x1="1" y1="0" x2="0" y2="0">
-    <stop offset="0%"   stop-color="${s.imgShineSide}"/>
-    <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-  </linearGradient>
-
-  <!-- Accent fade line for underlines -->
   <linearGradient id="${p}AccLine" x1="0" y1="0" x2="1" y2="0">
     <stop offset="0%"   stop-color="${s.accent}"/>
     <stop offset="55%"  stop-color="${s.accentAlt}"/>
     <stop offset="100%" stop-color="transparent"/>
   </linearGradient>
-
-  <!-- Price pill gradient -->
-  <linearGradient id="${p}Price" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0%"   stop-color="${s.priceFrom}"/>
-    <stop offset="100%" stop-color="${s.priceTo}"/>
-  </linearGradient>
-
-  <!-- Stat card gradient -->
-  <linearGradient id="${p}Stat" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="${s.statBase1}" stop-opacity="0.95"/>
-    <stop offset="100%" stop-color="${s.statBase2}" stop-opacity="0.90"/>
-  </linearGradient>
-
-  <!-- Footer gradient -->
-  <linearGradient id="${p}Foot" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%"   stop-color="${s.footBase}"/>
-    <stop offset="100%" stop-color="${s.footEnd}"/>
-  </linearGradient>
-
-  <!-- Mesh blobs: full-canvas radial, then blurred via filter -->
-  <radialGradient id="${p}Blob1" cx="82%" cy="8%"  r="50%">
-    <stop offset="0%"   stop-color="${s.blob1}" stop-opacity="0.38"/>
-    <stop offset="100%" stop-color="${s.blob1}" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="${p}Blob2" cx="8%"  cy="88%" r="45%">
-    <stop offset="0%"   stop-color="${s.blob2}" stop-opacity="0.28"/>
-    <stop offset="100%" stop-color="${s.blob2}" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="${p}Blob3" cx="50%" cy="50%" r="38%">
-    <stop offset="0%"   stop-color="${s.blob3}" stop-opacity="0.07"/>
-    <stop offset="100%" stop-color="${s.blob3}" stop-opacity="0"/>
-  </radialGradient>
-
-  <!-- Avatar glow -->
   <radialGradient id="${p}AvGlow" cx="50%" cy="50%" r="50%">
     <stop offset="0%"   stop-color="${s.accent}" stop-opacity="0.45"/>
     <stop offset="100%" stop-color="${s.accent}" stop-opacity="0"/>
   </radialGradient>
-
-  <!-- Filters -->
-  <filter id="${p}BlurHeavy" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="90"/>
-  </filter>
-  <filter id="${p}BlurMed" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="60"/>
-  </filter>
   <filter id="${p}AvatarShadow" x="-40%" y="-40%" width="180%" height="180%">
-    <feDropShadow dx="0" dy="8"  stdDeviation="20" flood-color="${s.accent}" flood-opacity="0.45"/>
-    <feDropShadow dx="0" dy="20" stdDeviation="40" flood-color="#000"        flood-opacity="0.70"/>
+    <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="${s.accent}" flood-opacity="0.4"/>
+    <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000" flood-opacity="0.6"/>
   </filter>
-  <filter id="${p}ImgShadow" x="-20%" y="-20%" width="140%" height="160%">
-    <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="${s.priceFrom}" flood-opacity="0.30"/>
-    <feDropShadow dx="0" dy="4"  stdDeviation="6"  flood-color="#000"           flood-opacity="0.50"/>
+  <filter id="${p}TextShadow" x="-10%" y="-10%" width="120%" height="140%">
+    <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.5"/>
   </filter>
-  <filter id="${p}CardShadow" x="-15%" y="-10%" width="130%" height="140%">
-    <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000"      flood-opacity="0.70"/>
-    <feDropShadow dx="0" dy="4"  stdDeviation="8"  flood-color="${s.accent}" flood-opacity="0.12"/>
-  </filter>
-
-  <!-- Clip paths -->
   <clipPath id="${p}AvClip">
     <circle cx="${AVATAR.x + AVATAR.size / 2}" cy="${AVATAR.y + AVATAR.size / 2}" r="${AVATAR.size / 2}"/>
   </clipPath>
-  ${[0, 1, 2].map(i => {
-    const cx = cardX(i)
-    return `<clipPath id="${p}C${i}">
-    <rect x="${cx + 14}" y="${CARD.top + 18}" width="254" height="${CARD.imageHeight}" rx="14"/>
-  </clipPath>`
-  }).join('\n  ')}
   <clipPath id="${p}QrClip">
-    <rect x="${QR.x}" y="${QR.y}" width="${QR.size}" height="${QR.size}" rx="16"/>
+    <rect x="${QR.x}" y="${QR.y}" width="${QR.size}" height="${QR.size}" rx="8"/>
+  </clipPath>
+  <!-- Phone screen clip: the inner screen area of the phone illustration -->
+  <clipPath id="${p}PhoneScreen">
+    <rect x="44" y="28" width="222" height="325" rx="14"/>
   </clipPath>
 </defs>`
 }
 
-// ─── Background Layer ─────────────────────────────────────────────────────────
-
-function buildBackground(s, p) {
-  const { width: W, height: H } = DIMENSIONS
-  return `
-<!-- ░░ Base + mesh blobs ░░ -->
-<rect width="${W}" height="${H}" fill="url(#${p}Bg)"/>
-<rect width="${W}" height="${H}" fill="url(#${p}Blob1)" filter="url(#${p}BlurHeavy)"/>
-<rect width="${W}" height="${H}" fill="url(#${p}Blob2)" filter="url(#${p}BlurHeavy)"/>
-<rect width="${W}" height="${H}" fill="url(#${p}Blob3)" filter="url(#${p}BlurMed)"/>
-
-<!-- Diagonal beams -->
-<line x1="860" y1="0" x2="1180" y2="440" stroke="${s.beamColor}" stroke-width="1.5" opacity="0.09"/>
-<line x1="910" y1="0" x2="1230" y2="440" stroke="${s.beamAlt}"   stroke-width="0.8" opacity="0.06"/>
-<line x1="960" y1="0" x2="1280" y2="440" stroke="${s.beamColor}" stroke-width="0.5" opacity="0.04"/>
-
-<!-- Sparse structural grid -->
-<g opacity="0.035" stroke="${s.gridColor}" stroke-width="1">
-  <line x1="90"  y1="0"    x2="90"   y2="${H}"/>
-  <line x1="270" y1="0"    x2="270"  y2="${H}"/>
-  <line x1="0"   y1="420"  x2="${W}" y2="420"/>
-  <line x1="0"   y1="840"  x2="${W}" y2="840"/>
-</g>
-
-<!-- Header zone -->
-<rect x="0" y="0" width="${W}" height="690" fill="url(#${p}Header)"/>`
-}
-
-// ─── Avatar Section ───────────────────────────────────────────────────────────
-
-function buildAvatar(s, p, user) {
-  const cx = AVATAR.x + AVATAR.size / 2   // 175
-  const cy = AVATAR.y + AVATAR.size / 2   // 228
-  const r  = AVATAR.size / 2              // 78
-  return `
-<!-- Avatar glow halo -->
-<circle cx="${cx}" cy="${cy}" r="130" fill="url(#${p}AvGlow)" filter="url(#${p}BlurMed)"/>
-<!-- Layered shadow rings -->
-<circle cx="${cx}" cy="${cy}" r="${r + 8}" fill="rgba(0,0,0,0.5)" filter="url(#${p}AvatarShadow)"/>
-<!-- Color ring -->
-<circle cx="${cx}" cy="${cy}" r="${r + 6}" fill="${s.accent}" opacity="0.18"/>
-<!-- White separation ring -->
-<circle cx="${cx}" cy="${cy}" r="${r + 3}" fill="none" stroke="${s.accent}" stroke-width="2" opacity="0.8"/>
-<!-- Avatar fill (replaced by sharp composite at runtime) -->
-<circle cx="${cx}" cy="${cy}" r="${r}" fill="${s.imgBase}" clip-path="url(#${p}AvClip)"/>
-<!-- Specular arc — simulates top-lighting on a sphere -->
-<path d="M ${cx - 58} ${cy - 60} A 62 62 0 0 1 ${cx + 58} ${cy - 60}"
-  fill="none" stroke="${s.avatarShine}" stroke-width="3" stroke-linecap="round"/>`
-}
-
-// ─── Header Text ──────────────────────────────────────────────────────────────
-
-function buildHeaderText(s, p, user) {
-  const name     = escapeXml(clamp(user.name || 'NexWAD Seller', 40))
-  const handle   = escapeXml(clamp(user.username ? `@${user.username}` : '@seller', 30))
-  const bioLines = wrapText(clamp(user.bio || 'Trusted campus seller on NexWAD.', 200), 52, 3)
-  const tierLabel = s.label.toUpperCase()
-
-  return `
-<!-- Tier badge -->
-<rect x="90" y="88" width="${tierLabel.length * 11 + 56}" height="36" rx="18"
-  fill="${s.badgeBg}" stroke="${s.badgeBorder}" stroke-width="1.2"/>
-<circle cx="110" cy="106" r="5" fill="${s.accent}"/>
-<text x="124" y="112"
-  font-family="Syne,'Helvetica Neue',sans-serif"
-  font-size="12" font-weight="800" letter-spacing="2.5" fill="${s.badgeText}">${tierLabel} SELLER</text>
-
-<!-- Name — DM Serif Display for personality -->
-<text x="272" y="204"
-  font-family="'DM Serif Display','Georgia',serif"
-  font-size="54" fill="${s.textPrimary}">${name}</text>
-
-<!-- Handle — Syne medium weight -->
-<text x="274" y="248"
-  font-family="Syne,'Helvetica Neue',sans-serif"
-  font-size="22" font-weight="600" fill="${s.accent}" letter-spacing="0.5">${handle}</text>
-
-<!-- Accent underline -->
-<rect x="274" y="258" width="190" height="2.5" rx="1.5" fill="url(#${p}AccLine)"/>
-
-<!-- Bio — lighter weight, muted -->
-${svgMultiline({
-  x: 274, y: 296, lineHeight: 30, lines: bioLines,
-  attrs: `font-family="Syne,'Helvetica Neue',sans-serif" font-size="18" font-weight="400" fill="${s.textSecondary}"`
-})}
-
-<!-- Separator -->
-<rect x="90" y="400" width="900" height="1" fill="${s.divider}"/>
-
-<!-- Trust chips -->
-<rect x="90"  y="420" width="194" height="36" rx="18" fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="1"/>
-<circle cx="113" cy="438" r="6" fill="${s.accent}" opacity="0.9"/>
-<text x="128" y="444" font-family="Syne,sans-serif" font-size="13" font-weight="700" fill="${s.chipText}">✓ Verified Seller</text>
-
-<rect x="300" y="420" width="168" height="36" rx="18" fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="1"/>
-<text x="320" y="444" font-family="Syne,sans-serif" font-size="15" fill="#FBBF24">★★★★★</text>
-
-<rect x="484" y="420" width="204" height="36" rx="18" fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="1"/>
-<text x="505" y="444" font-family="Syne,sans-serif" font-size="13" font-weight="700" fill="${s.badgeText}">⚡ NexWAD Certified</text>
-
-<!-- Separator -->
-<rect x="90" y="478" width="900" height="1" fill="${s.divider2}"/>
-
-<!-- Section label + heading -->
-<text x="90" y="524"
-  font-family="Syne,sans-serif" font-size="11" font-weight="700" letter-spacing="4"
-  fill="${s.sectionLabel}" opacity="0.7">FEATURED PRODUCTS</text>
-<text x="90" y="564"
-  font-family="'DM Serif Display','Georgia',serif"
-  font-size="36" fill="${s.textPrimary}">Top Picks For You</text>
-<rect x="90" y="574" width="270" height="3" rx="1.5" fill="url(#${p}AccLine)"/>`
-}
-
-// ─── Stats Bar ────────────────────────────────────────────────────────────────
-
-function buildStatsBar(s, p, user) {
-  const tier   = s.label
-  const rating = user.rating ? Number(user.rating).toFixed(1) : '5.0'
-  const stats  = [
-    { value: rating,    label: 'RATING',      w: 200, x: 90  },
-    { value: 'Verified', label: 'SELLER',     w: 200, x: 306 },
-    { value: tier,       label: 'TIER',       w: 200, x: 522 },
-    { value: 'NexWAD',   label: 'MARKETPLACE',w: 252, x: 738 },
-  ]
-  return stats.map(st => `
-<rect x="${st.x}" y="596" width="${st.w}" height="82" rx="14"
-  fill="url(#${p}Stat)" stroke="${s.statBorder}" stroke-width="1"/>
-<!-- Left accent bar on stat card -->
-<rect x="${st.x}" y="596" width="3" height="82" rx="1.5" fill="url(#${p}Price)"/>
-<text x="${st.x + 22}" y="631"
-  font-family="'DM Serif Display','Georgia',serif"
-  font-size="26" fill="${s.accentAlt}">${escapeXml(st.value)}</text>
-<text x="${st.x + 22}" y="659"
-  font-family="Syne,sans-serif" font-size="11" font-weight="600" letter-spacing="1.5"
-  fill="${s.priceMuted}">${st.label}</text>`).join('\n')
-}
-
-// ─── Product Cards ────────────────────────────────────────────────────────────
-
-function buildProductCards(products, s, p) {
-  if (!products.length) {
-    return `
-<rect x="90" y="${CARD.top}" width="900" height="${CARD.height}" rx="20"
-  fill="${s.cardBase}" stroke="${s.cardBorder}" stroke-width="1.5"/>
-<text x="540" y="${CARD.top + CARD.height / 2 - 12}"
-  font-family="'DM Serif Display',serif" font-size="24" fill="${s.textSecondary}" text-anchor="middle">No featured products yet</text>
-<text x="540" y="${CARD.top + CARD.height / 2 + 20}"
-  font-family="Syne,sans-serif" font-size="15" fill="${s.textMuted}" text-anchor="middle">Add listings to showcase them here</text>`
-  }
-
-  // Card tilts: alternate left/right/left for a fanned look
-  const tilts = [-1.8, 1.2, -0.8]
-
-  return products.map((product, i) => {
-    const x      = cardX(i)
-    const cx     = x + CARD.width / 2
-    const cy     = CARD.top + CARD.height / 2
-    const tilt   = tilts[i] ?? 0
-    const titleLines = wrapText(clamp(product.title, 50), 21, 2)
-    const price  = `₦${Number(product.price ?? 0).toLocaleString()}`
-    const priceW = Math.min(price.length * 10 + 32, 200)
-
-    return `
-<!-- Card ${i} — rotate(${tilt}deg) around card center -->
-<g transform="rotate(${tilt}, ${cx}, ${cy})" filter="url(#${p}CardShadow)">
-  <!-- Card base color -->
-  <rect x="${x}"   y="${CARD.top}" width="${CARD.width}" height="${CARD.height}" rx="20" fill="${s.cardBase}"/>
-  <!-- Card gradient overlay (top tinted → mid fade → dark base) -->
-  <rect x="${x}"   y="${CARD.top}" width="${CARD.width}" height="${CARD.height}" rx="20" fill="url(#${p}Card)"/>
-  <!-- Card top-face shine -->
-  <rect x="${x}"   y="${CARD.top}" width="${CARD.width}" height="${CARD.height}" rx="20" fill="url(#${p}CardShine)"/>
-  <!-- Card border -->
-  <rect x="${x}"   y="${CARD.top}" width="${CARD.width}" height="${CARD.height}" rx="20"
-    fill="none" stroke="${s.cardBorder}" stroke-width="1.5"/>
-
-  <!-- Image: layered shadow + fill + shine effects -->
-  <!-- Shadow behind image -->
-  <rect x="${x + 14}" y="${CARD.top + 18}" width="254" height="${CARD.imageHeight}" rx="14"
-    fill="rgba(0,0,0,0.55)" filter="url(#${p}ImgShadow)"/>
-  <!-- Image fill (replaced by sharp composite at runtime) -->
-  <rect x="${x + 14}" y="${CARD.top + 18}" width="254" height="${CARD.imageHeight}" rx="14"
-    fill="${s.imgBase}" clip-path="url(#${p}C${i})"/>
-  <!-- Placeholder diagonal lines -->
-  <line x1="${x + 14}" y1="${CARD.top + 18}" x2="${x + 268}" y2="${CARD.top + 18 + CARD.imageHeight}"
-    stroke="${s.accent}" stroke-width="0.6" opacity="0.12" clip-path="url(#${p}C${i})"/>
-  <line x1="${x + 268}" y1="${CARD.top + 18}" x2="${x + 14}" y2="${CARD.top + 18 + CARD.imageHeight}"
-    stroke="${s.accent}" stroke-width="0.6" opacity="0.12" clip-path="url(#${p}C${i})"/>
-  <!-- Diagonal shine overlay (simulates top-left studio light) -->
-  <rect x="${x + 14}" y="${CARD.top + 18}" width="254" height="${CARD.imageHeight}" rx="14"
-    fill="url(#${p}ImgShine)" clip-path="url(#${p}C${i})"/>
-  <!-- Right-edge accent light leak -->
-  <rect x="${x + 14}" y="${CARD.top + 18}" width="254" height="${CARD.imageHeight}" rx="14"
-    fill="url(#${p}ImgSide)" clip-path="url(#${p}C${i})"/>
-  <!-- Highlight stroke along top of image (simulates specular edge) -->
-  <line x1="${x + 28}" y1="${CARD.top + 19}" x2="${x + 254}" y2="${CARD.top + 19}"
-    stroke="${s.imgTopShine}" stroke-width="1.5" stroke-linecap="round"/>
-
-  <!-- Product title — Syne bold -->
-  ${svgMultiline({
-    x: x + 14, y: CARD.top + CARD.imageHeight + 36,
-    lineHeight: 26,
-    lines: titleLines,
-    attrs: `font-family="Syne,'Helvetica Neue',sans-serif" font-size="17" font-weight="700" fill="${s.textPrimary}"`
-  })}
-
-  <!-- Price — DM Serif Display for accent contrast with Syne labels -->
-  <rect x="${x + 14}" y="${CARD.top + CARD.imageHeight + 72}" width="${priceW}" height="28" rx="14"
-    fill="url(#${p}Price)"/>
-  <text x="${x + 28}" y="${CARD.top + CARD.imageHeight + 92}"
-    font-family="'DM Serif Display','Georgia',serif"
-    font-size="16" fill="#fff">${escapeXml(price)}</text>
-</g>`
-  }).join('\n')
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
-function buildFooter(s, p, user) {
-  const url = escapeXml(profileUrl(user))
-  return `
-<!-- Footer background -->
-<rect x="48" y="1210" width="984" height="100" fill="url(#${p}Foot)"/>
-<rect x="48" y="1292" width="984" height="22" rx="18" fill="url(#${p}Foot)"/>
-
-<!-- NexWAD wordmark — DM Serif for brand consistency -->
-<text x="90" y="1258"
-  font-family="'DM Serif Display','Georgia',serif"
-  font-size="34" fill="${s.nexwadColor}">NexWAD</text>
-<text x="90" y="1282"
-  font-family="Syne,sans-serif"
-  font-size="11" font-weight="700" letter-spacing="3" fill="${s.footText}">CAMPUS MARKETPLACE</text>
-
-<!-- Vertical divider -->
-<line x1="254" y1="1228" x2="254" y2="1290" stroke="${s.footDivider}" stroke-width="1.5"/>
-
-<!-- Profile URL -->
-<text x="274" y="1256"
-  font-family="Syne,sans-serif" font-size="14" fill="${s.footText}">${url}</text>
-
-<!-- QR placeholder (replaced by sharp composite at runtime) -->
-<rect x="${QR.x}" y="${QR.y}" width="${QR.size}" height="${QR.size}" rx="16"
-  fill="white" stroke="${s.cardBorder}" stroke-width="1.5"/>
-<text x="${QR.x + QR.size / 2}" y="${QR.y + QR.size / 2 + 5}"
-  font-family="Syne,sans-serif" font-size="11" fill="#94A3B8" text-anchor="middle">QR CODE</text>
-<text x="${QR.x + QR.size / 2}" y="${QR.y + QR.size + 22}"
-  font-family="Syne,sans-serif" font-size="11" letter-spacing="1"
-  fill="${s.footText}" text-anchor="middle">SCAN TO VISIT</text>
-
-<!-- Outer poster border -->
-<rect x="48" y="64" width="984" height="1248" rx="36"
-  fill="none" stroke="${s.outerBorder}" stroke-width="1.5"/>`
-}
-
 // ─── Master SVG Builder ───────────────────────────────────────────────────────
+// Uses the provided 600×381 phone illustration as the base, then overlays
+// dynamic seller content on top.
 
 function buildSvg({ user, styleKey, featured }) {
   const s = TIER_STYLES[styleKey]
   const p = styleKey[0]  // 'b', 'p', or 'e' — short ID prefix
-  const { width: W, height: H } = DIMENSIONS
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  const name       = escapeXml(clamp(user.name || 'NexWAD Seller', 26))
+  const handle     = escapeXml(clamp(user.username ? `@${user.username}` : '@seller', 22))
+  const bioLines   = wrapText(clamp(user.bio || 'Trusted campus seller on NexWAD.', 160), 34, 3)
+  const tierLabel  = s.label.toUpperCase()
+  const rating     = user.rating ? Number(user.rating).toFixed(1) : '5.0'
+  const url        = escapeXml(profileUrl(user))
+
+  // Featured product listing (up to 3, right panel)
+  const featuredItems = featured.slice(0, 3)
+
+  // Category derived from first featured product title or fallback
+  const category = escapeXml(clamp(
+    user.category || (featuredItems[0]?.category) || 'Campus Marketplace',
+    30
+  ))
+
+  return `<svg xmlns="http://www.w3.org/2000/svg"
+  width="${DIMENSIONS.width}" height="${DIMENSIONS.height}"
+  viewBox="0 0 ${DIMENSIONS.width} ${DIMENSIONS.height}">
+
 ${buildDefs(s, p)}
-${buildBackground(s, p)}
-${buildAvatar(s, p, user)}
-${buildHeaderText(s, p, user)}
-${buildStatsBar(s, p, user)}
-${buildProductCards(featured, s, p)}
-${buildFooter(s, p, user)}
+
+<!-- ░░░░ BASE: Original phone illustration SVG (600×381) ░░░░ -->
+<g transform="scale(1)">
+<!-- Background fill behind the illustration -->
+<rect width="600" height="381" fill="#0a0a0a"/>
+
+<!-- ── Original illustration paths (verbatim, scaled from 6000×3810 → 600×381) ── -->
+<g transform="translate(0,381) scale(0.1,-0.1)" fill="#1a1a2e" stroke="none">
+<path d="M1740 3406 c0 -2 7 -7 16 -10 8 -3 12 -2 9 4 -6 10 -25 14 -25 6z"/>
+<path d="M1150 3351 c-101 -22 -177 -78 -217 -159 -27 -55 -28 -64 -31 -221
+-1 -91 -4 -167 -7 -169 -10 -11 -5 -371 5 -377 6 -4 8 -15 5 -25 -4 -13 0 -17
+17 -16 13 0 26 6 30 11 9 12 11 396 2 419 -3 8 -12 12 -20 9 -12 -5 -14 18
+-13 147 2 138 15 230 32 214 3 -3 3 -13 0 -22 -4 -14 -3 -15 5 -2 7 9 7 18 1
+26 -12 15 65 99 82 88 7 -4 9 -3 6 3 -4 6 16 21 46 34 52 24 55 24 412 24 361
+0 579 -10 570 -25 -3 -5 0 -12 6 -16 8 -4 9 -3 5 4 -11 18 13 14 50 -9 52 -32
+102 -103 128 -181 3 -10 1 -18 -4 -18 -6 0 -10 6 -10 14 0 22 -80 105 -122
+127 -60 31 -189 41 -543 42 -344 2 -386 -3 -440 -49 -20 -17 -29 -35 -31 -66
+-3 -30 -1 -39 6 -28 5 8 10 11 10 5 0 -5 -4 -16 -9 -23 -12 -19 -24 14 -15 42
+6 18 5 19 -9 8 -22 -18 -39 -108 -36 -184 2 -35 0 -68 -4 -75 -4 -7 5 -26 23
+-46 27 -32 28 -36 14 -48 -15 -12 -16 -11 -10 7 4 15 2 24 -9 28 -17 6 -18 -4
+-5 -79 5 -29 4 -82 -1 -125 -6 -46 -6 -110 -1 -165 5 -49 11 -76 12 -60 3 28
+3 27 10 -10 5 -30 7 -20 7 45 0 66 -1 75 -7 40 -3 -25 -5 31 -4 123 1 110 5
+172 13 180 8 8 11 -239 9 -971 -2 -583 1 -983 6 -985 5 -2 4 -12 -2 -23 -15
+-25 -14 -62 -12 429 1 281 -2 407 -9 407 -6 0 -11 5 -11 11 0 5 5 7 10 4 6 -4
+10 7 10 25 0 18 -4 29 -10 25 -6 -4 -10 6 -9 22 0 25 1 26 9 8 6 -13 9 8 9 65
+1 62 -2 81 -10 70 -8 -11 -8 -9 -3 10 5 14 7 34 5 45 -1 11 -6 115 -9 230 -4
+116 -9 206 -12 200 -3 -5 -5 -343 -5 -750 0 -709 1 -742 19 -793 19 -50 20
+-51 30 -28 l11 25 19 -26 c11 -15 13 -23 6 -18 -10 6 -12 4 -7 -8 4 -10 2 -17
+-4 -17 -6 0 -9 9 -6 20 3 11 1 20 -4 20 -11 0 -12 -31 0 -48 7 -11 11 -11 23
+1 12 13 17 13 34 0 13 -10 15 -14 4 -13 -27 4 -40 0 -40 -11 0 -5 5 -7 11 -3
+6 3 15 0 20 -7 6 -10 9 -11 9 -1 0 6 5 12 11 12 5 0 7 -5 3 -11 -4 -7 1 -7 16
+1 15 8 20 8 16 1 -4 -6 -1 -12 6 -12 41 -4 328 -3 328 1 0 3 42 5 92 4 58 -1
+96 3 100 10 5 8 8 7 8 -1 0 -8 14 -13 38 -12 30 0 33 2 17 9 -19 8 -19 9 2 9
+12 1 27 -7 32 -16 6 -11 11 -13 11 -5 0 7 4 10 10 7 6 -4 5 -13 -2 -25 -9 -14
+-15 -16 -21 -7 -5 7 -6 3 -2 -10 4 -15 -1 -29 -14 -42 -12 -12 -17 -21 -12
+-21 6 0 12 4 16 9 3 5 17 7 31 5 24 -4 25 -3 10 11 -18 19 -19 25 -7 44 10 15
+38 4 62 -25 12 -16 12 -17 -1 -12 -11 4 -16 0 -17 -13 -1 -10 3 -19 8 -19 6 0
+7 5 3 12 -4 6 -3 8 3 5 6 -4 9 -20 7 -37 -2 -16 1 -30 7 -30 6 0 8 -4 5 -9 -3
+-5 0 -9 7 -8 35 1 46 -4 41 -18 -4 -9 0 -15 9 -15 20 0 37 75 25 108 -9 26 -2
+46 14 36 5 -3 8 -15 5 -25 -3 -11 -1 -17 4 -13 5 3 9 1 9 -4 0 -6 29 -20 65
+-33 35 -12 62 -25 60 -28 -2 -4 11 -6 28 -6 30 0 32 -3 33 -35 2 -74 4 -91 12
+-86 5 3 9 24 10 48 2 47 18 71 31 49 5 -7 7 -21 6 -30 -2 -9 -4 -19 -4 -23 -1
+-5 -9 -8 -18 -9 -16 0 -16 -1 1 -8 17 -7 18 -8 3 -14 -9 -3 -14 -13 -11 -21 7
+-18 -17 -16 -40 3 -12 10 -16 11 -16 1 0 -8 -9 -11 -25 -8 -14 3 -25 1 -25 -4
+0 -15 28 -20 49 -8 17 9 21 8 21 -5 0 -11 4 -13 12 -8 7 4 21 8 31 9 33 3 37
+4 37 14 0 5 -8 6 -17 3 -15 -6 -14 -3 3 20 16 19 20 36 17 64 -6 54 -20 68
+-46 46 -20 -18 -20 -18 -3 9 21 32 40 28 56 -12 11 -27 31 -41 54 -39 5 0 12
+-3 15 -8 10 -14 89 -31 103 -22 7 5 16 3 20 -4 6 -9 8 -9 8 1 0 7 13 12 29 12
+36 0 51 18 58 69 10 71 -36 134 -68 95 -10 -12 -7 -20 14 -42 53 -55 24 -102
+-61 -102 -80 0 -151 20 -158 44 -4 12 -16 29 -27 39 -20 17 -21 16 -47 -8 -15
+-15 -30 -21 -36 -16 -5 5 -34 16 -64 26 -79 25 -107 41 -113 65 -3 11 -4 20
+-3 20 1 0 37 -15 81 -33 96 -41 132 -50 139 -38 4 5 -7 12 -24 16 -17 4 -28
+10 -25 15 3 4 -4 6 -15 3 -13 -4 -20 0 -20 9 0 11 -9 13 -31 10 -23 -3 -30 -1
+-24 7 4 7 9 10 11 8 6 -6 84 71 84 82 0 14 -76 24 -98 12 -11 -6 -57 -11 -102
+-12 -71 -1 -84 1 -94 17 -6 11 -11 24 -11 29 0 6 -4 16 -8 22 -6 10 -2 11 20
+3 15 -6 34 -13 42 -15 11 -4 11 -8 0 -23 -13 -15 -12 -16 3 -3 10 7 16 17 13
+21 -3 5 4 6 15 3 11 -3 18 -8 16 -12 -2 -3 6 -6 17 -7 12 -1 38 -4 57 -8 33
+-7 34 -7 16 8 -11 9 -27 16 -35 16 -9 1 -54 14 -101 30 -47 15 -87 27 -89 25
+-2 -2 5 -29 14 -60 14 -43 25 -60 48 -71 27 -14 28 -17 14 -32 -15 -14 -20
+-14 -43 -1 -15 8 -35 32 -45 55 -20 43 -91 379 -108 504 -9 63 -18 109 -34
+176 -4 14 -36 64 -56 85 -9 10 -40 26 -68 37 -52 20 -53 20 -53 1 0 -15 7 -19
+35 -19 64 0 145 -113 145 -202 0 -15 3 -29 8 -31 4 -3 7 -37 7 -75 0 -39 3
+-68 7 -66 13 8 9 -21 -4 -35 -9 -9 -9 -12 -1 -7 6 3 14 -1 16 -11 3 -10 9 -29
+12 -42 5 -17 4 -21 -5 -16 -9 6 -9 3 -1 -13 6 -11 11 -32 11 -46 0 -14 4 -27
+10 -31 5 -3 7 -12 3 -20 -3 -8 0 -15 6 -15 6 0 11 -7 11 -15 0 -8 -6 -15 -12
+-15 -9 0 -10 -2 -2 -8 12 -7 29 -52 26 -65 -1 -4 4 -20 13 -36 14 -27 13 -29
+-8 -35 -12 -3 -148 -6 -302 -6 -251 0 -284 2 -321 19 -47 22 -80 59 -94 110
+-7 24 -10 355 -8 1013 l3 976 -27 22 c-35 28 -35 40 0 40 l28 0 -4 69 c-6 97
+16 159 75 211 26 23 60 42 82 46 20 4 210 2 423 -3 366 -11 391 -12 433 -33
+24 -12 59 -40 77 -63 32 -40 33 -44 37 -151 2 -73 8 -114 16 -123 8 -7 15 -13
+17 -13 2 0 1 64 -2 142 -6 160 -15 191 -76 258 -58 64 -102 82 -229 91 -156
+12 -783 19 -825 10z"/>
+<path d="M1240 2898 c8 -8 60 -53 115 -100 156 -134 144 -110 146 -275 1 -154
+-3 -165 -53 -178 -14 -4 -41 0 -61 9 l-36 14 -3 125 c-2 69 0 123 5 120 4 -2
+7 7 7 21 0 18 -18 40 -67 83 -37 32 -86 75 -110 97 -30 27 -43 34 -43 23 0 -9
+7 -22 15 -29 51 -44 125 -122 125 -131 0 -8 3 -8 9 1 6 10 11 9 22 -4 10 -12
+15 -55 17 -158 3 -126 6 -143 25 -163 11 -13 28 -23 36 -23 14 0 14 -2 1 -11
+-12 -9 -12 -10 4 -5 11 4 35 9 55 12 64 10 71 26 71 173 l0 129 39 -5 c21 -3
+47 0 57 6 13 8 15 11 4 10 -51 -5 -100 2 -100 14 0 8 -21 35 -46 60 -27 28
+-43 51 -38 58 4 8 3 9 -4 5 -15 -9 -74 35 -68 51 3 7 -1 10 -8 7 -8 -3 -20 3
+-27 13 -8 11 -23 23 -34 28 -16 8 -8 10 35 13 54 3 56 2 113 -52 31 -30 57
+-59 57 -65 0 -5 5 -13 12 -17 7 -5 8 -2 3 7 -5 8 5 3 21 -11 16 -14 30 -28 32
+-32 2 -5 7 -8 12 -8 5 0 21 -13 37 -28 l28 -28 -3 -135 c-2 -113 -5 -136 -20
+-148 -15 -12 -15 -12 6 -6 16 4 22 2 22 -9 0 -17 58 -39 92 -33 65 11 71 24
+73 162 1 55 3 107 3 116 2 13 14 17 61 17 40 0 58 -4 56 -12 -2 -6 -6 -63 -9
+-126 -4 -114 -4 -114 22 -137 37 -32 104 -32 124 -1 14 21 18 22 41 9 27 -14
+61 -10 88 12 13 10 17 39 21 149 l5 137 -119 117 c-117 117 -118 117 -170 120
+l-53 3 47 -10 c40 -9 62 -26 154 -115 59 -57 111 -104 115 -104 5 0 9 -7 9
+-15 0 -11 -11 -15 -42 -14 -24 1 -49 0 -57 -2 -8 -2 -17 4 -19 15 -2 10 -14
+29 -26 41 -11 12 -35 37 -52 56 -18 19 -55 56 -83 83 -28 27 -51 53 -51 58 0
+4 -9 8 -21 8 -16 0 9 -30 100 -119 l121 -119 0 -144 0 -145 -25 -11 c-33 -15
+-57 -15 -90 0 -19 9 -25 17 -21 32 3 12 6 77 7 146 l1 124 -118 114 c-66 63
+-129 118 -142 123 -20 8 -142 10 -142 2 0 -2 19 -20 42 -41 24 -20 80 -73 125
+-117 l83 -80 0 -139 c0 -129 -1 -140 -22 -157 -26 -23 -66 -24 -97 -3 -22 16
+-23 19 -20 161 l4 144 -64 57 c-36 31 -94 85 -130 119 -63 59 -69 62 -116 63
+-27 0 -68 3 -90 6 -35 6 -38 5 -25 -8z"/>
+</g>
+
+<!-- ░░░░ PHONE SCREEN OVERLAY: semi-transparent dark fill ░░░░ -->
+<!-- This sits over the phone screen area to provide a dark backdrop -->
+<rect x="44" y="28" width="222" height="325" rx="14"
+  fill="${s.bgBase}" opacity="0.92"/>
+
+<!-- ░░░░ LEFT PANEL: Seller Profile Card (inside phone screen) ░░░░ -->
+
+<!-- Avatar glow halo -->
+<circle cx="${AVATAR.x + AVATAR.size / 2}" cy="${AVATAR.y + AVATAR.size / 2}" r="${AVATAR.size / 2 + 20}"
+  fill="url(#${p}AvGlow)" opacity="0.6"/>
+
+<!-- Avatar ring -->
+<circle cx="${AVATAR.x + AVATAR.size / 2}" cy="${AVATAR.y + AVATAR.size / 2}" r="${AVATAR.size / 2 + 3}"
+  fill="none" stroke="${s.accent}" stroke-width="2" opacity="0.85"/>
+
+<!-- Avatar fill placeholder (composited at runtime by sharp) -->
+<circle cx="${AVATAR.x + AVATAR.size / 2}" cy="${AVATAR.y + AVATAR.size / 2}" r="${AVATAR.size / 2}"
+  fill="${s.cardBase}" filter="url(#${p}AvatarShadow)" clip-path="url(#${p}AvClip)"/>
+
+<!-- Tier / Premium badge — pill below avatar -->
+<rect x="${AVATAR.x}" y="${AVATAR.y + AVATAR.size + 6}" width="${AVATAR.size}" height="18" rx="9"
+  fill="${s.badgeBg}" stroke="${s.badgeBorder}" stroke-width="1"/>
+<circle cx="${AVATAR.x + 10}" cy="${AVATAR.y + AVATAR.size + 15}" r="4" fill="${s.accent}"/>
+<text x="${AVATAR.x + 18}" y="${AVATAR.y + AVATAR.size + 19.5}"
+  font-family="Syne,'Helvetica Neue',sans-serif"
+  font-size="8" font-weight="800" letter-spacing="1.5"
+  fill="${s.badgeText}">${tierLabel}</text>
+
+<!-- Rating stars row -->
+<text x="${AVATAR.x}" y="${AVATAR.y + AVATAR.size + 38}"
+  font-family="Syne,sans-serif" font-size="10" fill="#FBBF24">★★★★★</text>
+<text x="${AVATAR.x + 56}" y="${AVATAR.y + AVATAR.size + 38}"
+  font-family="Syne,sans-serif" font-size="9" font-weight="700" fill="${s.accentAlt}">${escapeXml(rating)}</text>
+
+<!-- Divider under avatar section -->
+<rect x="54" y="${AVATAR.y + AVATAR.size + 46}" width="202" height="1" fill="${s.divider}"/>
+
+<!-- Featured product listing (mini cards inside phone screen) -->
+${featuredItems.map((product, i) => {
+  const py = AVATAR.y + AVATAR.size + 56 + i * 72
+  const title = wrapText(clamp(product.title, 28), 20, 1)
+  const price = `₦${Number(product.price ?? 0).toLocaleString()}`
+  return `
+<!-- Mini product card ${i} -->
+<rect x="54" y="${py}" width="202" height="60" rx="8"
+  fill="${s.cardBase}" stroke="${s.divider}" stroke-width="0.8" opacity="0.9"/>
+<!-- Product image placeholder (composited at runtime) -->
+<rect x="60" y="${py + 7}" width="42" height="46" rx="6" fill="${s.bgPanel}"/>
+<!-- Product title -->
+${svgMultiline({
+  x: 110, y: py + 20,
+  lineHeight: 14, lines: title,
+  attrs: `font-family="Syne,sans-serif" font-size="10" font-weight="700" fill="${s.textPrimary}"`
+})}
+<!-- Price pill -->
+<rect x="110" y="${py + 34}" width="${Math.min(price.length * 6 + 16, 90)}" height="16" rx="8"
+  fill="url(#${p}Price)"/>
+<text x="118" y="${py + 46}"
+  font-family="'DM Serif Display',serif"
+  font-size="9" fill="#fff">${escapeXml(price)}</text>`
+}).join('\n')}
+
+<!-- Profile URL at the bottom of the phone screen -->
+<text x="155" y="330"
+  font-family="Syne,sans-serif" font-size="7" fill="${s.footText}"
+  text-anchor="middle">${url}</text>
+
+<!-- ░░░░ RIGHT PANEL: Seller Info & Brand (right ~310px wide) ░░░░ -->
+
+<!-- NexWAD brand logo — top-right corner -->
+<text x="572" y="30"
+  font-family="'DM Serif Display','Georgia',serif"
+  font-size="18" fill="${s.nexwadColor}" text-anchor="end">NexWAD</text>
+<text x="572" y="44"
+  font-family="Syne,sans-serif"
+  font-size="7" font-weight="700" letter-spacing="2.5"
+  fill="${s.footText}" text-anchor="end">CAMPUS MARKETPLACE</text>
+
+<!-- Accent underline beneath brand -->
+<rect x="420" y="47" width="152" height="1.5" rx="1" fill="url(#${p}AccLine)"/>
+
+<!-- Seller name — large display font -->
+<text x="310" y="100"
+  font-family="'DM Serif Display','Georgia',serif"
+  font-size="32" fill="${s.textPrimary}">${name}</text>
+
+<!-- Handle -->
+<text x="312" y="122"
+  font-family="Syne,'Helvetica Neue',sans-serif"
+  font-size="13" font-weight="600" fill="${s.accent}" letter-spacing="0.3">${handle}</text>
+
+<!-- Accent underline beneath name -->
+<rect x="312" y="128" width="160" height="2" rx="1" fill="url(#${p}AccLine)"/>
+
+<!-- Category chip -->
+<rect x="312" y="136" width="${category.length * 7 + 28}" height="20" rx="10"
+  fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="0.8"/>
+<text x="326" y="150"
+  font-family="Syne,sans-serif" font-size="10" font-weight="700" fill="${s.chipText}">${category}</text>
+
+<!-- Bio text -->
+${svgMultiline({
+  x: 312, y: 175, lineHeight: 18, lines: bioLines,
+  attrs: `font-family="Syne,'Helvetica Neue',sans-serif" font-size="11" font-weight="400" fill="${s.textSecondary}"`
+})}
+
+<!-- Trust badges row -->
+<rect x="312" y="234" width="108" height="22" rx="11"
+  fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="0.8"/>
+<circle cx="325" cy="245" r="4" fill="${s.accent}" opacity="0.9"/>
+<text x="334" y="249"
+  font-family="Syne,sans-serif" font-size="9" font-weight="700" fill="${s.chipText}">✓ Verified Seller</text>
+
+<rect x="428" y="234" width="110" height="22" rx="11"
+  fill="${s.chipBg}" stroke="${s.chipBorder}" stroke-width="0.8"/>
+<text x="441" y="249"
+  font-family="Syne,sans-serif" font-size="9" font-weight="700" fill="${s.badgeText}">⚡ NexWAD Certified</text>
+
+<!-- Horizontal divider -->
+<rect x="312" y="264" width="270" height="1" fill="${s.divider}"/>
+
+<!-- Stat mini-cards row -->
+<rect x="312" y="272" width="80" height="48" rx="8"
+  fill="${s.cardBase}" stroke="${s.divider}" stroke-width="0.8"/>
+<text x="352" y="291" font-family="'DM Serif Display',serif"
+  font-size="16" fill="${s.accentAlt}" text-anchor="middle">${escapeXml(rating)}</text>
+<text x="352" y="307" font-family="Syne,sans-serif"
+  font-size="7" font-weight="600" letter-spacing="1" fill="${s.priceMuted}" text-anchor="middle">RATING</text>
+
+<rect x="400" y="272" width="80" height="48" rx="8"
+  fill="${s.cardBase}" stroke="${s.divider}" stroke-width="0.8"/>
+<text x="440" y="291" font-family="'DM Serif Display',serif"
+  font-size="16" fill="${s.accentAlt}" text-anchor="middle">${escapeXml(s.label)}</text>
+<text x="440" y="307" font-family="Syne,sans-serif"
+  font-size="7" font-weight="600" letter-spacing="1" fill="${s.priceMuted}" text-anchor="middle">TIER</text>
+
+<rect x="488" y="272" width="94" height="48" rx="8"
+  fill="${s.cardBase}" stroke="${s.divider}" stroke-width="0.8"/>
+<text x="535" y="291" font-family="'DM Serif Display',serif"
+  font-size="13" fill="${s.accentAlt}" text-anchor="middle">Verified</text>
+<text x="535" y="307" font-family="Syne,sans-serif"
+  font-size="7" font-weight="600" letter-spacing="1" fill="${s.priceMuted}" text-anchor="middle">SELLER</text>
+
+<!-- QR code placeholder (composited at runtime) -->
+<rect x="${QR.x}" y="${QR.y}" width="${QR.size}" height="${QR.size}" rx="8"
+  fill="white" stroke="${s.divider}" stroke-width="1" clip-path="url(#${p}QrClip)"/>
+<text x="${QR.x + QR.size / 2}" y="${QR.y + QR.size / 2 + 3}"
+  font-family="Syne,sans-serif" font-size="7" fill="#94A3B8" text-anchor="middle">QR CODE</text>
+<text x="${QR.x + QR.size / 2}" y="${QR.y + QR.size + 12}"
+  font-family="Syne,sans-serif" font-size="7" letter-spacing="0.5"
+  fill="${s.footText}" text-anchor="middle">SCAN TO VISIT</text>
+
+<!-- Outer poster border -->
+<rect x="2" y="2" width="596" height="377" rx="18"
+  fill="none" stroke="${s.outerBorder}" stroke-width="1.5"/>
+
+</g>
 </svg>`.trim()
 }
 
@@ -658,34 +547,40 @@ ${buildFooter(s, p, user)}
 
 async function buildComposites(user, featured) {
   const composites = []
-  const cx = AVATAR.x
-  const cy = AVATAR.y
 
-  const avatarRaw = await safeAssetBuffer(cloudinaryTransform(user.avatar, { width: 240, height: 240 }))
+  // Avatar inside left panel (phone screen)
+  const avatarRaw = await safeAssetBuffer(
+    cloudinaryTransform(user.avatar, { width: AVATAR.size * 2, height: AVATAR.size * 2 })
+  )
   if (avatarRaw) {
     try {
       const buf = await sharp(avatarRaw)
         .resize(AVATAR.size, AVATAR.size)
         .png()
         .toBuffer()
-      composites.push({ input: buf, top: cy, left: cx })
+      composites.push({ input: buf, top: AVATAR.y, left: AVATAR.x })
     } catch { /* skip */ }
   }
 
+  // Mini product images inside the left panel cards
   const imageBuffers = await Promise.all(
-    featured.map((p) => safeAssetBuffer(cloudinaryTransform(p?.images?.[0], { width: 360, height: 260 })))
+    featured.slice(0, 3).map((p) =>
+      safeAssetBuffer(cloudinaryTransform(p?.images?.[0], { width: 84, height: 92 }))
+    )
   )
-  for (let i = 0; i < featured.length; i++) {
+  for (let i = 0; i < Math.min(featured.length, 3); i++) {
     if (!imageBuffers[i]) continue
     try {
+      const py = AVATAR.y + AVATAR.size + 56 + i * 72
       const buf = await sharp(imageBuffers[i])
-        .resize(254, CARD.imageHeight)
+        .resize(42, 46)
         .png()
         .toBuffer()
-      composites.push({ input: buf, top: CARD.top + 18, left: cardX(i) + 14 })
+      composites.push({ input: buf, top: py + 7, left: 60 })
     } catch { /* skip */ }
   }
 
+  // QR code — bottom-right corner
   const qrBuf = await QRCode.toBuffer(`${profileUrl(user)}?ref=poster`, {
     width: QR.size, margin: 1, type: 'png',
     color: { dark: '#0F172A', light: '#FFFFFF' },
@@ -785,5 +680,4 @@ module.exports = {
   buildSignature,
   buildSvg,
   wrapText,
-  cardX,
 }
