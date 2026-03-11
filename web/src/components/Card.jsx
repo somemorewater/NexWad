@@ -401,8 +401,6 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
   const [deleted, setDeleted] = useState(false)
   const [liked, setLiked] = useState(post.isLiked ?? false)
   const [likeCount, setLikeCount] = useState(post.likeCount ?? post.likes?.length ?? 0)
-  const [pinData, setPinData] = useState(post.pin || null)
-  const [pinLoading, setPinLoading] = useState(false)
   const [updatingPost, setUpdatingPost] = useState(false)
   const [deletingPost, setDeletingPost] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -414,13 +412,9 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
     setPostData(post)
     setLiked(post.isLiked ?? false)
     setLikeCount(post.likeCount ?? post.likes?.length ?? 0)
-    setPinData(post.pin || null)
   }, [post])
   const userBadge = getVerificationBadge(postData.author)
-  const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
   const isOwner = Boolean(user?._id && postData.author?._id && user._id === postData.author._id)
-  const canPin = isOwner && canPinContent(user)
-  const canSeePinTime = isPinned && isOwner
 
   const handleLike = async (event) => {
     event.stopPropagation()
@@ -450,39 +444,6 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
       if (mode === 'unsupported') toast.error('Sharing not supported on this device')
     } catch {
       toast.error('Could not share post')
-    }
-  }
-
-  const togglePin = async () => {
-    if (pinLoading) return
-    if (!isAuthenticated) {
-      toast.error('Login required')
-      return
-    }
-    if (!canPin) {
-      toast.error('Only sellers or premium users can pin their own content')
-      return
-    }
-
-    setPinLoading(true)
-    try {
-      if (isPinned) {
-        await pinsAPI.unpin(pinData._id)
-        setPinData(null)
-        toast.success('Unpinned')
-      } else {
-        const { data } = await pinsAPI.initialize({
-          targetType: 'post',
-          targetId: postData._id,
-          units: 1,
-        })
-        setPinData(data?.pin || null)
-        toast.success('Pinned for 24 hours')
-      }
-    } catch (err) {
-      toast.error(err?.error || err?.message || 'Could not update pin')
-    } finally {
-      setPinLoading(false)
     }
   }
 
@@ -546,7 +507,7 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
 
   return (
     <article
-      className={`post-card ${isPinned ? 'pinned-card' : ''}`}
+      className="post-card"
       onClick={() => navigate(`/social/post/${postData._id}`)}
       style={{ cursor: 'pointer' }}
     >
@@ -570,11 +531,6 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
           }}>
             {postData.author?.name}
             {userBadge && <VerificationBadge variant={userBadge.variant} label={userBadge.label} size={13} className="ml-1" />}
-            {isPinned && (
-              <span className="pin-badge" style={{ marginLeft: 6, position: 'static' }}>
-                <i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned
-              </span>
-            )}
           </div>
           <div className="post-card__meta">
             {formatDistanceToNow(new Date(postData.createdAt), { addSuffix: true })}
@@ -582,15 +538,8 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {canSeePinTime && <span className="caption">{formatPinTimeLeft(pinData?.expiresAt)}</span>}
           <ReportActionMenu
             actions={isOwner ? [
-              {
-                key: 'pin',
-                label: isPinned ? 'Unpin' : 'Pin',
-                onClick: () => togglePin(),
-                disabled: pinLoading || !canPin,
-              },
               {
                 key: 'edit',
                 label: 'Edit',

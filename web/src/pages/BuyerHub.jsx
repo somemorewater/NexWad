@@ -8,7 +8,6 @@ import { SocketContext } from '../context/SocketContext'
 import { isPremiumBuyer } from '../utils/roleRouting'
 import { formatPinTimeLeft, runPaystackCharge } from '../utils/pins'
 import toast from 'react-hot-toast'
-import { lostFoundCategoryIcon } from '../constants/categories'
 
 export default function BuyerHub() {
   const { user } = useAuth()
@@ -46,11 +45,14 @@ export default function BuyerHub() {
       .catch(() => {})
   }, [premium])
 
-  const pinnedHighlights = [
-    ...preview.listings.filter((item) => item.isPinned).map((item) => ({ type: 'Listing', title: item.title, image: item.images?.[0], expiresAt: item.pin?.expiresAt })),
-    ...preview.posts.filter((item) => item.isPinned).map((item) => ({ type: 'Post', title: item.content?.slice(0, 54) || `${item.author?.name || 'Student'} post`, image: item.image, expiresAt: item.pin?.expiresAt })),
-    ...preview.items.filter((item) => item.isPinned).map((item) => ({ type: 'Lost & Found', title: item.title, icon: lostFoundCategoryIcon(item.category), expiresAt: item.pin?.expiresAt })),
-  ]
+  const pinnedHighlights = preview.listings
+    .filter((item) => item.isPinned)
+    .map((item) => ({
+      type: 'Listing',
+      title: item.title,
+      image: item.images?.[0],
+      expiresAt: item.pin?.expiresAt,
+    }))
 
   const buyCredits = async (units) => {
     const parsedUnits = Number.parseInt(units, 10)
@@ -194,7 +196,7 @@ export default function BuyerHub() {
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-2)' }}>Pin Credits</h2>
               <p style={{ color: 'var(--nw-gray-500)', marginBottom: 'var(--space-4)' }}>
-                Buy pinning credits to pin your own posts or lost and found reports for extra visibility.
+                Buy pinning credits to pin your own listings for extra visibility.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
                 <span className="badge badge-primary">Credits: {pinUsage?.credits?.balance || 0}</span>
@@ -208,7 +210,7 @@ export default function BuyerHub() {
                   {pinActionId === 'buy-10' ? 'Processing...' : 'Buy 10 Credits (₦5,000)'}
                 </button>
               </div>
-              <div className="caption">Tip: Tap Pin on your own content card to spend credits.</div>
+              <div className="caption">Tip: Tap Pin on your own listing card to spend credits.</div>
             </div>
           )}
 

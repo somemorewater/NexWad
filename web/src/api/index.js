@@ -12,9 +12,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = getStoredToken()
-    const apiKey = String(import.meta.env.VITE_API_KEY || '').trim()
     if (token) config.headers.Authorization = `Bearer ${token}`
-    if (apiKey) config.headers['X-API-Key'] = apiKey
     return config
   },
   (error) => Promise.reject(error)
