@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import Modal from '../components/Modal'
-import { lostFoundAPI, pinsAPI } from '../api/endpoints'
+import { listingsAPI, lostFoundAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
-import { canPinContent, formatPinTimeLeft } from '../utils/pins'
+import { formatPinTimeLeft } from '../utils/pins'
 import ReportActionMenu from '../components/ReportActionMenu'
 import { LOST_FOUND_CATEGORIES, lostFoundCategoryIcon } from '../constants/categories'
 
@@ -15,7 +16,9 @@ const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports 
 
 export default function LostFound() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
+  const [pinnedListings, setPinnedListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('All')
   const [showReport, setShowReport] = useState(false)
@@ -27,6 +30,12 @@ export default function LostFound() {
       .catch(() => toast.error('Failed to load'))
       .finally(() => setLoading(false))
   }, [activeTab])
+
+  useEffect(() => {
+    listingsAPI.getPinned({ limit: 8 })
+      .then(({ data }) => setPinnedListings(data?.listings || []))
+      .catch(() => setPinnedListings([]))
+  }, [])
 
   return (
     <div>
@@ -57,22 +66,32 @@ export default function LostFound() {
             </div>
           )}
 
-          {items.some((item) => item.isPinned) && (
+          {pinnedListings.length > 0 && (
             <section className="pin-strip" style={{ marginBottom: 'var(--space-5)' }}>
               <div className="pin-strip__header">
-                <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Lost &amp; Found</h2>
+                <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Listings</h2>
               </div>
               <div className="pin-strip__scroller">
-                {items.filter((item) => item.isPinned).map((item) => (
-                  <div key={`pin-${item._id}`} className="pin-strip__item">
+                {pinnedListings.map((item) => (
+                  <button
+                    key={`pin-${item._id}`}
+                    type="button"
+                    className="pin-strip__item"
+                    style={{ cursor: 'pointer', textAlign: 'left' }}
+                    onClick={() => navigate(`/marketplace/${item._id}`)}
+                  >
                     <div className="pin-strip__thumb">
-                      <i className={lostFoundCategoryIcon(item.category)} aria-hidden="true" />
+                      {item.images?.[0] ? (
+                        <img src={item.images[0]} alt={item.title} />
+                      ) : (
+                        <i className="fa-solid fa-image" aria-hidden="true" />
+                      )}
                     </div>
                     <div className="pin-strip__content">
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
-                      <div className="caption">{item.type} · {formatPinTimeLeft(item.pin?.expiresAt)}</div>
+                      <div className="caption">₦{(item.price || 0).toLocaleString()} · {formatPinTimeLeft(item.pin?.expiresAt)}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>
@@ -121,53 +140,16 @@ export default function LostFound() {
 
 function LFCard({ item, delay }) {
   const { user, isAuthenticated } = useAuth()
-  const [pinData, setPinData] = useState(item.pin || null)
-  const [pinLoading, setPinLoading] = useState(false)
   const [editing, setEditing] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', location: '', description: '', category: '' })
   const [deleting, setDeleting] = useState(false)
   const isLost = item.type === 'lost'
   const isResolved = item.status === 'resolved'
-  const isPinned = Boolean(pinData && new Date(pinData.expiresAt).getTime() > Date.now())
   const isOwner = Boolean(user?._id && item.reporter?._id && user._id === item.reporter._id)
-  const canPin = isOwner && canPinContent(user)
   const reportLostFound = async (reason) => {
     if (!isAuthenticated) throw new Error('Login required to report items')
     await lostFoundAPI.report(item._id, reason)
-  }
-
-  const togglePin = async () => {
-    if (pinLoading) return
-    if (!isAuthenticated) {
-      toast.error('Login required')
-      return
-    }
-    if (!canPin) {
-      toast.error('Only sellers or premium users can pin their own content')
-      return
-    }
-
-    setPinLoading(true)
-    try {
-      if (isPinned) {
-        await pinsAPI.unpin(pinData._id)
-        setPinData(null)
-        toast.success('Unpinned')
-      } else {
-        const { data } = await pinsAPI.initialize({
-          targetType: 'lostfound',
-          targetId: item._id,
-          units: 1,
-        })
-        setPinData(data?.pin || null)
-        toast.success('Pinned for 24 hours')
-      }
-    } catch (err) {
-      toast.error(err?.error || err?.message || 'Could not update pin')
-    } finally {
-      setPinLoading(false)
-    }
   }
 
   const openEditModal = () => {
@@ -224,7 +206,7 @@ function LFCard({ item, delay }) {
   }
 
   return (
-    <div className={`lf-card animate-fade-in ${isPinned ? 'pinned-card' : ''}`} style={{ animationDelay: `${delay}s` }}>
+    <div className="lf-card animate-fade-in" style={{ animationDelay: `${delay}s` }}>
       <div className="lf-card__image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', background: isLost ? 'var(--nw-accent-light)' : 'var(--nw-green-light)' }}>
         <i className={lostFoundCategoryIcon(item.category)} aria-hidden="true" />
       </div>
@@ -239,12 +221,6 @@ function LFCard({ item, delay }) {
           </div>
           <ReportActionMenu
             actions={isOwner ? [
-              ...(!isResolved ? [{
-                key: 'pin',
-                label: isPinned ? 'Unpin' : 'Pin',
-                onClick: () => togglePin(),
-                disabled: pinLoading || !canPin,
-              }] : []),
               {
                 key: 'edit',
                 label: 'Edit',
@@ -264,13 +240,6 @@ function LFCard({ item, delay }) {
             buttonClassName="post-card__menu-btn"
           />
         </div>
-        {isPinned && (
-          <div style={{ marginBottom: 6 }}>
-            <span className="pin-badge" style={{ position: 'static' }}>
-              <i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned · {formatPinTimeLeft(pinData?.expiresAt)}
-            </span>
-          </div>
-        )}
         <h3 className="lf-card__title">{item.title}</h3>
         <div className="caption" style={{ marginBottom: 6 }}>{item.category || 'Other'}</div>
         {item.description && (

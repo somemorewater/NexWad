@@ -77,10 +77,10 @@ function buildFeatures(user) {
   if (hasPinAccess) {
     features.push({
       id: 'pinning',
-      title: 'Pinning Content',
-      description: 'Pin your own listing, post, or lost/found report for extra visibility.',
+      title: 'Pin Listings',
+      description: 'Pin your own listings for extra visibility.',
       steps: [
-        'Open your own listing, post, or lost/found item.',
+        'Open your own listing.',
         'Tap Pin to pin for 24 hours.',
         'Use Unpin anytime before expiry.',
       ],

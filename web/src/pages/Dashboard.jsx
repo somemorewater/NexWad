@@ -17,11 +17,11 @@ export default function Dashboard() {
   const [listings, setListings] = useState([])
   const [posts, setPosts] = useState([])
   const [activePins, setActivePins] = useState([])
-  const [pinUsage, setPinUsage] = useState({ activeCount: 0, activeHoursRemaining: 0, credits: { balance: 0 } })
+  const [pinUsage, setPinUsage] = useState({ activeCount: 0, activeHoursRemaining: 0, credits: { balance: 0 }, monthlyFreeCredits: 0 })
+  const [listingUsage, setListingUsage] = useState({ monthlyLimit: 0, uploadsThisMonth: 0, remaining: 0 })
   const [loading, setLoading] = useState(true)
   const [pinActionId, setPinActionId] = useState(null)
   const [showPinPicker, setShowPinPicker] = useState(false)
-  const [pinPickerType, setPinPickerType] = useState('listing')
 
   const isSeller = user?.role === 'seller'
   if (!isSeller) return <Navigate to="/home" replace />
@@ -35,8 +35,9 @@ export default function Dashboard() {
         postsAPI.getMine(),
       ])
       setListings(listingsRes?.data?.listings || [])
+      setListingUsage(listingsRes?.data?.usage || { monthlyLimit: 0, uploadsThisMonth: 0, remaining: 0 })
       setActivePins(pinsRes?.data?.activePins || [])
-      setPinUsage(pinsRes?.data?.usage || { activeCount: 0, activeHoursRemaining: 0, credits: { balance: 0 } })
+      setPinUsage(pinsRes?.data?.usage || { activeCount: 0, activeHoursRemaining: 0, credits: { balance: 0 }, monthlyFreeCredits: 0 })
       setPosts(postsRes?.data?.posts || [])
     } catch {
       toast.error('Failed to load dashboard data')
@@ -73,31 +74,6 @@ export default function Dashboard() {
       await loadDashboardData()
     } catch (err) {
       toast.error(err?.error || err?.message || 'Could not unpin')
-    } finally {
-      setPinActionId(null)
-    }
-  }
-
-  const togglePostPin = async (post) => {
-    const pin = post.pin
-    const isPinned = Boolean(pin && new Date(pin.expiresAt).getTime() > Date.now())
-    setPinActionId(`post-${post._id}`)
-    try {
-      if (isPinned) {
-        await pinsAPI.unpin(pin._id)
-        toast.success('Post unpinned')
-      } else {
-        const { data } = await pinsAPI.initialize({
-          targetType: 'post',
-          targetId: post._id,
-          units: 1,
-        })
-        toast.success('Post pinned for 24 hours')
-      }
-      await loadDashboardData()
-    } catch (err) {
-      if (err?.message === 'Payment window closed') toast('Payment window closed')
-      else toast.error(err?.error || err?.message || 'Could not update post pin')
     } finally {
       setPinActionId(null)
     }
@@ -173,6 +149,7 @@ export default function Dashboard() {
   const analytics = [
     { label: 'Active Listings', value: activeListings.length, icon: 'fa-solid fa-store', color: 'var(--nw-primary)' },
     { label: 'Expired Listings', value: expiredListings.length, icon: 'fa-solid fa-clock-rotate-left', color: 'var(--nw-accent)' },
+    { label: 'Listings Left (Monthly)', value: listingUsage?.remaining ?? 0, icon: 'fa-solid fa-list-check', color: 'var(--nw-green)' },
     { label: 'Pin Credits', value: pinUsage?.credits?.balance || 0, icon: 'fa-solid fa-coins', color: 'var(--nw-gold)' },
     { label: 'Pins in Use', value: pinUsage.activeCount || 0, icon: 'fa-solid fa-thumbtack', color: 'var(--nw-gold)' },
     { label: 'Pin Hours Left', value: pinUsage.activeHoursRemaining || 0, icon: 'fa-solid fa-hourglass-half', color: 'var(--nw-accent)' },
@@ -222,8 +199,8 @@ export default function Dashboard() {
               <button className="btn btn-secondary" onClick={() => navigate('/profile/subscription')}>
                 Pin Management
               </button>
-              <button className="btn btn-secondary" onClick={() => { setPinPickerType('listing'); setShowPinPicker(true) }}>
-                Pin Post
+              <button className="btn btn-secondary" onClick={() => setShowPinPicker(true)}>
+                Pin Listing
               </button>
               <button className="btn btn-ghost" onClick={() => navigate('/profile/subscription')}>
                 Subscription Status
@@ -235,6 +212,9 @@ export default function Dashboard() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-3)' }}>Pin Status</h2>
             <div className="action-wrap" style={{ marginBottom: 12, alignItems: 'center', gap: 8 }}>
               <span className="badge badge-primary">Credits: {pinUsage?.credits?.balance || 0}</span>
+              {pinUsage?.monthlyFreeCredits ? (
+                <span className="badge badge-ghost">Free monthly credits: {pinUsage.monthlyFreeCredits}</span>
+              ) : null}
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => buyCredits(1)} disabled={Boolean(pinActionId)}>
                 {pinActionId === 'buy-1' ? 'Processing...' : 'Buy 1 Credit (₦500)'}
               </button>
@@ -323,31 +303,16 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid-3">
-                {posts.slice(0, 6).map((post) => {
-                  const isPinned = Boolean(post.pin && new Date(post.pin.expiresAt).getTime() > Date.now())
-                  return (
-                    <div key={post._id} className={`card card-body ${isPinned ? 'pinned-card' : ''}`}>
-                      {isPinned && (
-                        <div style={{ marginBottom: 6 }}>
-                          <span className="pin-badge" style={{ position: 'static' }}>
-                            <i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned · {formatPinTimeLeft(post.pin?.expiresAt)}
-                          </span>
-                        </div>
-                      )}
-                      <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                        {String(post.content || '').slice(0, 92) || 'Photo post'}
-                      </div>
-                      <div className="caption" style={{ marginBottom: 10 }}>
-                        {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })} · {post.likeCount || 0} likes
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePostPin(post)} disabled={Boolean(pinActionId)}>
-                          {pinActionId === `post-${post._id}` ? 'Processing...' : isPinned ? 'Unpin Post' : 'Pin Post'}
-                        </button>
-                      </div>
+                {posts.slice(0, 6).map((post) => (
+                  <div key={post._id} className="card card-body">
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                      {String(post.content || '').slice(0, 92) || 'Photo post'}
                     </div>
-                  )
-                })}
+                    <div className="caption" style={{ marginBottom: 10 }}>
+                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })} · {post.likeCount || 0} likes
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -357,89 +322,44 @@ export default function Dashboard() {
       <Modal
         isOpen={showPinPicker}
         onClose={() => setShowPinPicker(false)}
-        title="Pin Content"
+        title="Pin Listings"
         size="lg"
       >
-        <div className="action-wrap" style={{ gap: 8, marginBottom: 12 }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${pinPickerType === 'listing' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setPinPickerType('listing')}
-          >
-            Products
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${pinPickerType === 'post' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setPinPickerType('post')}
-          >
-            Posts
-          </button>
-        </div>
-
-        {pinPickerType === 'listing' ? (
-          activeListings.length === 0 ? (
-            <div className="caption">No active products to pin.</div>
-          ) : (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {activeListings.slice(0, 20).map((item) => {
-                const isPinned = Boolean(item.pin && new Date(item.pin.expiresAt).getTime() > Date.now())
-                return (
-                  <div key={item._id} style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 'var(--radius-md)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: 'var(--nw-gray-100)', border: '1px solid var(--nw-gray-200)', flexShrink: 0 }}>
-                        {item.images?.[0] ? (
-                          <img src={item.images[0]} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nw-gray-400)' }}>
-                            <i className="fa-solid fa-image" aria-hidden="true" />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{item.title}</div>
-                        <div className="caption">₦{(item.price || 0).toLocaleString()} {isPinned ? `· ${formatPinTimeLeft(item.pin?.expiresAt)}` : ''}</div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => toggleListingPin(item)}
-                      disabled={Boolean(pinActionId)}
-                    >
-                      {pinActionId === `listing-${item._id}` ? 'Processing...' : isPinned ? 'Unpin' : 'Pin Product'}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          )
+        {activeListings.length === 0 ? (
+          <div className="caption">No active products to pin.</div>
         ) : (
-          posts.length === 0 ? (
-            <div className="caption">No posts to pin.</div>
-          ) : (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {posts.slice(0, 20).map((post) => {
-                const isPinned = Boolean(post.pin && new Date(post.pin.expiresAt).getTime() > Date.now())
-                return (
-                  <div key={post._id} style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 'var(--radius-md)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{String(post.content || '').slice(0, 90) || 'Photo post'}</div>
-                      <div className="caption">{isPinned ? formatPinTimeLeft(post.pin?.expiresAt) : 'Not pinned'}</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {activeListings.slice(0, 20).map((item) => {
+              const isPinned = Boolean(item.pin && new Date(item.pin.expiresAt).getTime() > Date.now())
+              return (
+                <div key={item._id} style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 'var(--radius-md)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 8, overflow: 'hidden', background: 'var(--nw-gray-100)', border: '1px solid var(--nw-gray-200)', flexShrink: 0 }}>
+                      {item.images?.[0] ? (
+                        <img src={item.images[0]} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nw-gray-400)' }}>
+                          <i className="fa-solid fa-image" aria-hidden="true" />
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => togglePostPin(post)}
-                      disabled={Boolean(pinActionId)}
-                    >
-                      {pinActionId === `post-${post._id}` ? 'Processing...' : isPinned ? 'Unpin' : 'Pin Post'}
-                    </button>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{item.title}</div>
+                      <div className="caption">₦{(item.price || 0).toLocaleString()} {isPinned ? `· ${formatPinTimeLeft(item.pin?.expiresAt)}` : ''}</div>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          )
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => toggleListingPin(item)}
+                    disabled={Boolean(pinActionId)}
+                  >
+                    {pinActionId === `listing-${item._id}` ? 'Processing...' : isPinned ? 'Unpin' : 'Pin Product'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         )}
       </Modal>
     </div>
