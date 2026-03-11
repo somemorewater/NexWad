@@ -43,6 +43,7 @@ export const notificationsAPI = {
 // ─── Listings ─────────────────────────────────
 export const listingsAPI = {
   getAll: (params) => api.get('/listings', { params }),
+  getPinned: (params) => api.get('/listings/pinned', { params }),
   getById: (id) => api.get(`/listings/${id}`),
   create: (formData, config = {}) =>
     api.post('/listings', formData, {

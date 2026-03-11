@@ -19,6 +19,62 @@ const logger = require('../utils/logger')
 
 const router = express.Router()
 
+const MONTHLY_FREE_CREDITS = {
+  basic: 2,
+  pro: 5,
+  elite: 10,
+}
+const MONTHLY_FREE_CREDITS_PREMIUM_BUYER = 2
+
+function resolveSellerTier(user) {
+  if (['basic', 'pro', 'elite'].includes(user?.sellerTier)) return user.sellerTier
+  const plan = String(user?.subscription?.plan || '').toLowerCase()
+  if (plan === 'seller_elite' || plan === 'premium') return 'elite'
+  if (plan === 'seller_pro' || plan === 'gold') return 'pro'
+  if (plan === 'seller_basic') return 'basic'
+  return null
+}
+
+function getMonthlyFreeCredits(user) {
+  if (!user) return 0
+  if (user.role === 'seller') {
+    const tier = resolveSellerTier(user)
+    return tier ? (MONTHLY_FREE_CREDITS[tier] || 0) : 0
+  }
+  if (String(user.subscription?.plan || '').toLowerCase() === 'premium_buyer') {
+    return MONTHLY_FREE_CREDITS_PREMIUM_BUYER
+  }
+  return 0
+}
+
+function isSameUtcMonth(a, b) {
+  return a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth()
+}
+
+async function ensureMonthlyCredits(userId) {
+  const now = new Date()
+  const user = await User.findById(userId)
+    .select('role sellerTier subscription pinCredits pinCreditsGranted pinCreditsLastGrantAt')
+  if (!user) return null
+
+  const lastGrant = user.pinCreditsLastGrantAt
+  if (lastGrant instanceof Date && isSameUtcMonth(lastGrant, now)) return user
+
+  const creditsToGrant = getMonthlyFreeCredits(user)
+
+  if (creditsToGrant <= 0) {
+    user.pinCreditsLastGrantAt = now
+    await user.save()
+    return user
+  }
+
+  user.pinCredits += creditsToGrant
+  user.pinCreditsGranted += creditsToGrant
+  user.pinCreditsLastGrantAt = now
+  await user.save()
+  return user
+}
+
 async function invalidateTargetCaches(targetType) {
   if (targetType === 'listing') {
     await responseCacheInvalidate(['listings:list'])
@@ -187,10 +243,11 @@ router.get('/plans', (req, res) => {
 router.get('/my', protect, async (req, res, next) => {
   try {
     await markExpiredPins()
+    await ensureMonthlyCredits(req.user._id)
 
     const [pins, freshUser] = await Promise.all([
       Pin.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(200),
-      User.findById(req.user._id).select('pinCredits pinCreditsPurchased'),
+      User.findById(req.user._id).select('role sellerTier subscription pinCredits pinCreditsPurchased pinCreditsGranted'),
     ])
 
     const activePins = pins.filter((p) => p.status === 'active' && p.expiresAt && p.expiresAt > new Date())
@@ -207,7 +264,9 @@ router.get('/my', protect, async (req, res, next) => {
       credits: {
         balance: freshUser?.pinCredits || 0,
         purchased: freshUser?.pinCreditsPurchased || 0,
+        granted: freshUser?.pinCreditsGranted || 0,
       },
+      monthlyFreeCredits: getMonthlyFreeCredits(freshUser),
     }
 
     res.json({ pins, activePins: activePinsEnriched, usage })
@@ -326,6 +385,8 @@ router.post('/initialize', protect, async (req, res, next) => {
       return res.status(403).json({ error: 'Only sellers or premium users can pin content' })
     }
 
+    await ensureMonthlyCredits(req.user._id)
+
     let { targetType, targetId, units = 1 } = req.body
     const durationHours = unitsToHours(units)
 
@@ -334,6 +395,9 @@ router.post('/initialize', protect, async (req, res, next) => {
     }
 
     targetType = String(targetType).toLowerCase()
+    if (targetType !== 'listing') {
+      return res.status(400).json({ error: 'Only listings can be pinned' })
+    }
     await getOwnedTargetOrThrow(req.user, targetType, targetId)
 
     await consumePinCredits(req.user._id, Number(units))
@@ -358,6 +422,7 @@ router.post('/:id/extend', protect, async (req, res, next) => {
     }
 
     await markExpiredPins()
+    await ensureMonthlyCredits(req.user._id)
 
     const basePin = await Pin.findOne({
       _id: req.params.id,

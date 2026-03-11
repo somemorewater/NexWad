@@ -17,6 +17,9 @@ const { LISTING_CATEGORIES } = require('../constants/categories')
 const { responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
 const { serializeQuery } = require('../utils/cacheKey')
 
+const POSTER_FEATURE_ENABLED = process.env.ENABLE_SELLER_POSTER === 'true'
+const rejectPosterFeature = (res) => res.status(404).json({ error: 'Poster feature disabled' })
+
 function userIdentifierQuery(identifierRaw) {
   const identifier = String(identifierRaw || '').trim()
   const query = []
@@ -333,6 +336,7 @@ router.put('/me/poster/featured', protect, async (req, res, next) => {
 // ─── POST /api/users/me/poster/generate ──────
 router.post('/me/poster/generate', protect, async (req, res, next) => {
   try {
+    if (!POSTER_FEATURE_ENABLED) return rejectPosterFeature(res)
     if (req.user.role !== 'seller') return res.status(403).json({ error: 'Only sellers can generate brand posters' })
 
     const user = await User.findById(req.user._id)
@@ -354,6 +358,7 @@ router.post('/me/poster/generate', protect, async (req, res, next) => {
 // ─── DELETE /api/users/me/poster ─────────────
 router.delete('/me/poster', protect, async (req, res, next) => {
   try {
+    if (!POSTER_FEATURE_ENABLED) return rejectPosterFeature(res)
     if (req.user.role !== 'seller') return res.status(403).json({ error: 'Only sellers can delete brand posters' })
 
     const user = await User.findById(req.user._id).select('posterPublicId')
@@ -380,6 +385,7 @@ router.delete('/me/poster', protect, async (req, res, next) => {
 // ─── GET /api/users/:id/poster ───────────────
 router.get('/:id/poster', optionalAuth, async (req, res, next) => {
   try {
+    if (!POSTER_FEATURE_ENABLED) return rejectPosterFeature(res)
     const { query } = userIdentifierQuery(req.params.id)
     const user = await User.findOne({ $or: query })
       .select('name username role sellerTier bio avatar subscription subscriptionStatus posterImageUrl posterSignature posterTemplateStyle posterLastGeneratedAt featuredProducts banned')
@@ -400,6 +406,7 @@ router.get('/:id/poster', optionalAuth, async (req, res, next) => {
 // ─── GET /api/users/:id/poster/image ─────────
 router.get('/:id/poster/image', optionalAuth, async (req, res, next) => {
   try {
+    if (!POSTER_FEATURE_ENABLED) return rejectPosterFeature(res)
     const { query } = userIdentifierQuery(req.params.id)
     const user = await User.findOne({ $or: query })
       .select('name username role sellerTier bio avatar subscription subscriptionStatus posterImageUrl posterSignature posterTemplateStyle posterLastGeneratedAt featuredProducts banned')
