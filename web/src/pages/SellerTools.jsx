@@ -11,6 +11,7 @@ import { getUserPath } from '../utils/userPath'
 export default function SellerTools() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
+  const POSTER_FEATURE_ENABLED = false
   const [listings, setListings] = useState([])
   const [selectedProducts, setSelectedProducts] = useState(
     (user?.featuredProducts || []).map((id) => String(id))
@@ -25,15 +26,16 @@ export default function SellerTools() {
     const load = async () => {
       setLoadingListings(true)
       try {
-        const [listingsRes, posterRes] = await Promise.allSettled([
-          listingsAPI.getMyListings(),
-          user?.username ? usersAPI.getPoster(user.username) : usersAPI.getPoster(user?._id),
-        ])
+        const requests = [listingsAPI.getMyListings()]
+        if (POSTER_FEATURE_ENABLED) {
+          requests.push(user?.username ? usersAPI.getPoster(user.username) : usersAPI.getPoster(user?._id))
+        }
+        const [listingsRes, posterRes] = await Promise.allSettled(requests)
         if (!mounted) return
         if (listingsRes.status === 'fulfilled') {
           setListings(listingsRes.value?.data?.listings || [])
         }
-        if (posterRes.status === 'fulfilled') {
+        if (POSTER_FEATURE_ENABLED && posterRes?.status === 'fulfilled') {
           setPosterUrl(posterRes.value?.data?.posterImageUrl || '')
         }
       } catch {
@@ -138,35 +140,39 @@ export default function SellerTools() {
         <main className="page-main">
           <div className="page-header">
             <h1 className="page-header__title">Seller Tools</h1>
-            <p className="page-header__sub">Manage your brand poster and featured products from one place.</p>
+            <p className="page-header__sub">
+              {POSTER_FEATURE_ENABLED ? 'Manage your brand poster and featured products from one place.' : 'Manage your featured products from one place.'}
+            </p>
           </div>
 
-          <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
-            <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>Brand Poster</h2>
-              <div className="action-wrap">
-                <button type="button" className="btn btn-secondary" onClick={generatePoster} disabled={posterLoading}>
-                  {posterLoading ? 'Generating...' : 'Generate Poster'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={sharePoster} disabled={posterLoading || !posterUrl}>
-                  Share Poster
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={downloadPoster} disabled={posterLoading || !posterUrl}>
-                  Download Poster
-                </button>
-                <button type="button" className="btn btn-danger" onClick={deletePoster} disabled={posterLoading || !posterUrl}>
-                  Delete Poster
-                </button>
+          {POSTER_FEATURE_ENABLED ? (
+            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
+              <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>Brand Poster</h2>
+                <div className="action-wrap">
+                  <button type="button" className="btn btn-secondary" onClick={generatePoster} disabled={posterLoading}>
+                    {posterLoading ? 'Generating...' : 'Generate Poster'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={sharePoster} disabled={posterLoading || !posterUrl}>
+                    Share Poster
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={downloadPoster} disabled={posterLoading || !posterUrl}>
+                    Download Poster
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={deletePoster} disabled={posterLoading || !posterUrl}>
+                    Delete Poster
+                  </button>
+                </div>
               </div>
+              {posterUrl ? (
+                <div style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: 420 }}>
+                  <img src={posterUrl} alt="Seller brand poster" style={{ width: '100%', display: 'block' }} />
+                </div>
+              ) : (
+                <p className="caption">No poster generated yet.</p>
+              )}
             </div>
-            {posterUrl ? (
-              <div style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', maxWidth: 420 }}>
-                <img src={posterUrl} alt="Seller brand poster" style={{ width: '100%', display: 'block' }} />
-              </div>
-            ) : (
-              <p className="caption">No poster generated yet.</p>
-            )}
-          </div>
+          ) : null}
 
           <div className="card card-body">
             <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>

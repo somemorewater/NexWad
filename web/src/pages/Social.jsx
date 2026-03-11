@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { PostCard } from '../components/Card'
-import { postsAPI } from '../api/endpoints'
+import { listingsAPI, postsAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import { rankFeed, deduplicateFeed } from '../utils/feedAlgorithm'
 import toast from 'react-hot-toast'
@@ -16,6 +16,7 @@ export default function Social() {
   const location = useLocation()
   const navigate = useNavigate()
   const [posts, setPosts] = useState([])
+  const [pinnedListings, setPinnedListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [newPost, setNewPost] = useState('')
   const [postImage, setPostImage] = useState(null)
@@ -48,6 +49,12 @@ export default function Social() {
   }
 
   useEffect(() => { loadFeed(true) }, [])
+
+  useEffect(() => {
+    listingsAPI.getPinned({ limit: 8 })
+      .then(({ data }) => setPinnedListings(data?.listings || []))
+      .catch(() => setPinnedListings([]))
+  }, [])
 
   useEffect(() => {
     const postId = new URLSearchParams(location.search).get('post')
@@ -198,37 +205,32 @@ export default function Social() {
               </div>
             )}
 
-            {posts.some((item) => item.isPinned) && (
+            {pinnedListings.length > 0 && (
               <section className="pin-strip" style={{ marginBottom: 'var(--space-5)' }}>
                 <div className="pin-strip__header">
-                  <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Posts</h2>
+                  <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Listings</h2>
                 </div>
                 <div className="pin-strip__scroller">
-                  {posts.filter((item) => item.isPinned).map((item) => (
-                    <div key={`pin-${item._id}`} className="pin-strip__item">
-                      {(() => {
-                        const canSeePinTime = Boolean(user?._id && item.author?._id && user._id === item.author._id)
-                        return (
-                          <>
-                      
-                      <div className="pin-strip__content">
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.author?.name || 'Student'}</div>
-                        <div className="pin-strip__thumb">
-                        {item.image ? (
-                          <img src={item.image} alt={item.author?.name || 'Pinned post'} />
+                  {pinnedListings.map((item) => (
+                    <button
+                      key={`pin-${item._id}`}
+                      type="button"
+                      className="pin-strip__item"
+                      style={{ cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => navigate(`/marketplace/${item._id}`)}
+                    >
+                      <div className="pin-strip__thumb">
+                        {item.images?.[0] ? (
+                          <img src={item.images[0]} alt={item.title} />
                         ) : (
                           <i className="fa-solid fa-image" aria-hidden="true" />
                         )}
                       </div>
-                        <div className="caption">
-                          {String(item.content || '').slice(0, 52) || 'Photo post'}
-                          {canSeePinTime ? ` · ${formatPinTimeLeft(item.pin?.expiresAt)}` : ''}
-                        </div>
+                      <div className="pin-strip__content">
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
+                        <div className="caption">₦{(item.price || 0).toLocaleString()} · {formatPinTimeLeft(item.pin?.expiresAt)}</div>
                       </div>
-                          </>
-                        )
-                      })()}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>

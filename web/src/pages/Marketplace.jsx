@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -49,6 +49,7 @@ export default function Marketplace() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [listings, setListings] = useState([])
+  const [pinnedListings, setPinnedListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const [page, setPage] = useState(1)
@@ -100,9 +101,37 @@ export default function Marketplace() {
     fetchListings(true)
   }, [category, sort, searchParams.get('q'), searchParams.get('mine'), searchParams.get('saved')])
 
+  useEffect(() => {
+    const isMine = searchParams.get('mine')
+    const isSaved = searchParams.get('saved')
+    const hasQuery = searchParams.get('q')
+    if (isMine || isSaved || hasQuery) {
+      setPinnedListings([])
+      return
+    }
+    listingsAPI.getPinned({
+      limit: 8,
+      category: category === 'All' ? undefined : category,
+    })
+      .then(({ data }) => setPinnedListings(data?.listings || []))
+      .catch(() => setPinnedListings([]))
+  }, [category, searchParams.get('mine'), searchParams.get('saved'), searchParams.get('q')])
+
   const title = searchParams.get('mine') ? 'My Listings'
     : searchParams.get('saved') ? 'Saved Items'
     : 'Marketplace'
+
+  const displayListings = useMemo(() => {
+    if (!pinnedListings.length) return listings
+    const seen = new Set()
+    const merged = [...pinnedListings, ...listings].filter((item) => {
+      const key = String(item?._id || '')
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    return merged
+  }, [listings, pinnedListings])
 
   const handlePinnedListingClick = (item) => {
     const itemSellerId = item?.seller?._id || item?.seller
@@ -147,7 +176,7 @@ export default function Marketplace() {
           <div className="page-header-row" style={{ marginBottom: 'var(--space-6)' }}>
             <div className="page-header" style={{ marginBottom: 0 }}>
               <h1 className="page-header__title">{title}</h1>
-              <p className="page-header__sub">{listings.length} items found</p>
+              <p className="page-header__sub">{displayListings.length} items found</p>
             </div>
             {!searchParams.get('saved') && canSell && (
               <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
@@ -183,13 +212,13 @@ export default function Marketplace() {
             </div>
           )}
 
-          {listings.some((item) => item.isPinned) && (
+          {pinnedListings.length > 0 && (
             <section className="pin-strip" style={{ marginBottom: 'var(--space-5)' }}>
               <div className="pin-strip__header">
                 <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Listings</h2>
               </div>
               <div className="pin-strip__scroller">
-                {listings.filter((item) => item.isPinned).map((item) => (
+                {pinnedListings.map((item) => (
                   <button
                     key={`pin-${item._id}`}
                     type="button"
@@ -215,13 +244,13 @@ export default function Marketplace() {
           )}
 
           {/* Grid */}
-          {loading && listings.length === 0 ? (
+          {loading && displayListings.length === 0 ? (
             <div className="grid-3">
               {Array(6).fill(0).map((_, i) => (
                 <div key={i} className="skeleton" style={{ height: 300, borderRadius: 'var(--radius-xl)' }} />
               ))}
             </div>
-          ) : listings.length === 0 ? (
+          ) : displayListings.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state__icon" style={{ fontSize: '2rem' }}><i className="fa-solid fa-magnifying-glass" aria-hidden="true" /></div>
               <div className="empty-state__title">No listings found</div>
@@ -231,12 +260,18 @@ export default function Marketplace() {
           ) : (
             <>
               <div className="grid-3">
-                {listings.map((l, i) => (
+                {displayListings.map((l, i) => (
                   <div key={l._id} className="animate-fade-in" style={{ animationDelay: `${(i % 12) * 0.04}s` }}>
                     <ListingCard
                       listing={l}
-                      onUpdated={(updated) => setListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))}
-                      onDeleted={(listingId) => setListings((prev) => prev.filter((entry) => entry._id !== listingId))}
+                      onUpdated={(updated) => {
+                        setListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))
+                        setPinnedListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))
+                      }}
+                      onDeleted={(listingId) => {
+                        setListings((prev) => prev.filter((entry) => entry._id !== listingId))
+                        setPinnedListings((prev) => prev.filter((entry) => entry._id !== listingId))
+                      }}
                     />
                   </div>
                 ))}
