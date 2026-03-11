@@ -18,6 +18,7 @@ export default function Social() {
   const [posts, setPosts] = useState([])
   const [pinnedListings, setPinnedListings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedPinnedListing, setSelectedPinnedListing] = useState(null)
   const [newPost, setNewPost] = useState('')
   const [postImage, setPostImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
@@ -217,7 +218,7 @@ export default function Social() {
                       type="button"
                       className="pin-strip__item"
                       style={{ cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => navigate(`/marketplace/${item._id}`)}
+                      onClick={() => setSelectedPinnedListing(item)}
                     >
                       <div className="pin-strip__thumb">
                         {item.images?.[0] ? (
@@ -276,6 +277,53 @@ export default function Social() {
           </div>
         </main>
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedPinnedListing)}
+        onClose={() => setSelectedPinnedListing(null)}
+        title={selectedPinnedListing?.title || 'Product Details'}
+        size="md"
+        footer={(
+          <>
+            <button className="btn btn-secondary" onClick={() => setSelectedPinnedListing(null)}>
+              Close
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                if (selectedPinnedListing?._id) navigate(`/marketplace/${selectedPinnedListing._id}`)
+                setSelectedPinnedListing(null)
+              }}
+            >
+              Open Listing
+            </button>
+          </>
+        )}
+      >
+        {selectedPinnedListing && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ width: '100%', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--nw-gray-200)', background: 'var(--nw-gray-100)' }}>
+              {selectedPinnedListing.images?.[0] ? (
+                <img
+                  src={selectedPinnedListing.images[0]}
+                  alt={selectedPinnedListing.title}
+                  style={{ width: '100%', maxHeight: 260, objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nw-gray-400)' }}>
+                  <i className="fa-solid fa-image" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>₦{(selectedPinnedListing.price || 0).toLocaleString()}</div>
+            <div className="caption">Seller: {selectedPinnedListing.seller?.name || 'Seller'}</div>
+            {selectedPinnedListing.description && (
+              <p style={{ margin: 0, color: 'var(--nw-gray-700)', lineHeight: 1.6 }}>{selectedPinnedListing.description}</p>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={commentsOpen}

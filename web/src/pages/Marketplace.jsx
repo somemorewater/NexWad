@@ -134,12 +134,6 @@ export default function Marketplace() {
   }, [listings, pinnedListings])
 
   const handlePinnedListingClick = (item) => {
-    const itemSellerId = item?.seller?._id || item?.seller
-    const isOwner = Boolean(user?._id && itemSellerId && user._id === String(itemSellerId))
-    if (isOwner) {
-      navigate(`/marketplace/${item._id}`)
-      return
-    }
     setSelectedPinnedListing(item)
   }
 
@@ -264,6 +258,7 @@ export default function Marketplace() {
                   <div key={l._id} className="animate-fade-in" style={{ animationDelay: `${(i % 12) * 0.04}s` }}>
                     <ListingCard
                       listing={l}
+                      showGetProduct
                       onUpdated={(updated) => {
                         setListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))
                         setPinnedListings((prev) => prev.map((entry) => (entry._id === updated._id ? { ...entry, ...updated } : entry)))
@@ -305,9 +300,28 @@ export default function Marketplace() {
             <button className="btn btn-secondary" onClick={() => setSelectedPinnedListing(null)}>
               Close
             </button>
-            <button className="btn btn-primary" onClick={handleGetProduct} disabled={openingChat}>
-              {openingChat ? 'Opening chat...' : 'Get Product'}
-            </button>
+            {(() => {
+              const sellerId = selectedPinnedListing?.seller?._id || selectedPinnedListing?.seller
+              const isOwner = Boolean(user?._id && sellerId && String(user._id) === String(sellerId))
+              if (isOwner) {
+                return (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      if (selectedPinnedListing?._id) navigate(`/marketplace/${selectedPinnedListing._id}`)
+                      setSelectedPinnedListing(null)
+                    }}
+                  >
+                    Open Listing
+                  </button>
+                )
+              }
+              return (
+                <button className="btn btn-primary" onClick={handleGetProduct} disabled={openingChat}>
+                  {openingChat ? 'Opening chat...' : 'Get Product'}
+                </button>
+              )
+            })()}
           </>
         )}
       >

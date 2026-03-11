@@ -11,7 +11,10 @@ function isLoopbackUrl(url) {
 }
 
 export function getRuntimeApiOrigin() {
-  const raw = trimTrailingSlash(import.meta.env.VITE_API_URL || '')
+  const runtimeUrl = typeof window !== 'undefined'
+    ? trimTrailingSlash(window.__RUNTIME_API_URL__ || '')
+    : ''
+  const raw = runtimeUrl || trimTrailingSlash(import.meta.env.VITE_API_URL || '')
   if (!raw) return ''
 
   if (typeof window === 'undefined') return raw

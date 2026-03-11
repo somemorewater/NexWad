@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listingsAPI, pinsAPI, postsAPI } from '../api/endpoints'
+import { chatAPI, listingsAPI, pinsAPI, postsAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
@@ -27,7 +27,7 @@ const MAX_LISTING_IMAGES = 4
 /**
  * Listing Card — used in Marketplace grid
  */
-export function ListingCard({ listing, onUpdated, onDeleted }) {
+export function ListingCard({ listing, onUpdated, onDeleted, showGetProduct = false }) {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const [listingData, setListingData] = useState(listing)
@@ -38,6 +38,7 @@ export function ListingCard({ listing, onUpdated, onDeleted }) {
   const [pinLoading, setPinLoading] = useState(false)
   const [updatingListing, setUpdatingListing] = useState(false)
   const [deletingListing, setDeletingListing] = useState(false)
+  const [startingChat, setStartingChat] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', price: '', description: '' })
   const [editExistingImages, setEditExistingImages] = useState([])
@@ -64,6 +65,34 @@ export function ListingCard({ listing, onUpdated, onDeleted }) {
   const isOwner = Boolean(user?._id && seller?._id && user._id === seller._id)
   const canPin = isOwner && canPinContent(user)
   const sellerBadge = getVerificationBadge(seller)
+
+  const messageSeller = async (e) => {
+    e.stopPropagation()
+    const sellerId = listingData?.seller?._id || listingData?.seller
+    if (!listingData?._id || !sellerId) {
+      toast.error('Seller details unavailable for this listing')
+      return
+    }
+    if (!isAuthenticated) {
+      toast.error('Login required to message seller')
+      navigate('/login')
+      return
+    }
+    if (String(sellerId) === String(user?._id)) {
+      navigate(`/marketplace/${listingData._id}`)
+      return
+    }
+
+    setStartingChat(true)
+    try {
+      const { data } = await chatAPI.getOrCreate(listingData._id, sellerId)
+      navigate(`/chat/${data.chat._id}`)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not open chat')
+    } finally {
+      setStartingChat(false)
+    }
+  }
 
   const toggleSave = async (e) => {
     e.stopPropagation()
@@ -283,6 +312,20 @@ export function ListingCard({ listing, onUpdated, onDeleted }) {
             <span>₦{originalPrice?.toLocaleString()}</span>
           )}
         </div>
+
+        {showGetProduct && !isOwner && (
+          <div style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={messageSeller}
+              disabled={startingChat}
+              style={{ width: '100%' }}
+            >
+              {startingChat ? 'Opening chat...' : 'Get Product'}
+            </button>
+          </div>
+        )}
 
         <div className="listing-card__footer">
           <button

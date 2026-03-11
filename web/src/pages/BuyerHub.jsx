@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+import Modal from '../components/Modal'
 import { listingsAPI, postsAPI, lostFoundAPI, pinsAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import { SocketContext } from '../context/SocketContext'
@@ -17,6 +18,7 @@ export default function BuyerHub() {
   const [pinUsage, setPinUsage] = useState({ credits: { balance: 0 } })
   const [pinActionId, setPinActionId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [selectedPinnedListing, setSelectedPinnedListing] = useState(null)
   const premium = isPremiumBuyer(user)
 
   useEffect(() => {
@@ -45,14 +47,7 @@ export default function BuyerHub() {
       .catch(() => {})
   }, [premium])
 
-  const pinnedHighlights = preview.listings
-    .filter((item) => item.isPinned)
-    .map((item) => ({
-      type: 'Listing',
-      title: item.title,
-      image: item.images?.[0],
-      expiresAt: item.pin?.expiresAt,
-    }))
+  const pinnedHighlights = preview.listings.filter((item) => item.isPinned)
 
   const buyCredits = async (units) => {
     const parsedUnits = Number.parseInt(units, 10)
@@ -142,22 +137,24 @@ export default function BuyerHub() {
                 <h2 className="pin-strip__title"><i className="fa-solid fa-thumbtack" aria-hidden="true" /> Pinned Now</h2>
               </div>
               <div className="pin-strip__scroller">
-                {pinnedHighlights.map((item, index) => (
-                  <div key={`${item.type}-${index}`} className="pin-strip__item">
+                {pinnedHighlights.map((item) => (
+                  <button
+                    key={`pin-${item._id}`}
+                    type="button"
+                    className="pin-strip__item"
+                    style={{ cursor: 'pointer', textAlign: 'left' }}
+                    onClick={() => setSelectedPinnedListing(item)}
+                  >
                     <div className="pin-strip__thumb">
-                      {item.image ? (
-                        <img src={item.image} alt={item.title} />
-                      ) : item.icon ? (
-                        <i className={item.icon} aria-hidden="true" />
-                      ) : (
-                        <i className="fa-solid fa-image" aria-hidden="true" />
-                      )}
+                      {item.images?.[0]
+                        ? <img src={item.images[0]} alt={item.title} />
+                        : <i className="fa-solid fa-image" aria-hidden="true" />}
                     </div>
                     <div className="pin-strip__content">
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
-                      <div className="caption">{item.type} · {formatPinTimeLeft(item.expiresAt)}</div>
+                      <div className="caption">Listing · {formatPinTimeLeft(item.pin?.expiresAt)}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>
@@ -259,6 +256,53 @@ export default function BuyerHub() {
           </div>
         </main>
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedPinnedListing)}
+        onClose={() => setSelectedPinnedListing(null)}
+        title={selectedPinnedListing?.title || 'Product Details'}
+        size="md"
+        footer={(
+          <>
+            <button className="btn btn-secondary" onClick={() => setSelectedPinnedListing(null)}>
+              Close
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                if (selectedPinnedListing?._id) navigate(`/marketplace/${selectedPinnedListing._id}`)
+                setSelectedPinnedListing(null)
+              }}
+            >
+              Open Listing
+            </button>
+          </>
+        )}
+      >
+        {selectedPinnedListing && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ width: '100%', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--nw-gray-200)', background: 'var(--nw-gray-100)' }}>
+              {selectedPinnedListing.images?.[0] ? (
+                <img
+                  src={selectedPinnedListing.images[0]}
+                  alt={selectedPinnedListing.title}
+                  style={{ width: '100%', maxHeight: 260, objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nw-gray-400)' }}>
+                  <i className="fa-solid fa-image" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>₦{(selectedPinnedListing.price || 0).toLocaleString()}</div>
+            <div className="caption">Seller: {selectedPinnedListing.seller?.name || 'Seller'}</div>
+            {selectedPinnedListing.description && (
+              <p style={{ margin: 0, color: 'var(--nw-gray-700)', lineHeight: 1.6 }}>{selectedPinnedListing.description}</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
