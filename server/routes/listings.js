@@ -1,12 +1,13 @@
 const express = require('express')
 const router = express.Router()
 const Listing = require('../models/Listing')
+const Pin = require('../models/Pin')
 const User = require('../models/User')
 const { protect, optionalAuth } = require('../middleware/auth')
 const { handleUpload, uploadListingImages, deleteAsset } = require('../utils/cloudinary')
 const { listingRules, validate, paginationRules } = require('../middleware/validate')
 const { buildListingFeed } = require('../utils/feedAlgorithm')
-const { attachPinsAndSort } = require('../utils/pins')
+const { attachPinsAndSort, markExpiredPins } = require('../utils/pins')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 const { responseCacheKey, responseCacheRemember, responseCacheInvalidate } = require('../utils/redis')
 const { serializeQuery } = require('../utils/cacheKey')
@@ -31,6 +32,24 @@ function resolveSellerTier(user) {
   if (plan === 'seller_elite' || plan === 'premium') return 'elite'
   if (plan === 'seller_pro' || plan === 'gold') return 'pro'
   return 'basic'
+}
+
+function getMonthWindow(now = new Date()) {
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
+  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+  return { monthStart, nextMonthStart }
+}
+
+async function getMonthlyListingUsage(user, now = new Date()) {
+  const sellerTier = resolveSellerTier(user)
+  const monthlyLimit = MONTHLY_UPLOAD_LIMITS[sellerTier] || MONTHLY_UPLOAD_LIMITS.basic
+  const { monthStart, nextMonthStart } = getMonthWindow(now)
+  const uploadsThisMonth = await Listing.countDocuments({
+    seller: user._id,
+    createdAt: { $gte: monthStart, $lt: nextMonthStart },
+  })
+  const remaining = Math.max(0, monthlyLimit - uploadsThisMonth)
+  return { sellerTier, monthlyLimit, uploadsThisMonth, remaining }
 }
 
 async function buildListingSearchClause(rawQuery) {
@@ -159,6 +178,51 @@ router.get('/', optionalAuth, paginationRules, validate, async (req, res, next) 
   } catch (err) { next(err) }
 })
 
+// ─── GET /api/listings/pinned ─────────────────
+router.get('/pinned', optionalAuth, async (req, res, next) => {
+  try {
+    const { limit = 8, category } = req.query
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 8, 1), 24)
+    await markExpiredPins()
+
+    const pins = await Pin.find({
+      targetType: 'listing',
+      status: 'active',
+      expiresAt: { $gt: new Date() },
+    })
+      .sort({ pinnedAt: -1, createdAt: -1 })
+      .limit(parsedLimit * 3)
+      .lean()
+
+    const pinIds = pins.map((pin) => pin.targetId).filter(Boolean)
+    if (pinIds.length === 0) return res.json({ listings: [] })
+
+    const listingQuery = { _id: { $in: pinIds }, status: 'active' }
+    if (category && category !== 'All') listingQuery.category = category
+
+    const listings = await Listing.find(listingQuery)
+      .populate('seller', 'name username avatar subscription role buyerType sellerTier')
+      .lean()
+
+    const listingMap = new Map(listings.map((listing) => [String(listing._id), listing]))
+    const ordered = pins
+      .map((pin) => listingMap.get(String(pin.targetId)))
+      .filter(Boolean)
+      .slice(0, parsedLimit)
+
+    const savedIds = req.user?.savedListings?.map((s) => s.toString()) || []
+    const enriched = ordered.map((listing) => ({
+      ...listing,
+      isSaved: savedIds.includes(listing._id.toString()),
+    }))
+
+    const { items } = await attachPinsAndSort(enriched, 'listing')
+    return res.json({ listings: items })
+  } catch (err) {
+    return next(err)
+  }
+})
+
 // ─── GET /api/listings/saved ──────────────────
 router.get('/saved', protect, async (req, res, next) => {
   try {
@@ -173,9 +237,12 @@ router.get('/saved', protect, async (req, res, next) => {
 // ─── GET /api/listings/mine ───────────────────
 router.get('/mine', protect, async (req, res, next) => {
   try {
-    const listings = await Listing.find({ seller: req.user._id }).sort({ createdAt: -1 })
+    const [listings, usage] = await Promise.all([
+      Listing.find({ seller: req.user._id }).sort({ createdAt: -1 }),
+      getMonthlyListingUsage(req.user),
+    ])
     const { items, pinnedItems } = await attachPinsAndSort(listings.map((listing) => listing.toObject?.() || listing), 'listing')
-    res.json({ listings: items, pinnedListings: pinnedItems, hasMore: false })
+    res.json({ listings: items, pinnedListings: pinnedItems, hasMore: false, usage })
   } catch (err) { next(err) }
 })
 
@@ -219,21 +286,14 @@ router.post('/', protect, handleUpload(uploadListingImages), listingRules, valid
       return res.status(400).json({ error: 'At least one image is required to create a listing' })
     }
 
-    const sellerTier = resolveSellerTier(req.user)
-    const monthlyLimit = MONTHLY_UPLOAD_LIMITS[sellerTier] || MONTHLY_UPLOAD_LIMITS.basic
-    const now = new Date()
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
-    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0))
-    const uploadsThisMonth = await Listing.countDocuments({
-      seller: req.user._id,
-      createdAt: { $gte: monthStart, $lt: nextMonthStart },
-    })
-    if (uploadsThisMonth >= monthlyLimit) {
+    const usage = await getMonthlyListingUsage(req.user)
+    if (usage.uploadsThisMonth >= usage.monthlyLimit) {
       return res.status(403).json({
-        error: `Monthly upload limit reached for ${sellerTier} sellers (${monthlyLimit} listings per month).`,
-        limit: monthlyLimit,
-        uploadsThisMonth,
-        tier: sellerTier,
+        error: `Monthly upload limit reached for ${usage.sellerTier} sellers (${usage.monthlyLimit} listings per month).`,
+        limit: usage.monthlyLimit,
+        uploadsThisMonth: usage.uploadsThisMonth,
+        tier: usage.sellerTier,
+        remaining: usage.remaining,
       })
     }
 

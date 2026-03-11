@@ -97,6 +97,8 @@ const userSchema = new mongoose.Schema({
   ratingCount: { type: Number, default: 0 },
   pinCredits: { type: Number, default: 0, min: 0 },
   pinCreditsPurchased: { type: Number, default: 0, min: 0 },
+  pinCreditsGranted: { type: Number, default: 0, min: 0 },
+  pinCreditsLastGrantAt: { type: Date },
 
   // Auth
   passwordResetToken: { type: String, select: false },

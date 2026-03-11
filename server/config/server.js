@@ -6,7 +6,6 @@ const compression = require('compression')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
 const { logRequestActivity } = require('../middleware/activityLogger')
-const { enforceApiKey } = require('../middleware/apiKey')
 
 const app = express()
 const isProd = process.env.NODE_ENV === 'production'
@@ -21,7 +20,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
 // ─── Read/Write rate limiting ─────────────────
@@ -57,7 +56,6 @@ const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts. Try again in 15 minutes.' },
 })
 app.use('/api/auth/', authLimiter)
-//app.use('/api', enforceApiKey())
 
 // ─── Body parsing ─────────────────────────────
 app.use(compression())
