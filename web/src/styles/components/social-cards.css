@@ -71,10 +71,11 @@
 }
 
 .pin-strip {
-  background: #fff8e8;
-  border: 1px solid #f6e7c5;
+  background: linear-gradient(135deg, #fff4dd 0%, #fff9ee 55%, #ffffff 100%);
+  border: 1px solid #f1d39b;
   border-radius: var(--radius-xl);
   padding: var(--space-4);
+  box-shadow: 0 12px 24px rgba(146, 64, 14, 0.08);
 }
 
 .pin-strip__header {
@@ -88,10 +89,11 @@
   font-family: var(--font-display);
   font-size: 0.95rem;
   margin: 0;
-  color: #92400e;
+  color: #8a3d12;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: 0.02em;
 }
 
 .pin-strip__scroller {
@@ -105,13 +107,30 @@
 .pin-strip__item {
   min-width: 200px;
   max-width: 260px;
-  background: var(--nw-white);
-  border: 1px solid #f7e8cb;
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+  background: linear-gradient(180deg, #fff7e7 0%, #ffffff 100%);
+  border: 1px solid #f2d197;
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 18px rgba(146, 64, 14, 0.1);
+  display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+}
+
+.pin-strip__item::before {
+  content: 'HIGHLIGHT';
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #b45309;
+  background: #fff1d6;
+  border: 1px solid #f2d197;
+  border-radius: 999px;
+  padding: 2px 6px;
 }
 
 .pin-strip__thumb {
@@ -119,7 +138,7 @@
   height: 44px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #f2dfb9;
+  border: 1px solid #f1d39b;
   background: var(--nw-gray-100);
   display: flex;
   align-items: center;

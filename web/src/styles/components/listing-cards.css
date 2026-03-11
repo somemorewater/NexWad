@@ -54,22 +54,25 @@
   position: absolute;
   top: var(--space-3);
   left: var(--space-3);
-  background: var(--nw-gold-light);
-  color: #92400e;
+  background: #fff1d6;
+  color: #8a3d12;
   font-size: 0.6875rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
   gap: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  border: 1px solid #f2d197;
+  box-shadow: 0 6px 14px rgba(146, 64, 14, 0.15);
 }
 
 .pinned-card {
-  border-color: #f4d89d;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+  border-color: #f2d197;
+  background: linear-gradient(180deg, #fff7e7 0%, #ffffff 55%);
+  box-shadow: 0 8px 18px rgba(146, 64, 14, 0.14);
 }
 
 .listing-card__save-btn {
@@ -152,4 +155,3 @@
   font-size: 0.8125rem;
   color: var(--nw-gray-500);
 }
-
