@@ -261,8 +261,15 @@ router.post('/',
         billingMode = quote.billingMode
       }
 
-      // TODO: In production, verify paymentReference with your payment gateway
-      // (e.g. Paystack: verify transaction before creating subscription)
+      if (chargeAmount > 0) {
+        if (!paymentReference) {
+          return res.status(400).json({ error: 'Payment reference required' })
+        }
+        const paymentCheck = await verifyPaystackPayment(paymentReference, chargeAmount)
+        if (!paymentCheck.ok) {
+          return res.status(400).json({ error: paymentCheck.reason || 'Unable to verify payment' })
+        }
+      }
 
       // Cancel existing active subscription
       await Subscription.updateMany(

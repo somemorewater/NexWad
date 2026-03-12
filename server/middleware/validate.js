@@ -23,7 +23,7 @@ const signupRules = [
     .matches(/^[a-zA-Z0-9._]+$/).withMessage('Username can only contain letters, numbers, dots, and underscores'),
   body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('matricNumber').optional().trim().notEmpty(),
+  body('matricNumber').optional({ values: 'falsy' }).trim().notEmpty(),
   body('department').optional().trim(),
   body('level').optional().isIn(['100', '200', '300', '400', '500']),
 ]

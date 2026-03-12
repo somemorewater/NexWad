@@ -3,15 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { subscriptionsAPI } from '../api/endpoints'
+import { runPaystackCharge } from '../utils/pins'
+import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 
 export default function Subscription() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [plans, setPlans] = useState([])
   const [current, setCurrent] = useState(null)
   const [application, setApplication] = useState(null)
   const [loading, setLoading] = useState(true)
   const [actionPlan, setActionPlan] = useState(null)
+  const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
 
   const loadData = async () => {
     setLoading(true)
@@ -37,7 +41,29 @@ export default function Subscription() {
   const subscribe = async (planId) => {
     setActionPlan(planId)
     try {
-      await subscriptionsAPI.subscribe(planId, {})
+      const plan = plans.find((p) => p._id === planId)
+      const planPrice = Number(plan?.price || 0)
+      let paymentReference
+
+      if (planPrice > 0) {
+        if (!paystackKey) {
+          toast.error('Paystack public key is missing (VITE_PAYSTACK_PUBLIC_KEY)')
+          return
+        }
+        const response = await runPaystackCharge({
+          publicKey: paystackKey,
+          email: user?.email || 'user@nexwad.app',
+          amountKobo: Math.round(planPrice * 100),
+          metadata: {
+            custom_fields: [
+              { display_name: 'Plan', variable_name: 'plan', value: plan?.name || planId },
+            ],
+          },
+        })
+        paymentReference = response?.reference
+      }
+
+      await subscriptionsAPI.subscribe(planId, { paymentReference })
       toast.success('Subscription activated')
       await loadData()
     } catch (err) {

@@ -32,6 +32,8 @@ function sanitizeUser(user) {
 router.post('/signup', signupRules, validate, async (req, res, next) => {
   try {
     const { name, username, email, password, matricNumber, department, level, phone, otp, _step } = req.body
+    const normalizedMatric = String(matricNumber || '').trim().toUpperCase()
+    const matricValue = normalizedMatric || undefined
 
     // Step 1: initiate — create unverified user and send OTP
     if (_step === 'initiate' || !_step) {
@@ -39,7 +41,7 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
       const existing = await User.findOne({
         $or: [
           { email },
-          ...(matricNumber ? [{ matricNumber }] : []),
+          ...(matricValue ? [{ matricNumber: matricValue }] : []),
           ...(normalizedUsername ? [{ username: normalizedUsername }] : []),
         ],
       })
@@ -67,7 +69,7 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
       pendingUser.username = normalizedUsername || undefined
       pendingUser.email = email
       pendingUser.password = password
-      pendingUser.matricNumber = matricNumber
+      pendingUser.matricNumber = matricValue
       pendingUser.department = department
       pendingUser.level = level
       pendingUser.phone = phone
