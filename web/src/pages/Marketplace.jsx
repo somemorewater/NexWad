@@ -82,14 +82,18 @@ export default function Marketplace() {
         mine: searchParams.get('mine') || undefined,
         saved: searchParams.get('saved') || undefined,
       })
+      const received = Array.isArray(data?.listings) ? data.listings.length : 0
       if (reset) {
         setListings(data.listings)
         setPage(2)
-      } else {
+        setHasMore(data.hasMore && received > 0)
+      } else if (received > 0) {
         setListings(prev => [...prev, ...data.listings])
         setPage(p => p + 1)
+        setHasMore(data.hasMore)
+      } else {
+        setHasMore(false)
       }
-      setHasMore(data.hasMore)
     } catch (err) {
       toast.error(err?.error || err?.message || 'Failed to load listings')
     } finally {
