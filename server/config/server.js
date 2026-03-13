@@ -83,6 +83,9 @@ app.use('/api/user-logs', require('../routes/userLogs'))
 app.use('/api/notifications', require('../routes/notifications'))
 app.use('/api/admin', require('../routes/admin'))
 
+// ─── Social preview (pre-rendered meta tags) ───
+app.use('/', require('../routes/meta'))
+
 // ─── Health check ─────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }))
 

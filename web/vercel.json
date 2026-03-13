@@ -1,5 +1,38 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/social/post/:postId",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|twitterbot|slackbot|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|embedly|quora link preview|googlebot|bingbot).*"
+        }
+      ],
+      "destination": "/api/meta?path=/social/post/:postId"
+    },
+    {
+      "source": "/profile/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|twitterbot|slackbot|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|embedly|quora link preview|googlebot|bingbot).*"
+        }
+      ],
+      "destination": "/api/meta?path=/profile/:id"
+    },
+    {
+      "source": "/:username",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|twitterbot|slackbot|discordbot|whatsapp|telegrambot|linkedinbot|pinterest|embedly|quora link preview|googlebot|bingbot).*"
+        }
+      ],
+      "destination": "/api/meta?path=/:username"
+    }
   ]
 }
+
