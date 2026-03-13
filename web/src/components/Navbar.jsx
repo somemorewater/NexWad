@@ -209,7 +209,7 @@ export default function Navbar() {
               {/* Messages */}
               <button
                 className="navbar__icon-btn"
-                onClick={() => navigate('/chat')}
+                onClick={() => navigate('/cs-chat')}
                 aria-label="Chat with CS"
               >
                 <SupportChatIcon />

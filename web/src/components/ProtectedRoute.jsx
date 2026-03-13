@@ -24,7 +24,7 @@ export default function ProtectedRoute({ requiredRole, fallbackTo }) {
   }
 
   if (user?.banned) {
-    if (location.pathname.startsWith('/chat')) {
+    if (location.pathname.startsWith('/chat') || location.pathname.startsWith('/cs-chat')) {
       return <Outlet />
     }
     return <Navigate to="/banned" replace />

@@ -10,6 +10,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Banned from './pages/Banned'
+import CSChat from './pages/CSChat'
 import Dashboard from './pages/Dashboard'
 import BuyerHub from './pages/BuyerHub'
 import Marketplace from './pages/Marketplace'
@@ -102,6 +103,7 @@ function AppContent() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/profile/seller-tools" element={<SellerTools />} />
                 </Route>
+                <Route path="/cs-chat" element={<CSChat />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/chat/:chatId" element={<Chat />} />
                 <Route path="/notifications" element={<Notifications />} />
