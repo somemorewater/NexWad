@@ -374,10 +374,6 @@ router.post('/apply-seller',
 
       const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
       if (isAdminRole) return res.status(403).json({ error: 'Admin roles cannot apply for seller plans' })
-      if (!String(req.user.matricNumber || '').trim()) {
-        return res.status(400).json({ error: 'Matric number is required to become a seller. Add it in your account settings.' })
-      }
-
       const existingApplication = await SellerApplication.findOne({ user: req.user._id })
       if (existingApplication?.status === 'approved') {
         return res.status(409).json({ error: 'You are already approved as a seller. Renew or upgrade from subscription without re-approval.' })

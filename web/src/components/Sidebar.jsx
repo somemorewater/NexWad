@@ -40,6 +40,9 @@ export default function Sidebar({ messageBadge = 0 }) {
   const normalizedRole = normalizeRole(user?.role)
   const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizedRole)
   const primaryNav = getPrimaryNavForUser(user)
+  const supportLinks = []
+  if (normalizedRole === 'cs') supportLinks.push({ to: '/cs', label: 'CS Desk', icon: ChatIcon })
+  if (normalizedRole === 'moderator') supportLinks.push({ to: '/moderator', label: 'Moderator Desk', icon: AlertIcon })
   const navItems = isGuest ? [
     {
       label: 'Explore',
@@ -77,6 +80,10 @@ export default function Sidebar({ messageBadge = 0 }) {
         { to: '/profile/subscription', label: 'Subscription', icon: StarIcon },
       ],
     },
+    ...(supportLinks.length ? [{
+      label: 'Support',
+      links: supportLinks,
+    }] : []),
   ]
 
   const avatarInitials = user?.name

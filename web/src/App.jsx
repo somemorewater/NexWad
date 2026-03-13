@@ -25,6 +25,8 @@ import SellerTools from './pages/SellerTools'
 import ProductDetails from './pages/ProductDetails'
 import PostDetails from './pages/PostDetails'
 import AdminDashboard from './pages/AdminDashboard'
+import CSDesk from './pages/CSDesk'
+import ModeratorDashboard from './pages/ModeratorDashboard'
 import Legal from './pages/Legal'
 import SearchResults from './pages/SearchResults'
 import Notifications from './pages/Notifications'
@@ -115,6 +117,14 @@ function AppContent() {
               </Route>
               <Route element={<ProtectedRoute requiredRole={['superadmin', 'super_admin']} fallbackTo="/admin" />}>
                 <Route path="/super-admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              {/* Moderator + CS */}
+              <Route element={<ProtectedRoute requiredRole="moderator" />}>
+                <Route path="/moderator" element={<ModeratorDashboard />} />
+              </Route>
+              <Route element={<ProtectedRoute requiredRole="cs" />}>
+                <Route path="/cs" element={<CSDesk />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />
