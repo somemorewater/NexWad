@@ -8,7 +8,7 @@ const features = [
   {
     iconClass: 'fa-solid fa-cart-shopping',
     title: 'Student Marketplace',
-    desc: 'Buy and sell textbooks, electronics, hostel essentials — all within AFIT.',
+    desc: 'Buy and sell textbooks, electronics, hostel essentials — all within the AFIT community.',
     color: 'var(--nw-primary-light)',
   },
   {
@@ -50,14 +50,14 @@ export default function Home() {
         <section className="hero">
           <div className="container">
             <div className="hero__eyebrow animate-fade-in">
-              <span><i className="fa-solid fa-graduation-cap" aria-hidden="true" /></span> AFIT Kaduna's Student Platform
+              <span><i className="fa-solid fa-graduation-cap" aria-hidden="true" /></span> AFIT Community Platform
             </div>
             <h1 className="hero__title animate-fade-in delay-1">
               Your campus.<br />
               <em>One platform.</em>
             </h1>
             <p className="hero__subtitle animate-fade-in delay-2">
-              NexWAD connects AFIT students to buy, sell, find lost items,
+              NexWAD connects the AFIT community to buy, sell, find lost items,
               and share campus life — all in one place.
             </p>
             <div className="hero__actions animate-fade-in delay-3">
@@ -139,7 +139,7 @@ export default function Home() {
           }} />
           <div className="container" style={{ position: 'relative' }}>
             <h2 className="display-lg" style={{ color: 'white', marginBottom: 'var(--space-5)' }}>
-              Join 2,400+ AFIT students
+              Join 2,400+ AFIT community members
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1.0625rem', marginBottom: 'var(--space-10)', maxWidth: 460, margin: '0 auto var(--space-10)' }}>
               Sign up with any valid email and start buying, selling, and connecting today.
@@ -159,7 +159,7 @@ export default function Home() {
           <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>NexWAD</span>
-              {' '}· Built for AFIT students · {new Date().getFullYear()}
+              {' '}· Built for the AFIT community · {new Date().getFullYear()}
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
               <Link to="/legal" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem' }}>Legal</Link>

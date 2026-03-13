@@ -115,7 +115,7 @@ export default function Signup() {
             Join your<br />campus network.
           </h2>
           <p className="auth-left__sub">
-            Create your NexWAD account and gain access to the full AFIT student ecosystem.
+            Create your NexWAD account and gain access to the full AFIT community.
           </p>
         </div>
         {/* Step indicator */}
@@ -217,7 +217,7 @@ export default function Signup() {
           {step === 2 && (
             <>
               <h2>Student Details</h2>
-              <p>We verify this against AFIT records</p>
+              <p>We verify this against AFIT community records</p>
               <form className="auth-form" onSubmit={handleStep2}>
                 <div className="form-group">
                   <label className="form-label">Matric Number (optional)</label>

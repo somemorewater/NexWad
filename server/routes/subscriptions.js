@@ -346,7 +346,9 @@ router.post('/apply-seller',
     body('paymentReference').trim().notEmpty(),
     body('fullName').trim().notEmpty().isLength({ max: 120 }),
     body('storeName').trim().notEmpty().isLength({ max: 120 }),
-    body('nin').trim().notEmpty().isLength({ max: 20 }),
+    body('idType').optional().isIn(['matric', 'nin']),
+    body('idNumber').optional().trim().isLength({ max: 30 }),
+    body('nin').optional().trim().isLength({ max: 20 }),
     body('productDetails').trim().notEmpty().isLength({ max: 2000 }),
     body('phone').trim().notEmpty().isLength({ max: 30 }),
     body('experience').optional().trim().isLength({ max: 80 }),
@@ -361,13 +363,20 @@ router.post('/apply-seller',
         paymentMethod = 'card',
         fullName,
         storeName,
-        nin,
+        idType,
+        idNumber,
         productDetails,
         phone,
         experience,
         reason,
       } = req.body
-      if (!req.file) return res.status(400).json({ error: 'School ID image is required' })
+      if (!req.file) return res.status(400).json({ error: 'ID image is required' })
+
+      const resolvedIdNumber = String(idNumber || req.body.nin || '').trim()
+      if (!resolvedIdNumber) {
+        return res.status(400).json({ error: 'ID number is required' })
+      }
+      const resolvedIdType = idType || (resolvedIdNumber.length === 11 ? 'nin' : 'matric')
 
       const plan = PLANS.find(p => p._id === planId)
       if (!plan) return res.status(404).json({ error: 'Plan not found' })
@@ -397,7 +406,9 @@ router.post('/apply-seller',
         existingApplication.application = {
           fullName,
           storeName,
-          nin,
+          idType: resolvedIdType,
+          idNumber: resolvedIdNumber,
+          nin: resolvedIdNumber,
           productDetails,
           phone,
           experience,
@@ -423,7 +434,9 @@ router.post('/apply-seller',
           application: {
             fullName,
             storeName,
-            nin,
+            idType: resolvedIdType,
+            idNumber: resolvedIdNumber,
+            nin: resolvedIdNumber,
             productDetails,
             phone,
             experience,
@@ -462,47 +475,24 @@ router.get('/my-application', protect, async (req, res, next) => {
 router.delete('/current', protect, async (req, res, next) => {
   try {
     const now = new Date()
+    const activeSub = await Subscription.findOne({ user: req.user._id, status: 'active' }).sort({ expiresAt: -1 })
+    if (!activeSub) return res.status(404).json({ error: 'No active subscription found' })
+
     await Subscription.updateMany(
       { user: req.user._id, status: 'active' },
-      { status: 'cancelled', cancelledAt: now, cancelReason: 'User requested cancellation', autoRenew: false }
+      { autoRenew: false, cancelledAt: now, cancelReason: 'User requested cancellation' }
     )
-    const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
-    const updates = [
-      User.findByIdAndUpdate(req.user._id, {
-        role: isAdminRole ? req.user.role : 'buyer',
-        buyerType: isAdminRole ? req.user.buyerType : 'regular',
-        sellerTier: isAdminRole ? req.user.sellerTier : undefined,
-        subscriptionStatus: 'cancelled',
-        subscriptionExpiry: now,
-        'subscription.active': false,
-        'subscription.plan': 'basic',
-        'subscription.expiresAt': now,
-      }),
-    ]
 
-    if (!isAdminRole) {
-      updates.push(
-        Listing.updateMany(
-          { seller: req.user._id, status: 'active' },
-          { $set: { status: 'paused' } }
-        )
-      )
-      updates.push(
-        Pin.updateMany(
-          { user: req.user._id, targetType: 'listing', status: 'active' },
-          {
-            $set: {
-              status: 'cancelled',
-              cancelledAt: now,
-              cancelReason: 'subscription_cancelled',
-            },
-          }
-        )
-      )
-    }
+    // Keep benefits until expiry. Snapshot stays active until checkSubscription expires it.
+    await User.findByIdAndUpdate(req.user._id, {
+      subscriptionStatus: 'active',
+      subscriptionExpiry: activeSub.expiresAt,
+      'subscription.active': true,
+      'subscription.plan': activeSub.plan,
+      'subscription.expiresAt': activeSub.expiresAt,
+    })
 
-    await Promise.all(updates)
-    res.json({ message: 'Subscription cancelled. Seller listings were paused and listing pins were removed.' })
+    res.json({ message: 'Subscription will remain active until expiry. Auto-renew disabled.' })
   } catch (err) { next(err) }
 })
 

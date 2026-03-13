@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext, useCallback } from 'react'
+import { useState, useEffect, useRef, useContext, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { SocketContext } from '../context/SocketContext'
@@ -37,6 +37,29 @@ export default function Chat() {
   const appendMessage = useCallback((msg) => {
     setMessages(prev => prev.some(m => m._id === msg._id) ? prev : [...prev, msg])
   }, [])
+
+  const supportRoles = new Set(['cs', 'moderator', 'admin', 'superadmin', 'super_admin'])
+  const isSupportUser = supportRoles.has(String(user?.role || '').toLowerCase())
+  const isSupportChat = (chat) => chat?.support || chat?.participants?.some(p => supportRoles.has(String(p?.role || '').toLowerCase()))
+  const visibleChats = isSupportUser ? chats : chats.filter(c => !isSupportChat(c))
+
+  const dedupedChats = useMemo(() => {
+    if (isSupportUser) return visibleChats
+    const map = new Map()
+    for (const chat of visibleChats) {
+      const other = chat.participants?.find(p => p._id !== user?._id)
+      const key = other?._id || chat._id
+      const existing = map.get(String(key))
+      if (!existing) {
+        map.set(String(key), chat)
+      } else {
+        const a = new Date(existing.lastActivity || existing.updatedAt || 0).getTime()
+        const b = new Date(chat.lastActivity || chat.updatedAt || 0).getTime()
+        if (b > a) map.set(String(key), chat)
+      }
+    }
+    return Array.from(map.values())
+  }, [visibleChats, isSupportUser, user?._id])
 
   const loadChats = useCallback(async () => {
     try {
@@ -179,12 +202,12 @@ export default function Chat() {
             <div style={{ padding: 16 }}>
               {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 68, borderRadius: 12, marginBottom: 8 }} />)}
             </div>
-          ) : chats.length === 0 ? (
+          ) : dedupedChats.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--nw-gray-400)', fontSize: '0.875rem' }}>
               No conversations yet.<br />Start chatting with a seller!
             </div>
           ) : (
-            chats.map(chat => {
+            dedupedChats.map(chat => {
               const other = chat.participants?.find(p => p._id !== user?._id)
               return (
                 <div

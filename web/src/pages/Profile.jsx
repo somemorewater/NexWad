@@ -405,7 +405,7 @@ export default function Profile() {
                     </h1>
                     {p?.username && <p className="seller-showcase__handle">@{p.username}</p>}
                     <p className="seller-showcase__sub">
-                      {(p?.department || 'AFIT Kaduna')} {p?.level ? `· ${p.level}L` : ''} {profileSellerCategories.length ? `· ${profileSellerCategories.slice(0, 2).join(', ')}` : ''} {sellerSince ? `· Selling since ${sellerSince}` : ''}
+                      {(p?.department || 'AFIT Community')} {p?.level ? `· ${p.level}L` : ''} {profileSellerCategories.length ? `· ${profileSellerCategories.slice(0, 2).join(', ')}` : ''} {sellerSince ? `· Selling since ${sellerSince}` : ''}
                     </p>
                     {websiteHref && (
                       <a href={websiteHref} target="_blank" rel="noreferrer" className="seller-showcase__handle" style={{ display: 'inline-block' }}>
@@ -484,7 +484,7 @@ export default function Profile() {
                     </a>
                   )}
                   <p style={{ color: 'var(--nw-gray-500)', fontSize: '0.9rem', marginBottom: 8 }}>
-                    {p?.department} · {p?.level} · AFIT Kaduna
+                    {p?.department} · {p?.level} · AFIT Community
                   </p>
                   {p?.bio && <p style={{ color: 'var(--nw-gray-600)', fontSize: '0.9375rem', marginBottom: 12, maxWidth: 520 }}>{p.bio}</p>}
                   <div style={{ display: 'flex', gap: 'var(--space-6)', fontSize: '0.875rem', color: 'var(--nw-gray-500)', flexWrap: 'wrap' }}>
@@ -650,7 +650,7 @@ export default function Profile() {
           </div>
           <div className="form-group">
             <label className="form-label">Bio</label>
-            <textarea className="form-textarea" placeholder="Tell students about yourself..." value={editForm.bio || ''} onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))} rows={3} />
+            <textarea className="form-textarea" placeholder="Tell the community about yourself..." value={editForm.bio || ''} onChange={e => setEditForm(f => ({ ...f, bio: e.target.value }))} rows={3} />
           </div>
           <div className="form-group">
             <label className="form-label">Phone</label>

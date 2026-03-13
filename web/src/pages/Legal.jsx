@@ -3,11 +3,11 @@ import Navbar from '../components/Navbar'
 const termsSections = [
   {
     title: '1. Introduction',
-    body: 'NexWAD is an independent student-built digital platform exclusively for students of the Air Force Institute of Technology (AFIT). By accessing or using NexWAD, you agree to comply with these Terms and Conditions.',
+    body: 'NexWAD is an independent student-built digital platform for the AFIT community. By accessing or using NexWAD, you agree to comply with these Terms and Conditions.',
   },
   {
     title: '2. Eligibility',
-    body: 'Access to NexWAD is restricted to currently enrolled AFIT students. Users must provide a valid matric number. If under 18, users confirm parental or guardian consent.',
+    body: 'Access to NexWAD is restricted to the AFIT community. Users must provide a valid matric number where required. If under 18, users confirm parental or guardian consent.',
   },
   {
     title: '3. Accounts',
@@ -46,7 +46,7 @@ const termsSections = [
 const privacySections = [
   {
     title: '1. Data We Collect',
-    body: 'We collect email addresses, matric numbers, usernames, NIN (for sellers), uploaded IDs, chat history, and usage analytics.',
+    body: 'We collect email addresses, matric numbers, usernames, ID numbers (for sellers), uploaded IDs, chat history, and usage analytics.',
   },
   {
     title: '2. Purpose of Data Collection',

@@ -322,6 +322,7 @@ function ShortcutCard({ title, subtitle, action, onClick, iconClass }) {
 }
 
 function PreviewSection({ title, linkTo, emptyText, loading, items, renderItem }) {
+  const previewItems = Array.isArray(items) ? items.slice(0, 3) : []
   return (
     <div className="card card-body">
       <div className="section-header-row" style={{ marginBottom: 'var(--space-4)' }}>
@@ -333,11 +334,11 @@ function PreviewSection({ title, linkTo, emptyText, loading, items, renderItem }
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 62, borderRadius: 'var(--radius-md)' }} />)}
         </div>
-      ) : items.length === 0 ? (
+      ) : previewItems.length === 0 ? (
         <p style={{ color: 'var(--nw-gray-500)', fontSize: '0.875rem' }}>{emptyText}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {items.map(renderItem)}
+          {previewItems.map(renderItem)}
         </div>
       )}
     </div>

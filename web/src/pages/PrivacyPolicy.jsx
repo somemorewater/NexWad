@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar'
 const sections = [
   {
     title: '1. Data We Collect',
-    body: 'We collect email addresses, matric numbers, usernames, NIN (for sellers), uploaded IDs, chat history, and usage analytics.',
+    body: 'We collect email addresses, matric numbers, usernames, ID numbers (for sellers), uploaded IDs, chat history, and usage analytics.',
   },
   {
     title: '2. Purpose of Data Collection',

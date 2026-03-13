@@ -12,7 +12,7 @@ const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 const SUPPORT_ROLES = new Set(['cs', 'moderator', 'admin', 'superadmin', 'super_admin'])
 
 const isSupportUser = (user) => SUPPORT_ROLES.has(user?.role)
-const isSupportChat = (chat) => chat?.participants?.some(isSupportUser)
+const isSupportChat = (chat) => chat?.support || chat?.participants?.some(isSupportUser)
 const isParticipant = (chat, userId) => chat?.participants?.some(p => (
   (p?._id?.toString?.() || p?.toString?.()) === userId
 ))
@@ -29,7 +29,9 @@ router.get('/', protectAllowBanned, async (req, res, next) => {
       .populate({ path: 'lastMessage', select: 'text media createdAt sender' })
       .sort({ lastActivity: -1 })
 
-    const filtered = req.user.banned ? chats.filter(isSupportChat) : chats
+    const filtered = req.user.banned
+      ? chats.filter(isSupportChat)
+      : (isSupportUser(req.user) ? chats : chats.filter(c => !isSupportChat(c)))
 
     const chatsWithUnread = filtered.map(chat => ({
       ...chat.toObject(),
@@ -61,6 +63,7 @@ router.post('/support', protectAllowBanned, async (req, res, next) => {
     if (!chat) {
       chat = await Chat.create({
         participants: [req.user._id, supportUser._id],
+        support: true,
       })
       chat = await chat.populate('participants', 'name avatar online lastSeen role')
     }
@@ -79,11 +82,16 @@ router.post('/start', protectAllowBanned,
         return res.status(400).json({ error: 'Cannot chat with yourself' })
       }
 
+      let shouldMarkSupport = false
       if (req.user.banned) {
         const supportUser = await User.findById(sellerId).select('role')
         if (!supportUser || !isSupportUser(supportUser)) {
           return res.status(403).json({ error: 'Banned users can only chat with customer service' })
         }
+        shouldMarkSupport = true
+      } else {
+        const supportUser = await User.findById(sellerId).select('role')
+        if (supportUser && isSupportUser(supportUser)) shouldMarkSupport = true
       }
 
       // Find or create a single chat per seller
@@ -97,6 +105,7 @@ router.post('/start', protectAllowBanned,
         chat = await Chat.create({
           participants: [req.user._id, sellerId],
           ...(listingId ? { listing: listingId } : {}),
+          ...(shouldMarkSupport ? { support: true } : {}),
         })
         chat = await chat
           .populate('participants', 'name avatar online lastSeen role')
@@ -109,6 +118,11 @@ router.post('/start', protectAllowBanned,
         )
           .populate('participants', 'name avatar online lastSeen role')
           .populate('listing', 'title description price images category')
+      }
+
+      if (shouldMarkSupport && !chat.support) {
+        await Chat.updateOne({ _id: chat._id }, { $set: { support: true } })
+        chat.support = true
       }
 
       queueUserLog(buildRequestLog(req, res, {

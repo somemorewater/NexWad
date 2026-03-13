@@ -19,7 +19,9 @@ const sellerApplicationSchema = new mongoose.Schema({
   application: {
     fullName: { type: String, required: true, trim: true, maxlength: 120 },
     storeName: { type: String, required: true, trim: true, maxlength: 120 },
-    nin: { type: String, required: true, trim: true, maxlength: 20 },
+    idType: { type: String, enum: ['matric', 'nin'], required: true },
+    idNumber: { type: String, required: true, trim: true, maxlength: 30 },
+    nin: { type: String, trim: true, maxlength: 20 }, // legacy compatibility
     productDetails: { type: String, required: true, trim: true, maxlength: 2000 },
     phone: { type: String, required: true, trim: true, maxlength: 30 },
     experience: { type: String, trim: true, maxlength: 80 },

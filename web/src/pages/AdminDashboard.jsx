@@ -374,7 +374,8 @@ function AdminSellerApplications() {
                 <Detail label="Full Name" value={selectedApp.application?.fullName} />
                 <Detail label="Store Name" value={selectedApp.application?.storeName} />
                 <Detail label="Phone" value={selectedApp.application?.phone} />
-                <Detail label="NIN" value={selectedApp.application?.nin} />
+                <Detail label="ID Type" value={selectedApp.application?.idType || (selectedApp.application?.nin ? 'nin' : 'unknown')} />
+                <Detail label="ID Number" value={selectedApp.application?.idNumber || selectedApp.application?.nin} />
                 <Detail label="Experience" value={selectedApp.application?.experience || 'N/A'} />
               </div>
               <div style={{ marginTop: 'var(--space-3)' }}>
@@ -388,7 +389,9 @@ function AdminSellerApplications() {
             </div>
 
             <div className="card card-body" style={{ padding: 'var(--space-4)' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 'var(--space-3)' }}>School ID Image</h3>
+              <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: 'var(--space-3)' }}>
+                {selectedApp.application?.idType === 'nin' ? 'National ID Image' : 'School ID Image'}
+              </h3>
               {selectedApp.application?.schoolIdImage ? (
                 <>
                   <img

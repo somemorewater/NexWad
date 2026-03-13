@@ -20,7 +20,8 @@ export default function BecomeSeller() {
   const [form, setForm] = useState({
     fullName: '',
     storeName: '',
-    nin: '',
+    idType: 'matric',
+    idNumber: '',
     productDetails: '',
     phone: '',
     experience: '',
@@ -38,7 +39,6 @@ export default function BecomeSeller() {
   const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizeRole(user?.role))
   const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
   const hasPriorSellerApproval = application?.status === 'approved'
-  const hasMatricNumber = Boolean(String(user?.matricNumber || '').trim())
 
   const load = async () => {
     setLoading(true)
@@ -103,7 +103,7 @@ export default function BecomeSeller() {
 
   const submitApplication = async (paymentReference) => {
     if (!selected?._id) return
-    if (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !paymentReference || !form.schoolIdImage) {
+    if (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !paymentReference || !form.schoolIdImage) {
       toast.error('Please fill all required fields')
       return
     }
@@ -113,7 +113,8 @@ export default function BecomeSeller() {
       fd.append('planId', selected._id)
       fd.append('fullName', form.fullName.trim())
       fd.append('storeName', form.storeName.trim())
-      fd.append('nin', form.nin.trim())
+      fd.append('idType', form.idType)
+      fd.append('idNumber', form.idNumber.trim())
       fd.append('productDetails', form.productDetails.trim())
       fd.append('phone', form.phone.trim())
       fd.append('experience', form.experience.trim())
@@ -126,7 +127,8 @@ export default function BecomeSeller() {
       setForm({
         fullName: '',
         storeName: '',
-        nin: '',
+        idType: 'matric',
+        idNumber: '',
         productDetails: '',
         phone: '',
         experience: '',
@@ -165,7 +167,7 @@ export default function BecomeSeller() {
       toast.error('Paystack public key is missing (VITE_PAYSTACK_PUBLIC_KEY)')
       return
     }
-    if (!hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)) {
+    if (!hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)) {
       toast.error('Please fill all required fields before payment')
       return
     }
@@ -190,7 +192,8 @@ export default function BecomeSeller() {
           custom_fields: [
             { display_name: 'Plan', variable_name: 'plan', value: selected._id },
             { display_name: 'Applicant', variable_name: 'full_name', value: form.fullName.trim() },
-            { display_name: 'NIN', variable_name: 'nin', value: form.nin.trim() },
+            { display_name: 'ID Type', variable_name: 'id_type', value: form.idType },
+            { display_name: 'ID Number', variable_name: 'id_number', value: form.idNumber.trim() },
           ],
         },
         callback: (response) => {
@@ -212,7 +215,7 @@ export default function BecomeSeller() {
     }
   }
 
-  const missingRequired = !hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.nin.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)
+  const missingRequired = !hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)
   const amountToPay = useMemo(() => {
     if (!selected) return 0
     if (!hasPriorSellerApproval) return Number(selected.price || 0)
@@ -238,11 +241,8 @@ export default function BecomeSeller() {
     return Math.max(0, Math.round((targetPrice - currentPrice) * remainingRatio))
   }, [selected, hasPriorSellerApproval, currentSub, plans])
   const actionDisabled = !selected || submitting || application?.status === 'pending' || loading || isAdminRole
-    || !hasMatricNumber
   const actionDisabledReason = isAdminRole
     ? 'Admin roles cannot apply for seller plans.'
-    : !hasMatricNumber
-      ? 'Matric number is required. Add it in Account Manager before applying.'
     : application?.status === 'pending'
       ? 'You already have a pending seller application.'
       : !selected
@@ -270,18 +270,6 @@ export default function BecomeSeller() {
               <div className="caption">Admin roles are not allowed to apply for seller plans.</div>
             </div>
           )}
-          {!isAdminRole && !hasMatricNumber && (
-            <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
-              <div style={{ fontWeight: 700 }}>Matric Number Required</div>
-              <div className="caption">Add your matric number in Account Manager before applying to become a seller.</div>
-              <div style={{ marginTop: 'var(--space-3)' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate('/profile/account-manager')}>
-                  Open Account Manager
-                </button>
-              </div>
-            </div>
-          )}
-
           {application?.status === 'pending' && (
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
               <div style={{ fontWeight: 700 }}>Application Pending Approval</div>
@@ -363,13 +351,24 @@ export default function BecomeSeller() {
             </div>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 'var(--space-4)' }}>
               <div className="form-group">
-                <label className="form-label">NIN *</label>
+                <label className="form-label">ID Type *</label>
+                <select
+                  className="form-select"
+                  value={form.idType}
+                  onChange={(e) => setForm(prev => ({ ...prev, idType: e.target.value }))}
+                >
+                  <option value="matric">Matric No</option>
+                  <option value="nin">NIN</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Matric No or NIN *</label>
                 <input
                   type="text"
                   className="form-input"
-                  value={form.nin}
-                  onChange={(e) => setForm(prev => ({ ...prev, nin: e.target.value }))}
-                  placeholder="11-digit NIN"
+                  value={form.idNumber}
+                  onChange={(e) => setForm(prev => ({ ...prev, idNumber: e.target.value }))}
+                  placeholder={form.idType === 'matric' ? 'e.g. U24PH1025' : '11-digit NIN'}
                 />
               </div>
               <div className="form-group">
@@ -414,7 +413,7 @@ export default function BecomeSeller() {
               />
             </div>
             <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
-              <label className="form-label">School ID Picture *</label>
+              <label className="form-label">{form.idType === 'matric' ? 'School ID Picture *' : 'National ID Picture *'}</label>
               <input
                 type="file"
                 className="form-input"
