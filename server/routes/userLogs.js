@@ -5,6 +5,14 @@ const { createUserLog, getClientIp } = require('../utils/userLogs')
 
 const router = express.Router()
 
+function requireAnalyticsKey(req, res, next) {
+  const provided = req.get('x-api-key') || ''
+  const expected = process.env.USER_LOGS_API_KEY || ''
+  if (!expected) return res.status(500).json({ error: 'Analytics key not configured' })
+  if (!provided || provided !== expected) return res.status(401).json({ error: 'Invalid API key' })
+  next()
+}
+
 router.get('/me', protect, async (req, res, next) => {
   try {
     const { page = 1, limit = 50, category, action } = req.query
@@ -144,6 +152,68 @@ router.get('/admin', protect, requireAdmin, async (req, res, next) => {
     ])
 
     res.json({ logs, total, hasMore: total > skip + logs.length, page: parsedPage })
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/user-logs/analytics ─────────────
+router.get('/analytics', requireAnalyticsKey, async (req, res, next) => {
+  try {
+    const { page = 1, limit = 200, userId, category, action, source, entityType, from, to } = req.query
+    const parsedPage = Math.max(1, Number.parseInt(page, 10) || 1)
+    const parsedLimit = Math.min(1000, Math.max(1, Number.parseInt(limit, 10) || 200))
+    const skip = (parsedPage - 1) * parsedLimit
+
+    const query = {}
+    if (userId) query.user = userId
+    if (category) query.category = String(category)
+    if (action) query.action = String(action)
+    if (source) query.source = String(source)
+    if (entityType) query.entityType = String(entityType)
+    if (from || to) {
+      query.occurredAt = {}
+      if (from) query.occurredAt.$gte = new Date(from)
+      if (to) query.occurredAt.$lte = new Date(to)
+    }
+
+    const [logs, total] = await Promise.all([
+      UserLog.find(query)
+        .populate('user', 'name email role')
+        .sort({ occurredAt: -1 })
+        .skip(skip)
+        .limit(parsedLimit)
+        .lean(),
+      UserLog.countDocuments(query),
+    ])
+
+    res.json({ logs, total, hasMore: total > skip + logs.length, page: parsedPage })
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/user-logs/analytics/summary ─────
+router.get('/analytics/summary', requireAnalyticsKey, async (req, res, next) => {
+  try {
+    const { from, to } = req.query
+    const match = {}
+    if (from || to) {
+      match.occurredAt = {}
+      if (from) match.occurredAt.$gte = new Date(from)
+      if (to) match.occurredAt.$lte = new Date(to)
+    }
+
+    const summary = await UserLog.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { category: '$category', action: '$action' },
+          count: { $sum: 1 },
+          lastOccurredAt: { $max: '$occurredAt' },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 200 },
+    ])
+
+    res.json({ summary })
   } catch (err) { next(err) }
 })
 

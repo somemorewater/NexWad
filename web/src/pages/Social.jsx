@@ -180,7 +180,15 @@ export default function Social() {
     setCommentsLoading(true)
     try {
       const { data } = await postsAPI.getComments(postId)
-      setComments(data.comments || [])
+      const list = Array.isArray(data.comments) ? data.comments : []
+      const normalized = list.map((c) => ({
+        ...c,
+        likes: Array.isArray(c.likes) ? c.likes : [],
+        replies: Array.isArray(c.replies) ? c.replies : [],
+        shares: c.shares || 0,
+        views: c.views || 0,
+      }))
+      setComments(normalized)
     } catch (err) {
       toast.error(err?.error || err?.message || 'Failed to load comments')
     } finally {

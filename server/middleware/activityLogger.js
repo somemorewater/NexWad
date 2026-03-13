@@ -6,6 +6,7 @@ function shouldSkipRoute(path = '') {
 }
 
 function logRequestActivity(req, res, next) {
+  const startedAt = Date.now()
   res.on('finish', () => {
     if (!req.user?._id) return
     if (shouldSkipRoute(req.originalUrl || '')) return
@@ -16,6 +17,7 @@ function logRequestActivity(req, res, next) {
       metadata: {
         statusCode: res.statusCode,
       },
+      durationMs: Date.now() - startedAt,
     }))
   })
 

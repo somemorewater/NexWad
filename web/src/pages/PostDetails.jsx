@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 export default function PostDetails() {
   const { postId } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const commentsRef = useRef(null)
   const [post, setPost] = useState(null)
   const [comments, setComments] = useState([])
@@ -41,7 +41,17 @@ export default function PostDetails() {
     if (!postId) return
     setCommentsLoading(true)
     postsAPI.getComments(postId)
-      .then(({ data }) => setComments(data.comments || []))
+      .then(({ data }) => {
+        const list = Array.isArray(data.comments) ? data.comments : []
+        const normalized = list.map((c) => ({
+          ...c,
+          likes: Array.isArray(c.likes) ? c.likes : [],
+          replies: Array.isArray(c.replies) ? c.replies : [],
+          shares: c.shares || 0,
+          views: c.views || 0,
+        }))
+        setComments(normalized)
+      })
       .catch((err) => {
         toast.error(err?.error || err?.message || 'Could not load comments')
         setComments([])

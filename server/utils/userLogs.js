@@ -1,5 +1,4 @@
 const UserLog = require('../models/UserLog')
-const logger = require('./logger')
 const { enqueueBackgroundJob } = require('./jobQueue')
 
 function getClientIp(req) {
@@ -13,7 +12,6 @@ async function createUserLog(payload = {}) {
     if (!payload?.user) return null
     return await UserLog.create(payload)
   } catch (err) {
-    logger.warn('Failed to write user log', { error: err?.message })
     return null
   }
 }
@@ -31,11 +29,19 @@ function buildRequestLog(req, res, overrides = {}) {
     entityId: overrides.entityId,
     source: overrides.source || 'server',
     route: req.originalUrl,
+    path: req.path,
     method: req.method,
     statusCode: res.statusCode,
     ip: getClientIp(req),
     userAgent: req.get('user-agent') || '',
-    metadata: overrides.metadata || {},
+    metadata: {
+      params: req.params || {},
+      query: req.query || {},
+      referer: req.get('referer') || '',
+      userRole: req.user?.role,
+      durationMs: overrides.durationMs,
+      ...(overrides.metadata || {}),
+    },
     occurredAt: overrides.occurredAt || new Date(),
   }
 }
