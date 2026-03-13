@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Banned from './pages/Banned'
 import Dashboard from './pages/Dashboard'
 import BuyerHub from './pages/BuyerHub'
 import Marketplace from './pages/Marketplace'
@@ -78,6 +79,7 @@ function AppContent() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/banned" element={<Banned />} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/:listingId" element={<ProductDetails />} />

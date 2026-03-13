@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from 'react'
 import { authAPI } from '../api/auth'
 import { getStoredToken, setStoredToken, clearStoredToken } from '../utils/tokenStore'
+import { clearBanInfo } from '../utils/banStore'
 
 export const AuthContext = createContext(null)
 
@@ -18,7 +19,11 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await authAPI.me()
       setUser(data.user)
-    } catch {
+    } catch (err) {
+      if (err?.error === 'Account suspended') {
+        setUser(err.user || { banned: true, banReason: err.banReason })
+        return
+      }
       clearStoredToken()
     } finally {
       setLoading(false)
@@ -31,10 +36,19 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     setError(null)
-    const { data } = await authAPI.login(credentials)
-    setStoredToken(data.token)
-    setUser(data.user)
-    return data
+    try {
+      const { data } = await authAPI.login(credentials)
+      setStoredToken(data.token)
+      setUser(data.user)
+      return data
+    } catch (err) {
+      if (err?.error === 'Account suspended' && err?.token) {
+        setStoredToken(err.token)
+        if (err.user) setUser(err.user)
+        return err
+      }
+      throw err
+    }
   }
 
   const signup = async (formData) => {
@@ -48,6 +62,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try { await authAPI.logout() } catch { /* silent */ }
     clearStoredToken()
+    clearBanInfo()
     setUser(null)
   }
 

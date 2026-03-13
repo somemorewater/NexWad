@@ -95,6 +95,7 @@ export const lostFoundAPI = {
 // ─── Chat ─────────────────────────────────────
 export const chatAPI = {
   getChats: () => api.get('/chat'),
+  getSupportChat: () => api.post('/chat/support'),
   getOrCreate: (listingId, sellerId) =>
     api.post('/chat/start', { listingId, sellerId }),
   getMessages: (chatId, params) => api.get(`/chat/${chatId}/messages`, { params }),

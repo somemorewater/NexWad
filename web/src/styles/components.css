@@ -6,6 +6,7 @@
 @import './components/modal-toast.css';
 @import './components/chat.css';
 @import './components/auth.css';
+@import './components/banned.css';
 @import './components/theme-profile.css';
 @import './components/landing-dashboard.css';
 @import './components/tabs-filter.css';

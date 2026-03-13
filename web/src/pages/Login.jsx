@@ -45,6 +45,10 @@ export default function Login() {
     setLoading(true)
     try {
       const data = await login({ ...form, email: form.email.trim() })
+      if (data?.user?.banned || data?.error === 'Account suspended') {
+        navigate('/banned', { replace: true })
+        return
+      }
       toast.success('Welcome back!')
       navigate(from || getDefaultRouteForUser(data?.user), { replace: true })
     } catch (err) {

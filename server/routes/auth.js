@@ -123,7 +123,15 @@ router.post('/login', loginRules, validate, async (req, res, next) => {
     }).select('+password')
 
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
-    if (user.banned) return res.status(403).json({ error: 'Account suspended. Contact support.' })
+    if (user.banned) {
+      const token = signToken(user._id)
+      return res.status(403).json({
+        error: 'Account suspended',
+        banReason: user.banReason,
+        token,
+        user: sanitizeUser(user),
+      })
+    }
     if (!user.verified) return res.status(403).json({ error: 'Please verify your email first' })
 
     let match = false

@@ -23,6 +23,13 @@ export default function ProtectedRoute({ requiredRole, fallbackTo }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
+  if (user?.banned) {
+    if (location.pathname.startsWith('/chat')) {
+      return <Outlet />
+    }
+    return <Navigate to="/banned" replace />
+  }
+
   if (requiredRole) {
     const expected = Array.isArray(requiredRole) ? requiredRole : [requiredRole]
     const allowedRoles = expected.map(normalizeRole)

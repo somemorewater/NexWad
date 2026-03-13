@@ -13,10 +13,50 @@ async function protect(req, res, next) {
 
     const user = await User.findById(decoded.id).select('-password')
     if (!user) return res.status(401).json({ error: 'User not found' })
-    if (user.banned) return res.status(403).json({ error: 'Account suspended' })
+    if (user.banned) {
+      return res.status(403).json({
+        error: 'Account suspended',
+        banReason: user.banReason,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          banned: true,
+          banReason: user.banReason,
+        },
+      })
+    }
 
     // Check subscription expiry and apply dynamic access rules.
     await user.checkSubscription()
+
+    req.user = user
+    next()
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') return res.status(401).json({ error: 'Token expired' })
+    if (err.name === 'JsonWebTokenError') return res.status(401).json({ error: 'Invalid token' })
+    next(err)
+  }
+}
+
+// ─── Require authentication (allows banned users) ───────────────
+async function protectAllowBanned(req, res, next) {
+  try {
+    const header = req.headers.authorization
+    if (!header?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
+    const token = header.split(' ')[1]
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+
+    const user = await User.findById(decoded.id).select('-password')
+    if (!user) return res.status(401).json({ error: 'User not found' })
+
+    // Check subscription expiry and apply dynamic access rules for non-banned users.
+    if (!user.banned) {
+      await user.checkSubscription()
+    }
 
     req.user = user
     next()
@@ -68,4 +108,4 @@ function requireVerified(req, res, next) {
   next()
 }
 
-module.exports = { protect, optionalAuth, requireRole, requireAdmin, requireModerator, requireCS, requireVerified }
+module.exports = { protect, protectAllowBanned, optionalAuth, requireRole, requireAdmin, requireModerator, requireCS, requireVerified }
