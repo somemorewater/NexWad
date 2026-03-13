@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import nexwadLogo from '../assets/images/nexwad-logo-full.png'
 import { getDefaultRouteForUser } from '../utils/roleRouting'
+import { canInstall, isInstalled, promptInstall, subscribeInstallAvailability } from '../utils/pwaInstall'
 
 export default function Login() {
   const { login, user, isAuthenticated, loading: authLoading } = useAuth()
@@ -30,6 +31,49 @@ export default function Login() {
       navigate(from || getDefaultRouteForUser(user), { replace: true })
     }
   }, [authLoading, isAuthenticated, from, navigate, user])
+
+  useEffect(() => {
+    const key = 'pwa_install_toast_shown'
+    if (sessionStorage.getItem(key)) return
+
+    const showToast = () => {
+      sessionStorage.setItem(key, '1')
+      toast.custom((t) => (
+        <div style={{
+          background: 'var(--nw-white)',
+          border: '1px solid var(--nw-gray-100)',
+          boxShadow: 'var(--shadow-lg)',
+          borderRadius: 999,
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--nw-ink)', fontWeight: 600 }}>Install NexWAD for faster access</span>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={async () => {
+              await promptInstall()
+              toast.dismiss(t.id)
+            }}
+          >
+            Install
+          </button>
+        </div>
+      ), { duration: 8000 })
+    }
+
+    if (isInstalled()) return
+    if (canInstall()) {
+      showToast()
+      return
+    }
+
+    const unsub = subscribeInstallAvailability((available) => {
+      if (available) showToast()
+    })
+    return () => unsub()
+  }, [])
 
   const validate = () => {
     const e = {}

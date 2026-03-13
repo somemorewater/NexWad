@@ -84,6 +84,36 @@
   padding-top: var(--space-4);
 }
 
+.sidebar__install-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--nw-gray-200);
+  background: var(--nw-gray-50);
+  color: var(--nw-ink);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar__install-btn:hover {
+  border-color: var(--nw-primary);
+  color: var(--nw-primary);
+  background: var(--nw-primary-light);
+}
+
+.sidebar__install-btn--installed {
+  border-style: solid;
+  background: var(--nw-gray-100);
+  color: var(--nw-gray-600);
+  cursor: default;
+}
+
 .sidebar__user {
   display: flex;
   align-items: center;

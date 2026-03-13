@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useLayout } from '../context/LayoutContext'
@@ -6,6 +6,7 @@ import { getPrimaryNavForUser, isSellerRole, normalizeRole } from '../utils/role
 import { getUserPath } from '../utils/userPath'
 import { getVerificationBadge } from '../utils/verification'
 import VerificationBadge from './VerificationBadge'
+import { canInstall, isInstalled, promptInstall, subscribeInstallAvailability } from '../utils/pwaInstall'
 
 function HomeIcon() {
   return <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -36,6 +37,8 @@ export default function Sidebar({ messageBadge = 0 }) {
   const { user } = useAuth()
   const location = useLocation()
   const { sidebarOpen, closeSidebar } = useLayout()
+  const [installAvailable, setInstallAvailable] = useState(canInstall())
+  const [installed, setInstalled] = useState(isInstalled())
   const isGuest = !user
   const normalizedRole = normalizeRole(user?.role)
   const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizedRole)
@@ -106,6 +109,17 @@ export default function Sidebar({ messageBadge = 0 }) {
     closeSidebar()
   }, [location.pathname])
 
+  useEffect(() => {
+    const unsub = subscribeInstallAvailability(setInstallAvailable)
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    const onInstalled = () => setInstalled(true)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => window.removeEventListener('appinstalled', onInstalled)
+  }, [])
+
   return (
     <Fragment>
       {sidebarOpen && (
@@ -139,6 +153,21 @@ export default function Sidebar({ messageBadge = 0 }) {
         ))}
 
         <div className="sidebar__footer">
+          {(installAvailable || installed) && (
+            <button
+              type="button"
+              className={`sidebar__install-btn${installed ? ' sidebar__install-btn--installed' : ''}`}
+              onClick={async () => {
+                if (installed) return
+                await promptInstall()
+                closeSidebar()
+              }}
+              disabled={installed}
+            >
+              <i className={`fa-solid ${installed ? 'fa-circle-check' : 'fa-download'}`} aria-hidden="true" />
+              {installed ? 'App Installed' : 'Download App'}
+            </button>
+          )}
           {isGuest ? (
             <div className="sidebar__user">
               <div className="avatar avatar-sm">NW</div>

@@ -1,0 +1,26 @@
+{
+  "name": "NexWAD",
+  "short_name": "NexWAD",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f4f0",
+  "theme_color": "#2563ff",
+  "icons": [
+    {
+      "src": "/nexwad-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/nexwad-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/nexwad-logo.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
