@@ -32,7 +32,11 @@
         }
       ],
       "destination": "/api/meta?path=/:username"
+    },
+
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
-
