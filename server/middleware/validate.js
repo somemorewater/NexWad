@@ -28,8 +28,8 @@ const signupRules = [
     .trim()
     .matches(/^U\d{2}[A-Z]{2,6}\d{3,5}$/i)
     .withMessage('Invalid matric format. Use U[year][dept][no], e.g. U24PH1025'),
-  body('department').optional().trim(),
-  body('level').optional().isIn(['100', '200', '300', '400', '500']),
+  body('department').optional({ values: 'falsy' }).trim(),
+  body('level').optional({ values: 'falsy' }).isIn(['100', '200', '300', '400', '500']),
 ]
 
 const loginRules = [

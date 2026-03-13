@@ -34,6 +34,8 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
     const { name, username, email, password, matricNumber, department, level, phone, otp, _step } = req.body
     const normalizedMatric = String(matricNumber || '').trim().toUpperCase()
     const matricValue = normalizedMatric || undefined
+    const departmentValue = String(department || '').trim() || undefined
+    const levelValue = String(level || '').trim() || undefined
 
     // Step 1: initiate — create unverified user and send OTP
     if (_step === 'initiate' || !_step) {
@@ -70,8 +72,8 @@ router.post('/signup', signupRules, validate, async (req, res, next) => {
       pendingUser.email = email
       pendingUser.password = password
       pendingUser.matricNumber = matricValue
-      pendingUser.department = department
-      pendingUser.level = level
+      pendingUser.department = departmentValue
+      pendingUser.level = levelValue
       pendingUser.phone = phone
       pendingUser.verified = false
       await pendingUser.save()
