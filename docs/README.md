@@ -11,11 +11,13 @@ This folder contains the canonical technical documentation for the current NexWA
 5. [05-Data Models](./05-data-models.md)
 6. [06-Operations & Environment](./06-operations-and-environment.md)
 7. [07-Known Issues & Audit Checklist](./07-known-issues-and-audit-checklist.md)
+8. [08-Mobile App](./08-mobile-app.md)
 
 ## Scope
 
 - Backend: `./server`
 - Frontend: `./web`
+- Mobile: `./mobile`
 - Date baseline: current repository state on this branch
 
 ## Reading Order

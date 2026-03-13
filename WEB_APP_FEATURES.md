@@ -10,7 +10,7 @@
 ## 2. Authentication and Account
 
 - Signup with OTP email verification.
-- Login using email or matric number.
+- Login using email, username, or matric number.
 - Resend OTP.
 - Forgot password and reset password.
 - Logout.
@@ -34,6 +34,8 @@
 - Quick links to major platform sections.
 - Role-adaptive navbar labels and paths.
 - Sidebar-based app navigation across pages.
+- PWA install prompt on sign-in and sign-up.
+- Sidebar install button for supported devices.
 
 ## 5. Marketplace Features
 
@@ -57,10 +59,12 @@
 - Create post with text and optional image.
 - Like/unlike posts.
 - Add/delete comments.
+- Comment likes, replies, shares, and views.
 - Delete own post.
 - Report post.
 - Post detail and view tracking.
 - Pinned posts support in feed ordering.
+- New-posts toast prompt for refresh.
 
 ## 7. Lost & Found Features
 
@@ -79,10 +83,12 @@
 - Message sending with text and media support.
 - Read/unread tracking.
 - Realtime message delivery via websockets.
+- Customer care chat on dedicated CS chat page (separate from normal chats).
 
 ## 9. Seller Experience
 
 - Seller application flow with document upload and payment reference.
+- Seller application ID: Matric No or NIN with corresponding ID image.
 - One-time approval model for first seller activation.
 - Seller subscription plans and renewals.
 - Seller upgrade logic with proration (no full rebill when applicable).
@@ -149,6 +155,7 @@
 - User-level activity storage with timestamp and metadata.
 - Admin access to user logs.
 - Grouped-by-user activity summary mode.
+- Private analytics endpoints protected by API key.
 
 ## 15. Security and Reliability Features
 
@@ -158,6 +165,7 @@
 - Rate limiting for global and auth endpoints.
 - CORS and security headers.
 - Cloudinary asset cleanup on content deletion.
+- PWA manifest + service worker for offline fallback.
 
 ## 16. Guest vs Authenticated Differences
 

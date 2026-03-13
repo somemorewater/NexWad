@@ -51,6 +51,7 @@ Admin-protected routes:
 - `Profile.jsx`: user/seller profile, edit modal, social actions
 - `Dashboard.jsx`: seller analytics + pin management
 - `BuyerHub.jsx`: buyer shortcuts, previews, premium actions
+- `CSChat.jsx`: customer care chat page
 
 ## Shared UI Components
 
@@ -70,6 +71,12 @@ Admin-protected routes:
 - `endpoints.js` exposes domain-specific client objects:
   - `usersAPI`, `listingsAPI`, `postsAPI`, `lostFoundAPI`, `chatAPI`, etc.
 - Multipart is auto-detected for `FormData` payloads via helper config.
+
+## PWA
+
+- PWA manifest: `web/public/manifest.webmanifest`
+- Service worker: `web/public/sw.js`
+- Install UI: `web/src/utils/pwaInstall.js`, plus login/signup install toasts and sidebar install button.
 
 ## Category Constants
 

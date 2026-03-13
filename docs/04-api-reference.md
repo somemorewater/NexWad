@@ -62,6 +62,10 @@ Base URL prefix: `/api`
 - `DELETE /posts/:id/like`
 - `POST /posts/:id/comments`
 - `GET /posts/:id/comments`
+- `POST /posts/:postId/comments/:commentId/like`
+- `DELETE /posts/:postId/comments/:commentId/like`
+- `POST /posts/:postId/comments/:commentId/share`
+- `POST /posts/:postId/comments/:commentId/replies`
 - `DELETE /posts/:postId/comments/:commentId`
 - `POST /posts/:id/report`
 
@@ -83,6 +87,7 @@ Base URL prefix: `/api`
 - `GET /chat/:chatId/messages`
 - `POST /chat/:chatId/messages`
 - `PUT /chat/:chatId/read`
+- `POST /chat/support`
 
 ## Subscriptions (`/subscriptions`)
 
@@ -110,6 +115,8 @@ Base URL prefix: `/api`
 - `GET /user-logs/me`
 - `POST /user-logs/event`
 - `GET /user-logs/admin`
+- `GET /user-logs/analytics` (API key required)
+- `GET /user-logs/analytics/summary` (API key required)
 
 ## Notifications (`/notifications`)
 
