@@ -50,8 +50,6 @@ export default function Signup() {
     const e = {}
     const matric = form.matricNumber.trim().toUpperCase()
     if (matric && !MATRIC_PATTERN.test(matric)) e.matricNumber = 'Invalid format. Use U[year][dept][no], e.g. U24PH1025'
-    if (!form.department) e.department = 'Department required'
-    if (!form.level) e.level = 'Level required'
     return e
   }
 
@@ -228,7 +226,7 @@ export default function Signup() {
                   {errors.matricNumber && <span className="form-error">{errors.matricNumber}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Department</label>
+                  <label className="form-label">Department (optional)</label>
                   <select className="form-select" value={form.department} onChange={set('department')}>
                     <option value="">Select department</option>
                     {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
@@ -236,7 +234,7 @@ export default function Signup() {
                   {errors.department && <span className="form-error">{errors.department}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Level</label>
+                  <label className="form-label">Level (optional)</label>
                   <select className="form-select" value={form.level} onChange={set('level')}>
                     <option value="">Select level</option>
                     {LEVEL_OPTIONS.map(l => <option key={l} value={l}>{l}L</option>)}
