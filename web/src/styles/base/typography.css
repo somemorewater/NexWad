@@ -38,3 +38,6 @@
 .caption { font-size: 0.8125rem; line-height: 1.4; color: var(--nw-gray-500); }
 .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
 
+.muted-check {
+  color: var(--nw-gray-400);
+}

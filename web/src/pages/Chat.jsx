@@ -30,6 +30,7 @@ export default function Chat() {
   const [sending, setSending] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [showList, setShowList] = useState(!paramChatId)
   const messagesEndRef = useRef(null)
   const fileRef = useRef(null)
   const handledQueryStartRef = useRef(false)
@@ -71,6 +72,14 @@ export default function Chat() {
         toast.error(err?.error || err?.message || 'Could not open chat')
       })
   }, [paramChatId, searchParams, navigate])
+
+  useEffect(() => {
+    if (paramChatId) setShowList(false)
+  }, [paramChatId])
+
+  useEffect(() => {
+    if (!activeChatId) setShowList(true)
+  }, [activeChatId])
 
   // Load messages when active chat changes
   useEffect(() => {
@@ -155,7 +164,7 @@ export default function Chat() {
   return (
     <div>
       <Navbar />
-      <div className="chat-layout">
+      <div className={`chat-layout ${showList ? 'chat-layout--list' : 'chat-layout--chat'}`}>
         {/* Chat List */}
         <div className="chat-list">
           <div className="chat-list__header">
@@ -181,7 +190,7 @@ export default function Chat() {
                 <div
                   key={chat._id}
                   className={`chat-item ${activeChatId === chat._id ? 'active' : ''}`}
-                  onClick={() => { setActiveChatId(chat._id); navigate(`/chat/${chat._id}`) }}
+                  onClick={() => { setActiveChatId(chat._id); setShowList(false); navigate(`/chat/${chat._id}`) }}
                 >
                   <div className="avatar avatar-md">
                     {other?.avatar ? <img src={other.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : other?.name?.[0]}
@@ -224,6 +233,14 @@ export default function Chat() {
                   const other = activeChat?.participants?.find(p => p._id !== user?._id)
                   return (
                     <>
+                      <button
+                        type="button"
+                        className="chat-back-btn"
+                        onClick={() => setShowList(true)}
+                        aria-label="Back to chats"
+                      >
+                        <i className="fa-solid fa-chevron-left" aria-hidden="true" />
+                      </button>
                       <div className="avatar avatar-md">{other?.avatar ? <img src={other.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : other?.name?.[0]}</div>
                       <div>
                         <div style={{ fontWeight: 600 }}>{other?.name}</div>

@@ -157,12 +157,13 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const post = await Post.findById(req.params.id)
       .populate('author', 'name username avatar subscription department role buyerType sellerTier')
       .populate('comments.author', 'name username avatar')
+      .populate('comments.replies.author', 'name username avatar')
     if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
     const viewerId = req.user?._id?.toString()
     const authorId = post.author?._id?.toString()
     if (!viewerId || viewerId !== authorId) {
+      await Post.updateOne({ _id: post._id }, { $inc: { views: 1 } })
       post.views += 1
-      post.save()
     }
     if (req.user?._id) {
       queueUserLog(buildRequestLog(req, res, {
@@ -311,8 +312,78 @@ router.get('/:id/comments', optionalAuth, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate('comments.author', 'name username avatar')
+      .populate('comments.replies.author', 'name username avatar')
     if (!post || post.removed) return res.status(404).json({ error: 'Post not found' })
+    const commentIds = post.comments.map((c) => c._id)
+    if (commentIds.length) {
+      await Post.updateOne(
+        { _id: post._id },
+        { $inc: { 'comments.$[c].views': 1 } },
+        { arrayFilters: [{ 'c._id': { $in: commentIds } }] }
+      )
+      post.comments.forEach((c) => { c.views = (c.views || 0) + 1 })
+    }
     res.json({ comments: post.comments, commentCount: post.comments.length })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/posts/:postId/comments/:commentId/like ─
+router.post('/:postId/comments/:commentId/like', protect, async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+    if (!post) return res.status(404).json({ error: 'Not found' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return res.status(404).json({ error: 'Comment not found' })
+    const userId = req.user._id.toString()
+    if (!comment.likes.some((id) => id.toString() === userId)) {
+      comment.likes.push(req.user._id)
+      await post.save()
+    }
+    res.json({ likes: comment.likes, likeCount: comment.likes.length })
+  } catch (err) { next(err) }
+})
+
+// ─── DELETE /api/posts/:postId/comments/:commentId/like ─
+router.delete('/:postId/comments/:commentId/like', protect, async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+    if (!post) return res.status(404).json({ error: 'Not found' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return res.status(404).json({ error: 'Comment not found' })
+    const userId = req.user._id.toString()
+    comment.likes = comment.likes.filter((id) => id.toString() !== userId)
+    await post.save()
+    res.json({ likes: comment.likes, likeCount: comment.likes.length })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/posts/:postId/comments/:commentId/share ─
+router.post('/:postId/comments/:commentId/share', protect, async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.postId)
+    if (!post) return res.status(404).json({ error: 'Not found' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return res.status(404).json({ error: 'Comment not found' })
+    comment.shares = (comment.shares || 0) + 1
+    await post.save()
+    res.json({ shares: comment.shares })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/posts/:postId/comments/:commentId/replies ─
+router.post('/:postId/comments/:commentId/replies', protect, async (req, res, next) => {
+  try {
+    const text = String(req.body?.text || '').trim()
+    if (!text) return res.status(400).json({ error: 'Reply text required' })
+    const post = await Post.findById(req.params.postId)
+    if (!post) return res.status(404).json({ error: 'Not found' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return res.status(404).json({ error: 'Comment not found' })
+    comment.replies.push({ author: req.user._id, text })
+    await post.save()
+    await post.populate('comments.replies.author', 'name username avatar')
+    const reply = comment.replies[comment.replies.length - 1]
+    res.status(201).json({ reply, replyCount: comment.replies.length })
   } catch (err) { next(err) }
 })
 

@@ -31,7 +31,12 @@ export default function Social() {
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const [replyTargetId, setReplyTargetId] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [commentActionId, setCommentActionId] = useState(null)
   const fileRef = useRef(null)
+  const newPostsToastRef = useRef(null)
+  const lastKnownPostIdRef = useRef(null)
 
   const loadFeed = async (reset = false) => {
     setLoading(true)
@@ -63,6 +68,57 @@ export default function Social() {
   }
 
   useEffect(() => { loadFeed(true) }, [])
+
+  useEffect(() => {
+    if (posts[0]?._id) lastKnownPostIdRef.current = posts[0]._id
+  }, [posts[0]?._id])
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!posts.length || loading) return
+      try {
+        const { data } = await postsAPI.getFeed({ page: 1, limit: 1 })
+        const latestId = data?.posts?.[0]?._id
+        const currentId = posts[0]?._id
+        if (!latestId || !currentId) return
+        if (latestId !== currentId && latestId !== lastKnownPostIdRef.current) {
+          if (newPostsToastRef.current) return
+          const toastId = toast.custom((t) => (
+            <div style={{
+              background: 'var(--nw-white)',
+              border: '1px solid var(--nw-gray-100)',
+              boxShadow: 'var(--shadow-lg)',
+              borderRadius: 999,
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--nw-ink)', fontWeight: 600 }}>New posts available</span>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  toast.dismiss(t.id)
+                  newPostsToastRef.current = null
+                  lastKnownPostIdRef.current = latestId
+                  loadFeed(true)
+                }}
+              >
+                Refresh
+              </button>
+            </div>
+          ), { duration: 8000 })
+          newPostsToastRef.current = toastId
+          setTimeout(() => {
+            if (newPostsToastRef.current === toastId) newPostsToastRef.current = null
+          }, 8200)
+        }
+      } catch {
+        // silent
+      }
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [posts, loading])
 
   useEffect(() => {
     listingsAPI.getPinned({ limit: 8 })
@@ -152,6 +208,78 @@ export default function Social() {
       toast.error(err?.error || err?.message || 'Failed to post comment')
     } finally {
       setCommentSubmitting(false)
+    }
+  }
+
+  const isCommentLikedByMe = (comment) => {
+    const userId = user?._id
+    if (!userId) return false
+    return (comment.likes || []).some((id) => (id?._id || id).toString?.() === userId)
+  }
+
+  const toggleCommentLike = async (commentId) => {
+    if (!isAuthenticated) {
+      toast.error('Login required to like comments')
+      return
+    }
+    if (!commentsPost?._id) return
+    setCommentActionId(`like-${commentId}`)
+    const target = comments.find(c => c._id === commentId)
+    const liked = target ? isCommentLikedByMe(target) : false
+    try {
+      if (liked) await postsAPI.unlikeComment(commentsPost._id, commentId)
+      else await postsAPI.likeComment(commentsPost._id, commentId)
+      setComments(prev => prev.map(c => {
+        if (c._id !== commentId) return c
+        const likes = liked
+          ? (c.likes || []).filter(id => (id?._id || id).toString?.() !== user?._id)
+          : [...(c.likes || []), user?._id].filter(Boolean)
+        return { ...c, likes }
+      }))
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to update like')
+    } finally {
+      setCommentActionId(null)
+    }
+  }
+
+  const shareComment = async (commentId) => {
+    if (!commentsPost?._id) return
+    const url = `${window.location.origin}/social/post/${commentsPost._id}?comment=${commentId}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Comment on NexWAD', url })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link copied')
+      }
+      await postsAPI.shareComment(commentsPost._id, commentId)
+      setComments(prev => prev.map(c => c._id === commentId ? { ...c, shares: (c.shares || 0) + 1 } : c))
+    } catch (err) {
+      if (err?.message !== 'Share canceled') toast.error(err?.error || err?.message || 'Failed to share')
+    }
+  }
+
+  const submitReply = async (commentId) => {
+    if (!isAuthenticated) {
+      toast.error('Login required to comment')
+      return
+    }
+    const text = String(replyText || '').trim()
+    if (!text) return
+    setCommentActionId(`reply-${commentId}`)
+    try {
+      const { data } = await postsAPI.replyComment(commentsPost._id, commentId, text)
+      setComments(prev => prev.map(c => c._id === commentId
+        ? { ...c, replies: [...(c.replies || []), data.reply] }
+        : c
+      ))
+      setReplyText('')
+      setReplyTargetId(null)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to reply')
+    } finally {
+      setCommentActionId(null)
     }
   }
 
@@ -282,7 +410,7 @@ export default function Social() {
                 )}
                 {!hasMore && posts.length > 0 && (
                   <p style={{ textAlign: 'center', color: 'var(--nw-gray-400)', fontSize: '0.875rem', padding: 'var(--space-6)' }}>
-                    <i className="fa-solid fa-circle-check" aria-hidden="true" /> You've seen everything
+                    <i className="fa-solid fa-circle-check muted-check" aria-hidden="true" /> You've seen everything
                   </p>
                 )}
               </div>
@@ -356,7 +484,7 @@ export default function Social() {
               <div key={c._id} style={{ display: 'flex', gap: 'var(--space-3)' }}>
                 <div className="avatar avatar-sm">
                   {c.author?.avatar
-                    ? <img src={c.author.avatar} alt={c.author.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ? <img src={c.author.avatar} alt={c.author?.name || 'User'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                     : (c.author?.name?.[0] || 'U')}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -365,6 +493,71 @@ export default function Social() {
                   <div style={{ fontSize: '0.75rem', color: 'var(--nw-gray-400)', marginTop: 4 }}>
                     {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'Just now'}
                   </div>
+                  <div className="comment-actions">
+                    <button
+                      className={`comment-action-btn ${isCommentLikedByMe(c) ? 'liked' : ''}`}
+                      onClick={() => toggleCommentLike(c._id)}
+                      disabled={commentActionId === `like-${c._id}`}
+                    >
+                      <i className="fa-solid fa-heart" aria-hidden="true" />
+                      {c.likes?.length || 0}
+                    </button>
+                    <button
+                      className="comment-action-btn"
+                      onClick={() => setReplyTargetId(replyTargetId === c._id ? null : c._id)}
+                    >
+                      <i className="fa-regular fa-comment-dots" aria-hidden="true" />
+                      {c.replies?.length || 0}
+                    </button>
+                    <div className="comment-action-btn comment-action-btn--static">
+                      <i className="fa-regular fa-eye" aria-hidden="true" />
+                      {c.views || 0}
+                    </div>
+                    <button className="comment-action-btn" onClick={() => shareComment(c._id)}>
+                      <i className="fa-solid fa-share" aria-hidden="true" />
+                      {c.shares || 0}
+                    </button>
+                  </div>
+
+                  {c.replies?.length > 0 && (
+                    <div className="comment-replies">
+                      {c.replies.map((r) => (
+                        <div key={r._id} className="comment-reply">
+                          <div className="avatar avatar-xs">
+                            {r.author?.avatar
+                              ? <img src={r.author.avatar} alt={r.author?.name || 'User'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              : (r.author?.name?.[0] || 'U')}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{r.author?.name || 'User'}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--nw-gray-700)' }}>{r.text}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {replyTargetId === c._id && (
+                    <div className="comment-reply-box">
+                      <textarea
+                        className="form-textarea"
+                        rows={2}
+                        placeholder="Write a reply..."
+                        value={replyText}
+                        onChange={(event) => setReplyText(event.target.value)}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => submitReply(c._id)}
+                          disabled={commentActionId === `reply-${c._id}` || !replyText.trim()}
+                        >
+                          {commentActionId === `reply-${c._id}` ? 'Replying...' : 'Reply'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

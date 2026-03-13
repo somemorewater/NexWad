@@ -69,6 +69,11 @@
 .verification-badge--blue { color: #2563eb; }
 .verification-badge--black { color: #111111; }
 
+:root[data-theme='dark'] .verification-badge--black,
+:root[data-theme$='-dark'] .verification-badge--black {
+  color: var(--nw-gray-400);
+}
+
 .ml-1 { margin-left: 4px; }
 
 /* ============================================
@@ -88,6 +93,7 @@
 }
 
 .avatar-sm { width: 32px; height: 32px; font-size: 0.8125rem; }
+.avatar-xs { width: 24px; height: 24px; font-size: 0.7rem; }
 .avatar-md { width: 40px; height: 40px; font-size: 1rem; }
 .avatar-lg { width: 56px; height: 56px; font-size: 1.25rem; }
 .avatar-xl { width: 80px; height: 80px; font-size: 1.75rem; }
@@ -100,4 +106,3 @@
   background: var(--nw-gray-100);
   margin: var(--space-6) 0;
 }
-

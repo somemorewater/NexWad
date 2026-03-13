@@ -1,9 +1,20 @@
 const mongoose = require('mongoose')
 
+const replySchema = new mongoose.Schema({
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  text: { type: String, required: true, maxlength: 1000 },
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  shares: { type: Number, default: 0 },
+  views: { type: Number, default: 0 },
+}, { timestamps: true })
+
 const commentSchema = new mongoose.Schema({
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   text: { type: String, required: true, maxlength: 1000 },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  shares: { type: Number, default: 0 },
+  views: { type: Number, default: 0 },
+  replies: [replySchema],
 }, { timestamps: true })
 
 const postSchema = new mongoose.Schema({

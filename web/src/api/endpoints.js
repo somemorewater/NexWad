@@ -76,6 +76,10 @@ export const postsAPI = {
   like: (id) => api.post(`/posts/${id}/like`),
   unlike: (id) => api.delete(`/posts/${id}/like`),
   comment: (id, text) => api.post(`/posts/${id}/comments`, { text }),
+  likeComment: (postId, commentId) => api.post(`/posts/${postId}/comments/${commentId}/like`),
+  unlikeComment: (postId, commentId) => api.delete(`/posts/${postId}/comments/${commentId}/like`),
+  shareComment: (postId, commentId) => api.post(`/posts/${postId}/comments/${commentId}/share`),
+  replyComment: (postId, commentId, text) => api.post(`/posts/${postId}/comments/${commentId}/replies`, { text }),
   deleteComment: (postId, commentId) => api.delete(`/posts/${postId}/comments/${commentId}`),
   report: (id, reason) => api.post(`/posts/${id}/report`, { reason }),
 }

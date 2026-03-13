@@ -19,6 +19,9 @@ export default function PostDetails() {
   const [loading, setLoading] = useState(true)
   const [commentsLoading, setCommentsLoading] = useState(true)
   const [commentSubmitting, setCommentSubmitting] = useState(false)
+  const [replyTargetId, setReplyTargetId] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [commentActionId, setCommentActionId] = useState(null)
 
   useEffect(() => {
     if (!postId) return
@@ -53,6 +56,76 @@ export default function PostDetails() {
     }
     if (wasLiked) await postsAPI.unlike(targetPostId)
     else await postsAPI.like(targetPostId)
+  }
+
+  const isCommentLikedByMe = (comment) => {
+    const userId = user?._id
+    if (!userId) return false
+    return (comment.likes || []).some((id) => (id?._id || id).toString?.() === userId)
+  }
+
+  const toggleCommentLike = async (commentId) => {
+    if (!isAuthenticated) {
+      toast.error('Login required to like comments')
+      return
+    }
+    setCommentActionId(`like-${commentId}`)
+    const target = comments.find(c => c._id === commentId)
+    const liked = target ? isCommentLikedByMe(target) : false
+    try {
+      if (liked) await postsAPI.unlikeComment(postId, commentId)
+      else await postsAPI.likeComment(postId, commentId)
+      setComments(prev => prev.map(c => {
+        if (c._id !== commentId) return c
+        const likes = liked
+          ? (c.likes || []).filter(id => (id?._id || id).toString?.() !== user?._id)
+          : [...(c.likes || []), user?._id].filter(Boolean)
+        return { ...c, likes }
+      }))
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to update like')
+    } finally {
+      setCommentActionId(null)
+    }
+  }
+
+  const shareComment = async (commentId) => {
+    const url = `${window.location.origin}/social/post/${postId}?comment=${commentId}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Comment on NexWAD', url })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link copied')
+      }
+      await postsAPI.shareComment(postId, commentId)
+      setComments(prev => prev.map(c => c._id === commentId ? { ...c, shares: (c.shares || 0) + 1 } : c))
+    } catch (err) {
+      if (err?.message !== 'Share canceled') toast.error(err?.error || err?.message || 'Failed to share')
+    }
+  }
+
+  const submitReply = async (commentId) => {
+    if (!isAuthenticated) {
+      toast.error('Login required to comment')
+      return
+    }
+    const text = String(replyText || '').trim()
+    if (!text) return
+    setCommentActionId(`reply-${commentId}`)
+    try {
+      const { data } = await postsAPI.replyComment(postId, commentId, text)
+      setComments(prev => prev.map(c => c._id === commentId
+        ? { ...c, replies: [...(c.replies || []), data.reply] }
+        : c
+      ))
+      setReplyText('')
+      setReplyTargetId(null)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Failed to reply')
+    } finally {
+      setCommentActionId(null)
+    }
   }
 
   const focusComments = async () => {
@@ -142,6 +215,71 @@ export default function PostDetails() {
                             <div className="caption" style={{ marginTop: 4 }}>
                               {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : 'Just now'}
                             </div>
+                            <div className="comment-actions">
+                              <button
+                                className={`comment-action-btn ${isCommentLikedByMe(comment) ? 'liked' : ''}`}
+                                onClick={() => toggleCommentLike(comment._id)}
+                                disabled={commentActionId === `like-${comment._id}`}
+                              >
+                                <i className="fa-solid fa-heart" aria-hidden="true" />
+                                {comment.likes?.length || 0}
+                              </button>
+                              <button
+                                className="comment-action-btn"
+                                onClick={() => setReplyTargetId(replyTargetId === comment._id ? null : comment._id)}
+                              >
+                                <i className="fa-regular fa-comment-dots" aria-hidden="true" />
+                                {comment.replies?.length || 0}
+                              </button>
+                              <div className="comment-action-btn comment-action-btn--static">
+                                <i className="fa-regular fa-eye" aria-hidden="true" />
+                                {comment.views || 0}
+                              </div>
+                              <button className="comment-action-btn" onClick={() => shareComment(comment._id)}>
+                                <i className="fa-solid fa-share" aria-hidden="true" />
+                                {comment.shares || 0}
+                              </button>
+                            </div>
+
+                            {comment.replies?.length > 0 && (
+                              <div className="comment-replies">
+                                {comment.replies.map((r) => (
+                                  <div key={r._id} className="comment-reply">
+                                    <div className="avatar avatar-xs">
+                                      {r.author?.avatar
+                                        ? <img src={r.author.avatar} alt={r.author?.name || 'User'} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                        : (r.author?.name?.[0] || 'U')}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{r.author?.name || 'User'}</div>
+                                      <div style={{ fontSize: '0.85rem', color: 'var(--nw-gray-700)' }}>{r.text}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {replyTargetId === comment._id && (
+                              <div className="comment-reply-box">
+                                <textarea
+                                  className="form-textarea"
+                                  rows={2}
+                                  placeholder="Write a reply..."
+                                  value={replyText}
+                                  onChange={(event) => setReplyText(event.target.value)}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => submitReply(comment._id)}
+                                    disabled={commentActionId === `reply-${comment._id}` || !replyText.trim()}
+                                  >
+                                    {commentActionId === `reply-${comment._id}` ? 'Replying...' : 'Reply'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

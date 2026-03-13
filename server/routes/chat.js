@@ -86,10 +86,9 @@ router.post('/start', protectAllowBanned,
         }
       }
 
-      // Find or create chat
+      // Find or create a single chat per seller
       let chat = await Chat.findOne({
         participants: { $all: [req.user._id, sellerId] },
-        ...(listingId ? { listing: listingId } : {}),
       })
         .populate('participants', 'name avatar online lastSeen role')
         .populate('listing', 'title description price images category')
@@ -100,6 +99,14 @@ router.post('/start', protectAllowBanned,
           ...(listingId ? { listing: listingId } : {}),
         })
         chat = await chat
+          .populate('participants', 'name avatar online lastSeen role')
+          .populate('listing', 'title description price images category')
+      } else if (listingId && String(chat.listing || '') !== String(listingId)) {
+        chat = await Chat.findByIdAndUpdate(
+          chat._id,
+          { listing: listingId },
+          { new: true }
+        )
           .populate('participants', 'name avatar online lastSeen role')
           .populate('listing', 'title description price images category')
       }
