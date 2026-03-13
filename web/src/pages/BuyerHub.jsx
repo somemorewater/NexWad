@@ -20,6 +20,7 @@ export default function BuyerHub() {
   const [loading, setLoading] = useState(true)
   const [selectedPinnedListing, setSelectedPinnedListing] = useState(null)
   const premium = isPremiumBuyer(user)
+  const isSeller = String(user?.role || '').toLowerCase() === 'seller'
 
   useEffect(() => {
     Promise.all([
@@ -39,13 +40,13 @@ export default function BuyerHub() {
   }, [])
 
   useEffect(() => {
-    if (!premium) return
+    if (!isSeller) return
     pinsAPI.getMine()
       .then(({ data }) => {
         setPinUsage(data?.usage || { credits: { balance: 0 } })
       })
       .catch(() => {})
-  }, [premium])
+  }, [isSeller])
 
   const pinnedHighlights = preview.listings.filter((item) => item.isPinned)
 
@@ -189,7 +190,7 @@ export default function BuyerHub() {
             </div>
           )}
 
-          {premium && (
+          {isSeller && (
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: 'var(--space-2)' }}>Pin Credits</h2>
               <p style={{ color: 'var(--nw-gray-500)', marginBottom: 'var(--space-4)' }}>
