@@ -68,6 +68,13 @@ export default function CSDesk() {
   }, [loadChats])
 
   useEffect(() => {
+    const id = window.setInterval(() => {
+      loadChats()
+    }, 8000)
+    return () => window.clearInterval(id)
+  }, [loadChats])
+
+  useEffect(() => {
     if (!activeChatId) return
     setMessages([])
     chatAPI.getMessages(activeChatId, { page: 1, limit: 30 })
@@ -302,6 +309,30 @@ export default function CSDesk() {
                   <div style={{ fontWeight: 600 }}>{activeCustomer?.name || 'Customer'}</div>
                   <div className="cs-subtitle">Live support chat</div>
                 </div>
+                <div style={{ marginLeft: 'auto' }}>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    disabled={!isAssignedToMe}
+                    onClick={() => {
+                      if (!activeChat?._id) return
+                      const confirmed = window.confirm('End this support chat? This will close the conversation for both sides.')
+                      if (!confirmed) return
+                      chatAPI.endSupportChat(activeChat._id)
+                        .then(() => {
+                          setChats(prev => prev.filter(c => c._id !== activeChat._id))
+                          setActiveChatId(null)
+                          setMessages([])
+                          toast.success('Chat closed')
+                        })
+                        .catch((err) => {
+                          toast.error(err?.error || 'Could not end chat')
+                        })
+                    }}
+                  >
+                    End Chat
+                  </button>
+                </div>
               </div>
 
               <div className="chat-window__messages">
@@ -323,7 +354,14 @@ export default function CSDesk() {
                           )}
                           <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
                             <div className={`chat-bubble chat-bubble--${isMine ? 'sent' : 'received'}`}>
-                              {msg.media && <img src={msg.media} alt="Media" style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block' }} />}
+                              {msg.media && (
+                                <img
+                                  src={msg.media}
+                                  alt="Media"
+                                  style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block', cursor: 'pointer' }}
+                                  onClick={() => window.open(msg.media, '_blank', 'noopener,noreferrer')}
+                                />
+                              )}
                               {msg.text}
                               <time className="chat-bubble__time">{format(new Date(msg.createdAt), 'HH:mm')}</time>
                             </div>

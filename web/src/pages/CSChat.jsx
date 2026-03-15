@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useContext, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import { useAuth } from '../hooks/useAuth'
 import { chatAPI } from '../api/endpoints'
+import toast from 'react-hot-toast'
+import { SocketContext } from '../context/SocketContext'
 
 export default function CSChat() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const { emit, on, markSupportRead } = useContext(SocketContext)
   const navigate = useNavigate()
   const [supportChat, setSupportChat] = useState(null)
   const [messages, setMessages] = useState([])
@@ -14,6 +17,24 @@ export default function CSChat() {
   const [sending, setSending] = useState(false)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
+  const fileRef = useRef(null)
+
+  function SendIcon() {
+    return (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      </svg>
+    )
+  }
+
+  function AttachIcon() {
+    return (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+      </svg>
+    )
+  }
 
   useEffect(() => {
     let mounted = true
@@ -38,17 +59,40 @@ export default function CSChat() {
     return () => { mounted = false }
   }, [])
 
+  useEffect(() => {
+    if (!supportChat?._id) return
+    markSupportRead()
+  }, [supportChat?._id, markSupportRead])
+
+  useEffect(() => {
+    if (!supportChat?._id) return
+    emit('join_chat', { chatId: supportChat._id })
+    return () => emit('leave_chat', { chatId: supportChat._id })
+  }, [supportChat?._id, emit])
+
+  useEffect(() => {
+    if (!supportChat?._id) return
+    const unsub = on('new_message', (msg) => {
+      if (msg.chatId !== supportChat._id) return
+      setMessages(prev => prev.some(m => m._id === msg._id) ? prev : [...prev, msg])
+    })
+    return () => unsub?.()
+  }, [on, supportChat?._id])
+
   const handleSend = async (e) => {
     e.preventDefault()
-    if (!supportChat || !text.trim()) return
+    const file = fileRef.current?.files?.[0]
+    if (!supportChat || (!text.trim() && !file)) return
     setSending(true)
     setError('')
     try {
       const fd = new FormData()
-      fd.append('text', text.trim())
+      if (text.trim()) fd.append('text', text.trim())
+      if (file) fd.append('media', file)
       const { data } = await chatAPI.sendMessage(supportChat._id, fd)
-      setMessages(prev => [...prev, data.message])
+      setMessages(prev => prev.some(m => m._id === data.message?._id) ? prev : [...prev, data.message])
       setText('')
+      if (fileRef.current) fileRef.current.value = ''
     } catch (err) {
       setError(err?.error || 'Could not send message')
     } finally {
@@ -56,9 +100,18 @@ export default function CSChat() {
     }
   }
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/login', { replace: true })
+  const handleEndChat = async () => {
+    if (!supportChat?._id) return
+    const confirmed = window.confirm('End this support chat? This will close the conversation for both sides.')
+    if (!confirmed) return
+    try {
+      await chatAPI.endSupportChat(supportChat._id)
+      setSupportChat(null)
+      setMessages([])
+      toast.success('Chat closed')
+    } catch (err) {
+      setError(err?.error || 'Could not end chat')
+    }
   }
 
   return (
@@ -74,7 +127,7 @@ export default function CSChat() {
             </div>
             <div className="cs-chat-actions">
               <button className="btn btn-ghost" onClick={() => navigate('/home')}>Back</button>
-              <button className="btn btn-ghost" onClick={handleLogout}>Logout</button>
+              <button className="btn btn-ghost" onClick={handleEndChat} disabled={!supportChat?._id}>End Chat</button>
             </div>
           </div>
 
@@ -90,7 +143,15 @@ export default function CSChat() {
                   return (
                     <div key={msg._id} className={`cs-msg ${isMine ? 'cs-msg--mine' : 'cs-msg--theirs'}`}>
                       <div className="cs-msg__bubble">
-                        {msg.text || 'Media sent'}
+                        {msg.media && (
+                          <img
+                            src={msg.media}
+                            alt="Media"
+                            style={{ maxWidth: 220, borderRadius: 10, display: 'block', cursor: 'pointer', marginBottom: msg.text ? 6 : 0 }}
+                            onClick={() => window.open(msg.media, '_blank', 'noopener,noreferrer')}
+                          />
+                        )}
+                        {msg.text || (msg.media ? '' : 'Media sent')}
                       </div>
                     </div>
                   )
@@ -99,6 +160,21 @@ export default function CSChat() {
             </div>
 
             <form className="cs-chat-input" onSubmit={handleSend}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-icon"
+                onClick={() => fileRef.current?.click()}
+                disabled={loading || sending}
+                aria-label="Attach"
+              >
+                <AttachIcon />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                hidden
+              />
               <input
                 type="text"
                 className="cs-chat-field"
@@ -109,10 +185,12 @@ export default function CSChat() {
               />
               <button
                 type="submit"
-                className="btn btn-primary"
-                disabled={loading || sending || !text.trim()}
+                className="btn btn-primary btn-icon"
+                disabled={loading || sending || (!text.trim() && !fileRef.current?.files?.[0])}
+                aria-label="Send"
+                style={{ width: 44, height: 44, borderRadius: 'var(--radius-lg)' }}
               >
-                {sending ? 'Sending...' : 'Send'}
+                {sending ? <span className="spinner" style={{ width: 16, height: 16, borderColor: 'rgba(255,255,255,0.4)', borderTopColor: 'white' }} /> : <SendIcon />}
               </button>
             </form>
 

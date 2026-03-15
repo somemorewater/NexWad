@@ -102,6 +102,7 @@ export const chatAPI = {
   getSupportChat: () => api.post('/chat/support'),
   getSupportInbox: () => api.get('/chat/support/inbox'),
   acceptSupportChat: (chatId) => api.post(`/chat/support/${chatId}/accept`),
+  endSupportChat: (chatId) => api.post(`/chat/support/${chatId}/end`),
   getOrCreate: (listingId, sellerId) =>
     api.post('/chat/start', { listingId, sellerId }),
   getMessages: (chatId, params) => api.get(`/chat/${chatId}/messages`, { params }),

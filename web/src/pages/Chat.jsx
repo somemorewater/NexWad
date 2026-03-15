@@ -41,7 +41,12 @@ export default function Chat() {
 
   const supportRoles = new Set(['cs', 'moderator', 'admin', 'superadmin', 'super_admin'])
   const isSupportUser = supportRoles.has(String(user?.role || '').toLowerCase())
-  const isSupportChat = (chat) => chat?.support || chat?.participants?.some(p => supportRoles.has(String(p?.role || '').toLowerCase()))
+  const isSupportChat = (chat) =>
+    chat?.support
+    || chat?.supportStatus
+    || chat?.supportRequestedAt
+    || chat?.supportAssignee
+    || chat?.participants?.some(p => supportRoles.has(String(p?.role || '').toLowerCase()))
   const visibleChats = isSupportUser ? chats : chats.filter(c => !isSupportChat(c))
 
   const dedupedChats = useMemo(() => {
@@ -377,7 +382,14 @@ export default function Chat() {
                       )}
                       <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
                         <div className={`chat-bubble chat-bubble--${isMine ? 'sent' : 'received'}`}>
-                          {msg.media && <img src={msg.media} alt="Media" style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block' }} />}
+                          {msg.media && (
+                            <img
+                              src={msg.media}
+                              alt="Media"
+                              style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block', cursor: 'pointer' }}
+                              onClick={() => window.open(msg.media, '_blank', 'noopener,noreferrer')}
+                            />
+                          )}
                           {msg.text}
                           <time className="chat-bubble__time">{format(new Date(msg.createdAt), 'HH:mm')}</time>
                         </div>

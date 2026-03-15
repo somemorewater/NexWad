@@ -45,7 +45,8 @@ function CSAccessGuard() {
   useEffect(() => {
     if (loading || !isAuthenticated) return
     if (normalizeRole(user?.role) !== 'cs') return
-    if (location.pathname.startsWith('/cs')) return
+    const allowed = location.pathname === '/cs' || location.pathname.startsWith('/cs/')
+    if (allowed) return
     navigate('/cs', { replace: true })
   }, [loading, isAuthenticated, user?.role, location.pathname, navigate])
 

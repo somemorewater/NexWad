@@ -52,12 +52,12 @@ async function markAllRead(userId) {
 
 // ─── Domain-specific helpers ──────────────────
 
-function notifyNewMessage(recipientId, senderName, chatId) {
+function notifyNewMessage(recipientId, senderName, chatId, options = {}) {
   return notify(recipientId, {
     type: 'message',
-    title: `New message from ${senderName}`,
-    body: 'Tap to view and reply',
-    link: `/chat/${chatId}`,
+    title: options.title || `New message from ${senderName}`,
+    body: options.body || 'Tap to view and reply',
+    link: options.link || `/chat/${chatId}`,
   })
 }
 

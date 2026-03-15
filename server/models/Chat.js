@@ -9,6 +9,7 @@ const chatSchema = new mongoose.Schema({
   supportAssignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   supportRequestedAt: { type: Date },
   supportAssignedAt: { type: Date },
+  supportClosedAt: { type: Date },
 
   lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
   lastActivity: { type: Date, default: Date.now },

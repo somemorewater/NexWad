@@ -16,6 +16,7 @@ export function SocketProvider({ children }) {
   const [connected, setConnected] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -33,6 +34,8 @@ export function SocketProvider({ children }) {
       .then(({ data }) => {
         setNotifications(data.notifications || [])
         setUnreadCount(data.unreadCount || 0)
+        const supportUnread = (data.notifications || []).filter(n => !n.read && String(n.link || '').startsWith('/cs-chat')).length
+        setUnreadSupportCount(supportUnread)
       })
       .catch(() => {})
 
@@ -52,6 +55,9 @@ export function SocketProvider({ children }) {
     socket.on('notification', (notif) => {
       setNotifications(prev => [notif, ...prev.slice(0, 49)])
       setUnreadCount(c => c + 1)
+      if (String(notif?.link || '').startsWith('/cs-chat')) {
+        setUnreadSupportCount(c => c + 1)
+      }
       if (notif?._id && lastToastIdRef.current === notif._id) return
       lastToastIdRef.current = notif?._id || lastToastIdRef.current
       const toastType = notif?.type === 'sale'
@@ -93,7 +99,15 @@ export function SocketProvider({ children }) {
 
   const markNotificationsRead = useCallback(() => {
     setUnreadCount(0)
+    setUnreadSupportCount(0)
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }, [])
+
+  const markSupportRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => (
+      String(n.link || '').startsWith('/cs-chat') ? { ...n, read: true } : n
+    )))
+    setUnreadSupportCount(0)
   }, [])
 
   const value = useMemo(() => ({
@@ -103,8 +117,10 @@ export function SocketProvider({ children }) {
     on,
     notifications,
     unreadCount,
+    unreadSupportCount,
     markNotificationsRead,
-  }), [connected, emit, on, notifications, unreadCount, markNotificationsRead])
+    markSupportRead,
+  }), [connected, emit, on, notifications, unreadCount, unreadSupportCount, markNotificationsRead, markSupportRead])
 
   return (
     <SocketContext.Provider value={value}>

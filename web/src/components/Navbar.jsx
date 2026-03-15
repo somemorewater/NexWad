@@ -63,7 +63,7 @@ function BackIcon() {
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
-  const { unreadCount } = useContext(SocketContext)
+  const { unreadCount, unreadSupportCount } = useContext(SocketContext)
   const { toggleSidebar, closeSidebar } = useLayout()
   const navigate = useNavigate()
   const location = useLocation()
@@ -213,6 +213,7 @@ export default function Navbar() {
                 aria-label="Chat with CS"
               >
                 <SupportChatIcon />
+                {unreadSupportCount > 0 && <span className="navbar__notif-dot" />}
               </button>
 
               {/* Notifications */}
