@@ -5,6 +5,10 @@ const chatSchema = new mongoose.Schema({
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
   listing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing' },
   support: { type: Boolean, default: false },
+  supportStatus: { type: String, enum: ['pending', 'assigned', 'closed'], default: null },
+  supportAssignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  supportRequestedAt: { type: Date },
+  supportAssignedAt: { type: Date },
 
   lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
   lastActivity: { type: Date, default: Date.now },

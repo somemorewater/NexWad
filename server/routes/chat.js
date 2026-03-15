@@ -1,8 +1,9 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const router = express.Router()
 const { Chat, Message } = require('../models/Chat')
 const User = require('../models/User')
-const { protectAllowBanned } = require('../middleware/auth')
+const { protect, protectAllowBanned, requireCS } = require('../middleware/auth')
 const { handleUpload, uploadChatMedia } = require('../utils/cloudinary')
 const { paginationRules, validate, body } = require('../middleware/validate')
 const { emitToUser } = require('../socket')
@@ -10,16 +11,41 @@ const { notifyNewMessage } = require('../utils/notifications')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 const SUPPORT_ROLES = new Set(['cs', 'moderator', 'admin', 'superadmin', 'super_admin'])
+const SUPPORT_ROLE_REGEX = new RegExp(`^(${Array.from(SUPPORT_ROLES).join('|')})$`, 'i')
 
-const isSupportUser = (user) => SUPPORT_ROLES.has(user?.role)
+const normalizeRole = (role) => String(role || '').toLowerCase()
+const toObjectIdString = (value) => {
+  if (!value) return null
+  const raw = value?._id || value?.id || value
+  const str = typeof raw === 'string' ? raw : raw?.toString?.()
+  if (!str) return null
+  if (!mongoose.Types.ObjectId.isValid(str)) return null
+  return new mongoose.Types.ObjectId(str).toString()
+}
+const isSupportUser = (user) => SUPPORT_ROLES.has(normalizeRole(user?.role))
 const isSupportChat = (chat) => chat?.support || chat?.participants?.some(isSupportUser)
 const isParticipant = (chat, userId) => chat?.participants?.some(p => (
   (p?._id?.toString?.() || p?.toString?.()) === userId
 ))
+const canAccessSupportChat = (chat, user) => {
+  if (!chat?.support) return true
+  const assigneeId = chat?.supportAssignee?.toString?.() || chat?.supportAssignee?._id?.toString?.()
+  if (!assigneeId) return true
+  return assigneeId === user?._id?.toString()
+}
 
 // ─── GET /api/chat ────────────────────────────
 router.get('/', protectAllowBanned, async (req, res, next) => {
   try {
+    const needsSupportFilter = req.user.banned || !isSupportUser(req.user)
+    let supportIdSet = null
+    if (needsSupportFilter) {
+      const supportUsers = await User.find({
+        role: { $regex: SUPPORT_ROLE_REGEX },
+      }).select('_id').lean()
+      supportIdSet = new Set(supportUsers.map(u => String(u._id)))
+    }
+
     const chats = await Chat.find({
       participants: req.user._id,
       deletedBy: { $ne: req.user._id },
@@ -29,11 +55,36 @@ router.get('/', protectAllowBanned, async (req, res, next) => {
       .populate({ path: 'lastMessage', select: 'text media createdAt sender' })
       .sort({ lastActivity: -1 })
 
-    const filtered = req.user.banned
-      ? chats.filter(isSupportChat)
-      : (isSupportUser(req.user) ? chats : chats.filter(c => !isSupportChat(c)))
+    const isSupportChatById = (chat) => {
+      if (chat?.support) return true
+      if (!supportIdSet) return false
+      return chat?.participants?.some(p => supportIdSet.has(String(p?._id || p)))
+    }
 
-    const chatsWithUnread = filtered.map(chat => ({
+    let filtered = req.user.banned
+      ? chats.filter(chat => isSupportChat(chat) || isSupportChatById(chat))
+      : (isSupportUser(req.user) ? chats : chats.filter(chat => !(isSupportChat(chat) || isSupportChatById(chat))))
+
+    if (!req.user.banned && !isSupportUser(req.user)) {
+      const map = new Map()
+      for (const chat of filtered) {
+        const other = chat.participants?.find(p => String(p?._id || p) !== req.user._id.toString())
+        const key = String(other?._id || other || chat._id)
+        const existing = map.get(key)
+        if (!existing) {
+          map.set(key, chat)
+        } else {
+          const a = new Date(existing.lastActivity || existing.updatedAt || existing.createdAt || 0).getTime()
+          const b = new Date(chat.lastActivity || chat.updatedAt || chat.createdAt || 0).getTime()
+          if (b > a) map.set(key, chat)
+        }
+      }
+      filtered = Array.from(map.values())
+    }
+
+    const withMessages = filtered.filter(chat => chat.lastMessage)
+
+    const chatsWithUnread = withMessages.map(chat => ({
       ...chat.toObject(),
       unreadCount: chat.unreadCounts?.get?.(req.user._id.toString()) || 0,
     }))
@@ -42,31 +93,103 @@ router.get('/', protectAllowBanned, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ─── GET /api/chat/support/inbox ──────────────
+router.get('/support/inbox', protect, requireCS, async (req, res, next) => {
+  try {
+    const chats = await Chat.find({
+      support: true,
+      $or: [
+        { supportStatus: 'pending' },
+        { supportStatus: { $exists: false } },
+        { supportStatus: null },
+        { supportAssignee: req.user._id },
+      ],
+      lastMessage: { $ne: null },
+    })
+      .populate('participants', 'name avatar online lastSeen role')
+      .populate('supportAssignee', 'name avatar role')
+      .populate({ path: 'lastMessage', select: 'text media createdAt sender' })
+      .sort({ lastActivity: -1 })
+
+    res.json({ chats })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/chat/support/:chatId/accept ─────
+router.post('/support/:chatId/accept', protect, requireCS, async (req, res, next) => {
+  try {
+    const existing = await Chat.findById(req.params.chatId).select('lastMessage').lean()
+    if (!existing?.lastMessage) {
+      return res.status(409).json({ error: 'No messages yet' })
+    }
+
+    const chat = await Chat.findOneAndUpdate(
+      {
+        _id: req.params.chatId,
+        support: true,
+        $and: [
+          {
+            $or: [
+              { supportAssignee: { $exists: false } },
+              { supportAssignee: null },
+            ],
+          },
+        ],
+      },
+      {
+        $set: {
+          supportAssignee: req.user._id,
+          supportStatus: 'assigned',
+          supportAssignedAt: new Date(),
+        },
+        $addToSet: { participants: req.user._id },
+      },
+      { new: true }
+    )
+      .populate('participants', 'name avatar online lastSeen role')
+      .populate('supportAssignee', 'name avatar role')
+      .populate({ path: 'lastMessage', select: 'text media createdAt sender' })
+
+    if (!chat) {
+      return res.status(409).json({ error: 'Chat already assigned' })
+    }
+
+    res.json({ chat })
+  } catch (err) { next(err) }
+})
+
 // ─── POST /api/chat/support ───────────────────
 router.post('/support', protectAllowBanned, async (req, res, next) => {
   try {
-    const supportUser = await User.findOne({
-      role: { $in: Array.from(SUPPORT_ROLES) },
-      banned: false,
-    }).select('_id name avatar role')
-
-    if (!supportUser) {
-      return res.status(404).json({ error: 'No customer service agent available' })
-    }
-
-    let chat = await Chat.findOne({
-      participants: { $all: [req.user._id, supportUser._id] },
+    // Prefer an existing support chat for this user, but only if it's truly with support
+    const existingSupportChats = await Chat.find({
+      participants: req.user._id,
+      support: true,
       $or: [{ listing: { $exists: false } }, { listing: null }],
+      deletedBy: { $ne: req.user._id },
     })
       .populate('participants', 'name avatar online lastSeen role')
 
-    if (!chat) {
-      chat = await Chat.create({
-        participants: [req.user._id, supportUser._id],
-        support: true,
-      })
-      chat = await chat.populate('participants', 'name avatar online lastSeen role')
+    if (existingSupportChats.length) {
+      const validSupportChat = existingSupportChats.find(c => c.support)
+      if (validSupportChat) {
+        if (!validSupportChat.supportStatus) {
+          await Chat.updateOne(
+            { _id: validSupportChat._id },
+            { $set: { supportStatus: 'pending', supportRequestedAt: validSupportChat.supportRequestedAt || new Date() } }
+          )
+          validSupportChat.supportStatus = 'pending'
+        }
+        return res.status(200).json({ chat: validSupportChat })
+      }
     }
+    chat = await Chat.create({
+      participants: [req.user._id],
+      support: true,
+      supportStatus: 'pending',
+      supportRequestedAt: new Date(),
+    })
+    chat = await chat.populate('participants', 'name avatar online lastSeen role')
 
     res.status(201).json({ chat })
   } catch (err) { next(err) }
@@ -77,6 +200,9 @@ router.post('/start', protectAllowBanned,
   [body('sellerId').notEmpty()], validate,
   async (req, res, next) => {
     try {
+      if (normalizeRole(req.user?.role) === 'cs') {
+        return res.status(403).json({ error: 'CS accounts cannot start marketplace chats' })
+      }
       const { sellerId, listingId } = req.body
       if (sellerId === req.user._id.toString()) {
         return res.status(400).json({ error: 'Cannot chat with yourself' })
@@ -146,6 +272,9 @@ router.get('/:chatId/messages', protectAllowBanned, paginationRules, validate, a
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
+    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+      return res.status(403).json({ error: 'Chat assigned to another agent' })
+    }
     if (req.user.banned && !isSupportChat(chat)) {
       return res.status(403).json({ error: 'Banned users can only chat with customer service' })
     }
@@ -186,6 +315,9 @@ router.post('/:chatId/messages', protectAllowBanned, handleUpload(uploadChatMedi
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
+    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+      return res.status(403).json({ error: 'Chat assigned to another agent' })
+    }
     if (req.user.banned && !isSupportChat(chat)) {
       return res.status(403).json({ error: 'Banned users can only chat with customer service' })
     }
@@ -205,16 +337,21 @@ router.post('/:chatId/messages', protectAllowBanned, handleUpload(uploadChatMedi
     // Update chat metadata + increment unread for other participants
     const unreadUpdateFields = {}
     chat.participants.forEach(pid => {
-      const id = pid.toString()
+      const id = toObjectIdString(pid)
+      if (!id) return
       if (id !== req.user._id.toString()) {
         unreadUpdateFields[`unreadCounts.${id}`] = (chat.unreadCounts?.get?.(id) || 0) + 1
       }
     })
 
+    const participantIds = chat.participants
+      .map(pid => toObjectIdString(pid))
+      .filter(Boolean)
     await Chat.findByIdAndUpdate(req.params.chatId, {
       lastMessage: message._id,
       lastActivity: new Date(),
       ...unreadUpdateFields,
+      $pull: { deletedBy: { $in: participantIds } },
     })
 
     const payload = {
@@ -225,13 +362,17 @@ router.post('/:chatId/messages', protectAllowBanned, handleUpload(uploadChatMedi
     // Emit real-time to each recipient's personal room.
     // This works even if they have not joined the specific chat room yet.
     chat.participants.forEach(pid => {
-      emitToUser(pid.toString(), 'new_message', payload)
+      const id = toObjectIdString(pid)
+      if (!id) return
+      emitToUser(id, 'new_message', payload)
     })
 
     // Notify other participants
     chat.participants.forEach(pid => {
-      if (pid.toString() !== req.user._id.toString()) {
-        notifyNewMessage(pid.toString(), req.user.name, req.params.chatId)
+      const id = toObjectIdString(pid)
+      if (!id) return
+      if (id !== req.user._id.toString()) {
+        notifyNewMessage(id, req.user.name, req.params.chatId)
       }
     })
 
@@ -247,6 +388,9 @@ router.put('/:chatId/read', protectAllowBanned, async (req, res, next) => {
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
+    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+      return res.status(403).json({ error: 'Chat assigned to another agent' })
+    }
     if (req.user.banned && !isSupportChat(chat)) {
       return res.status(403).json({ error: 'Banned users can only chat with customer service' })
     }
@@ -260,6 +404,36 @@ router.put('/:chatId/read', protectAllowBanned, async (req, res, next) => {
       { $addToSet: { readBy: req.user._id } }
     )
     res.json({ message: 'Marked as read' })
+  } catch (err) { next(err) }
+})
+
+// ─── DELETE /api/chat/:chatId ────────────────
+router.delete('/:chatId', protectAllowBanned, async (req, res, next) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId).populate('participants', 'role')
+    if (!chat) return res.status(404).json({ error: 'Chat not found' })
+    if (!isParticipant(chat, req.user._id.toString())) {
+      return res.status(403).json({ error: 'Not a participant' })
+    }
+    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+      return res.status(403).json({ error: 'Chat assigned to another agent' })
+    }
+    if (req.user.banned && !isSupportChat(chat)) {
+      return res.status(403).json({ error: 'Banned users can only chat with customer service' })
+    }
+
+    const userId = req.user._id
+    await Chat.findByIdAndUpdate(req.params.chatId, {
+      $addToSet: { deletedBy: userId },
+      [`unreadCounts.${userId.toString()}`]: 0,
+    })
+
+    await Message.updateMany(
+      { chat: req.params.chatId },
+      { $addToSet: { deletedBy: userId } }
+    )
+
+    res.json({ message: 'Conversation deleted' })
   } catch (err) { next(err) }
 })
 

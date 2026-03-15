@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { normalizeRole } from '../utils/roleRouting'
 import { userLogsAPI } from '../api/endpoints'
 
 const CLICK_SELECTOR = 'button, a, [role="button"], [data-log-action]'
@@ -10,12 +11,13 @@ function cleanText(value) {
 }
 
 export default function ActivityTracker() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const location = useLocation()
   const lastClickRef = useRef({ key: '', at: 0 })
 
   useEffect(() => {
     if (!isAuthenticated) return
+    if (normalizeRole(user?.role) === 'cs') return
 
     userLogsAPI.event({
       action: 'route_viewed',
@@ -26,10 +28,11 @@ export default function ActivityTracker() {
       },
       occurredAt: new Date().toISOString(),
     }).catch(() => {})
-  }, [isAuthenticated, location.pathname, location.search])
+  }, [isAuthenticated, location.pathname, location.search, user?.role])
 
   useEffect(() => {
     if (!isAuthenticated) return
+    if (normalizeRole(user?.role) === 'cs') return
 
     const onClick = (event) => {
       const target = event.target?.closest?.(CLICK_SELECTOR)
@@ -67,7 +70,7 @@ export default function ActivityTracker() {
 
     document.addEventListener('click', onClick, true)
     return () => document.removeEventListener('click', onClick, true)
-  }, [isAuthenticated, location.pathname, location.search])
+  }, [isAuthenticated, location.pathname, location.search, user?.role])
 
   return null
 }

@@ -23,28 +23,7 @@ function AttachIcon() {
   )
 }
 
-const DEFAULT_COMPLAINTS = [
-  {
-    id: 'cmp-1',
-    customer: 'Hauwa Musa',
-    issue: 'Late delivery',
-    summary: 'Package delivered after 5 days. Asked for refund.',
-    priority: 'high',
-    status: 'open',
-    createdAt: '2026-03-11T10:20:00Z',
-    channel: 'Chat',
-  },
-  {
-    id: 'cmp-2',
-    customer: 'Eze Chima',
-    issue: 'Payment dispute',
-    summary: 'Buyer claims double charge for subscription renewal.',
-    priority: 'medium',
-    status: 'investigating',
-    createdAt: '2026-03-12T14:05:00Z',
-    channel: 'Email',
-  },
-]
+const DEFAULT_COMPLAINTS = []
 
 export default function CSDesk() {
   const { user } = useAuth()
@@ -73,15 +52,16 @@ export default function CSDesk() {
 
   const loadChats = useCallback(async () => {
     try {
-      const { data } = await chatAPI.getChats()
+      const { data } = await chatAPI.getSupportInbox()
       setChats(data.chats || [])
-      if (!activeChatId && data.chats?.length) setActiveChatId(data.chats[0]._id)
+      const assigned = (data.chats || []).find(c => c.supportAssignee?._id === user?._id || c.supportAssignee === user?._id)
+      if (!activeChatId && assigned) setActiveChatId(assigned._id)
     } catch {
       // silent
     } finally {
       setLoading(false)
     }
-  }, [activeChatId])
+  }, [activeChatId, user?._id])
 
   useEffect(() => {
     loadChats()
@@ -151,6 +131,9 @@ export default function CSDesk() {
 
   const activeChat = chats.find(c => c._id === activeChatId)
   const activeCustomer = activeChat?.participants?.find(p => p._id !== user?._id)
+  const isAssignedToMe = Boolean(
+    activeChat?.supportAssignee?._id === user?._id || activeChat?.supportAssignee === user?._id
+  )
 
   useEffect(() => {
     setComplaintForm(prev => ({
@@ -212,11 +195,40 @@ export default function CSDesk() {
           ) : (
             chats.map(chat => {
               const other = chat.participants?.find(p => p._id !== user?._id)
+              const isAssigned = Boolean(
+                chat.supportAssignee?._id === user?._id
+                || chat.supportAssignee === user?._id
+              )
+              const isPending = !chat.supportAssignee
+              const previewText = chat.lastMessage?.text
+                ? chat.lastMessage.text
+                : (chat.lastMessage?.media ? 'Media' : 'No messages yet')
               return (
                 <div
                   key={chat._id}
                   className={`chat-item ${activeChatId === chat._id ? 'active' : ''}`}
-                  onClick={() => setActiveChatId(chat._id)}
+                  onClick={() => {
+                    if (isAssigned) {
+                      setActiveChatId(chat._id)
+                      return
+                    }
+                    if (!isPending) {
+                      toast.error('Chat is already assigned to another agent')
+                      return
+                    }
+                    chatAPI.acceptSupportChat(chat._id)
+                      .then(({ data }) => {
+                        setChats(prev => prev.map(c => c._id === chat._id ? data.chat : c))
+                        setActiveChatId(chat._id)
+                      })
+                      .catch((err) => {
+                        if (err?.error === 'No messages yet') {
+                          toast.error('User has not sent a message yet')
+                        } else {
+                          toast.error('Chat already assigned')
+                        }
+                      })
+                  }}
                 >
                   <div className="avatar avatar-md">
                     {other?.avatar
@@ -226,9 +238,9 @@ export default function CSDesk() {
                   <div className="chat-item__info">
                     <div className="chat-item__name">{other?.name || 'Customer'}</div>
                     <div className="chat-item__preview">
-                      {chat.lastMessage?.text || chat.lastMessage?.media
+                      {previewText === 'Media'
                         ? <><i className="fa-solid fa-paperclip" aria-hidden="true" /> Media</>
-                        : 'No messages yet'}
+                        : previewText}
                     </div>
                   </div>
                   <div className="chat-item__meta">
@@ -237,6 +249,30 @@ export default function CSDesk() {
                         ? formatDistanceToNow(new Date(chat.lastMessage.createdAt), { addSuffix: false }).replace('about ', '')
                         : ''}
                     </span>
+                    {isPending && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          chatAPI.acceptSupportChat(chat._id)
+                            .then(({ data }) => {
+                              setChats(prev => prev.map(c => c._id === chat._id ? data.chat : c))
+                              setActiveChatId(chat._id)
+                            })
+                            .catch((err) => {
+                              if (err?.error === 'No messages yet') {
+                                toast.error('User has not sent a message yet')
+                              } else {
+                                toast.error('Chat already assigned')
+                              }
+                            })
+                        }}
+                        style={{ minWidth: 64, padding: '4px 8px' }}
+                      >
+                        Accept
+                      </button>
+                    )}
                     {chat.unreadCount > 0 && (
                       <span className="chat-item__unread">{chat.unreadCount}</span>
                     )}
@@ -269,46 +305,55 @@ export default function CSDesk() {
               </div>
 
               <div className="chat-window__messages">
-                {messages.map((msg, i) => {
-                  const isMine = msg.sender === user?._id || msg.sender?._id === user?._id
-                  const showDate = i === 0 || new Date(messages[i-1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString()
-                  return (
-                    <div key={msg._id || i}>
-                      {showDate && (
-                        <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--nw-gray-400)', margin: '8px 0' }}>
-                          {format(new Date(msg.createdAt), 'MMMM d, yyyy')}
+                {!isAssignedToMe ? (
+                  <div style={{ textAlign: 'center', marginTop: 24, color: 'var(--nw-gray-400)' }}>
+                    Accept this chat to view messages.
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg, i) => {
+                      const isMine = msg.sender === user?._id || msg.sender?._id === user?._id
+                      const showDate = i === 0 || new Date(messages[i-1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString()
+                      return (
+                        <div key={msg._id || i}>
+                          {showDate && (
+                            <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--nw-gray-400)', margin: '8px 0' }}>
+                              {format(new Date(msg.createdAt), 'MMMM d, yyyy')}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                            <div className={`chat-bubble chat-bubble--${isMine ? 'sent' : 'received'}`}>
+                              {msg.media && <img src={msg.media} alt="Media" style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block' }} />}
+                              {msg.text}
+                              <time className="chat-bubble__time">{format(new Date(msg.createdAt), 'HH:mm')}</time>
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-                        <div className={`chat-bubble chat-bubble--${isMine ? 'sent' : 'received'}`}>
-                          {msg.media && <img src={msg.media} alt="Media" style={{ maxWidth: 200, borderRadius: 8, marginBottom: 4, display: 'block' }} />}
-                          {msg.text}
-                          <time className="chat-bubble__time">{format(new Date(msg.createdAt), 'HH:mm')}</time>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                <div ref={messagesEndRef} />
+                      )
+                    })}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
               </div>
 
               <div className="chat-window__input">
-                <button className="btn btn-ghost btn-icon" onClick={() => fileRef.current?.click()} aria-label="Attach">
+                <button className="btn btn-ghost btn-icon" onClick={() => fileRef.current?.click()} aria-label="Attach" disabled={!isAssignedToMe}>
                   <AttachIcon />
                 </button>
                 <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={(e) => sendMessage(input, e.target.files[0])} />
                 <textarea
                   className="chat-input-field"
-                  placeholder="Type a response…"
+                  placeholder={isAssignedToMe ? 'Type a response…' : 'Accept to reply'}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   rows={1}
+                  disabled={!isAssignedToMe}
                 />
                 <button
                   className="btn btn-primary btn-icon"
                   onClick={() => sendMessage(input)}
-                  disabled={sending || !input.trim()}
+                  disabled={sending || !input.trim() || !isAssignedToMe}
                   aria-label="Send"
                   style={{ width: 44, height: 44, borderRadius: 'var(--radius-lg)' }}
                 >

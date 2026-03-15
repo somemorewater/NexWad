@@ -100,6 +100,8 @@ export const lostFoundAPI = {
 export const chatAPI = {
   getChats: () => api.get('/chat'),
   getSupportChat: () => api.post('/chat/support'),
+  getSupportInbox: () => api.get('/chat/support/inbox'),
+  acceptSupportChat: (chatId) => api.post(`/chat/support/${chatId}/accept`),
   getOrCreate: (listingId, sellerId) =>
     api.post('/chat/start', { listingId, sellerId }),
   getMessages: (chatId, params) => api.get(`/chat/${chatId}/messages`, { params }),
@@ -108,6 +110,7 @@ export const chatAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   markRead: (chatId) => api.put(`/chat/${chatId}/read`),
+  deleteChat: (chatId) => api.delete(`/chat/${chatId}`),
 }
 
 // ─── Subscriptions ────────────────────────────

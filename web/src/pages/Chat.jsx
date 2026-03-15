@@ -31,6 +31,7 @@ export default function Chat() {
   const [page, setPage] = useState(1)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [showList, setShowList] = useState(!paramChatId)
+  const [openMenuId, setOpenMenuId] = useState(null)
   const messagesEndRef = useRef(null)
   const fileRef = useRef(null)
   const handledQueryStartRef = useRef(false)
@@ -70,6 +71,34 @@ export default function Chat() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const handleDeleteChat = async (chatId) => {
+    const confirmed = window.confirm('Delete this conversation? This will only remove it for you.')
+    if (!confirmed) return
+    try {
+      await chatAPI.deleteChat(chatId)
+      setChats(prev => prev.filter(c => c._id !== chatId))
+      if (activeChatId === chatId) {
+        setActiveChatId(null)
+        setMessages([])
+        navigate('/chat')
+      }
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not delete conversation')
+    }
+  }
+
+  const handleReportChat = (chatId) => {
+    const confirmed = window.confirm('Report this conversation? Our team will review it.')
+    if (!confirmed) return
+    toast.success('Report submitted. Our team will review this conversation.')
+  }
+
+  useEffect(() => {
+    const close = () => setOpenMenuId(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
   }, [])
 
   // Load chat list
@@ -221,7 +250,11 @@ export default function Chat() {
                   <div className="chat-item__info">
                     <div className="chat-item__name">{other?.name}</div>
                     <div className="chat-item__preview">
-                      {chat.lastMessage?.text || chat.lastMessage?.media ? <><i className="fa-solid fa-paperclip" aria-hidden="true" /> Media</> : 'No messages yet'}
+                      {chat.lastMessage?.text
+                        ? chat.lastMessage.text
+                        : (chat.lastMessage?.media
+                          ? <><i className="fa-solid fa-paperclip" aria-hidden="true" /> Media</>
+                          : 'No messages yet')}
                     </div>
                   </div>
                   <div className="chat-item__meta">
@@ -233,6 +266,38 @@ export default function Chat() {
                     {chat.unreadCount > 0 && (
                       <span className="chat-item__unread">{chat.unreadCount}</span>
                     )}
+                    <div
+                      className={`chat-item__menu ${openMenuId === chat._id ? 'chat-item__menu--open' : ''}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className="chat-item__menu-btn"
+                        aria-haspopup="menu"
+                        aria-label="Conversation options"
+                        onClick={() => setOpenMenuId(prev => (prev === chat._id ? null : chat._id))}
+                      >
+                        <i className="fa-solid fa-ellipsis-vertical" aria-hidden="true" />
+                      </button>
+                      <div className="chat-item__menu-list" role="menu">
+                        <button
+                          type="button"
+                          className="chat-item__menu-item"
+                          onClick={() => { setOpenMenuId(null); handleDeleteChat(chat._id) }}
+                          role="menuitem"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          className="chat-item__menu-item"
+                          onClick={() => { setOpenMenuId(null); handleReportChat(chat._id) }}
+                          role="menuitem"
+                        >
+                          Report
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )

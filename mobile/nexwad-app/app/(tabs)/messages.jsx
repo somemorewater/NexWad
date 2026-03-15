@@ -79,7 +79,7 @@ export default function Messages() {
         const { conversations } = await api.conversations.list();
         if (conversations && conversations.length > 0) {
           const mapped = conversations.map(c => {
-           const other = c.other || {};
+            const other = c.other || {};
             const name = other.name || "User";
             const initials = name.split(" ").map(n => n[0]).join("").substring(0,2).toUpperCase();
             return {
@@ -187,4 +187,3 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize:17, fontWeight:"700", color:"#374151" },
   emptySub: { fontSize:13, color:"#9CA3AF" },
 });
-

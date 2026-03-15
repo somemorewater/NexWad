@@ -52,7 +52,11 @@ async function main() {
 
     // Merge dupes into canonical
     let mergedUnread = { ...(canonical.unreadCounts || {}) }
-    let mergedDeletedBy = new Set((canonical.deletedBy || []).map(id => id.toString()))
+    let mergedDeletedBy = new Set((canonical.deletedBy || []).map(id => {
+      if (!id) return null
+      if (id._id) return id._id.toString()
+      return id.toString()
+    }).filter(Boolean))
     let chosenListing = canonical.listing || null
     let latestListingTime = new Date(canonical.lastActivity || canonical.updatedAt || 0).getTime()
 
@@ -72,7 +76,11 @@ async function main() {
 
       // Merge deletedBy
       if (Array.isArray(dup.deletedBy)) {
-        dup.deletedBy.forEach(id => mergedDeletedBy.add(id.toString()))
+        dup.deletedBy.forEach(id => {
+          if (!id) return
+          if (id._id) mergedDeletedBy.add(id._id.toString())
+          else mergedDeletedBy.add(id.toString())
+        })
       }
 
       // Choose most recent listing context
@@ -97,7 +105,7 @@ async function main() {
       {
         $set: {
           unreadCounts: mergedUnread,
-          deletedBy: Array.from(mergedDeletedBy),
+          deletedBy: Array.from(mergedDeletedBy).map(id => new mongoose.Types.ObjectId(id)),
           listing: chosenListing || undefined,
           lastMessage: lastMsg?._id || canonical.lastMessage || undefined,
           lastActivity: lastMsg?.createdAt || canonical.lastActivity || undefined,
@@ -119,4 +127,3 @@ main().catch((err) => {
   console.error('Dedupe failed:', err)
   mongoose.disconnect()
 })
-

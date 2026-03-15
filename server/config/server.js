@@ -6,6 +6,8 @@ const compression = require('compression')
 const rateLimit = require('express-rate-limit')
 const path = require('path')
 const { logRequestActivity } = require('../middleware/activityLogger')
+const { optionalAuth } = require('../middleware/auth')
+const { restrictCSAccess } = require('../middleware/csAccess')
 
 const app = express()
 const isProd = process.env.NODE_ENV === 'production'
@@ -64,6 +66,7 @@ app.use('/api/pins/credits/paystack-webhook', express.raw({ type: 'application/j
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 app.use(logRequestActivity)
+app.use('/api', optionalAuth, restrictCSAccess)
 
 // ─── Logging ──────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {

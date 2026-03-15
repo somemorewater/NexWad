@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { SocketProvider } from './context/SocketContext'
 import { LayoutProvider } from './context/LayoutContext'
 import { ThemeProvider } from './context/ThemeContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import { useAuth } from './hooks/useAuth'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -34,6 +35,22 @@ import SearchResults from './pages/SearchResults'
 import Notifications from './pages/Notifications'
 import ActivityTracker from './components/ActivityTracker'
 import nexwadLogo from './assets/images/nexwad-logo.png'
+import { normalizeRole } from './utils/roleRouting'
+
+function CSAccessGuard() {
+  const { user, isAuthenticated, loading } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) return
+    if (normalizeRole(user?.role) !== 'cs') return
+    if (location.pathname.startsWith('/cs')) return
+    navigate('/cs', { replace: true })
+  }, [loading, isAuthenticated, user?.role, location.pathname, navigate])
+
+  return null
+}
 
 function AppContent() {
   const location = useLocation()
@@ -63,6 +80,7 @@ function AppContent() {
         <AuthProvider>
           <LayoutProvider>
             <SocketProvider>
+              <CSAccessGuard />
               <ActivityTracker />
               <Toaster
                 position="top-right"
