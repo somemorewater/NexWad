@@ -164,6 +164,9 @@ Listing uploads use transformations optimized for delivery size and compatibilit
 - start chat
 - get/send messages
 - mark as read
+- support chat creation for buyers/sellers
+- CS support inbox, accept, and end routes
+- support-role access controls and assignment checks
 
 ### `notifications.js`
 

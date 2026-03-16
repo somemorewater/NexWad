@@ -84,8 +84,17 @@
 - Read/unread tracking.
 - Realtime message delivery via websockets.
 - Customer care chat on dedicated CS chat page (separate from normal chats).
+- Support chats are marked and routed to support agents.
+- Support chat can be closed by either participant.
 
-## 9. Seller Experience
+## 9. Customer Support Desk (CS Role)
+
+- CS inbox with open/pending support chats.
+- Accept/assign support chats to a specific agent.
+- Agent-only controls to end support chats.
+- Complaint log UI with priority, channel, and status tracking.
+
+## 10. Seller Experience
 
 - Seller application flow with document upload and payment reference.
 - Seller application ID: Matric No or NIN with corresponding ID image.
@@ -99,7 +108,7 @@
 - subscription status
 - revenue-related overview cards
 
-## 10. Pinning System
+## 11. Pinning System
 
 - Pin-eligible user types: sellers and premium users.
 - Pin credits purchase flow.
@@ -115,7 +124,7 @@
 - Pinned content displayed prominently for all viewers.
 - Owner-only remaining-time visibility.
 
-## 11. Subscription and Billing
+## 12. Subscription and Billing
 
 - Plan listing and current subscription view.
 - Buyer premium subscription support.
@@ -125,7 +134,7 @@
 - Subscription confirmation email notifications.
 - Seller approval email notification.
 
-## 12. Legal and Compliance Pages
+## 13. Legal and Compliance Pages
 
 - Unified legal page route.
 - Terms and Conditions section.
@@ -134,7 +143,7 @@
 - Data Retention Policy section.
 - Legacy legal paths redirect to unified legal page.
 
-## 13. Admin Panel Features
+## 14. Admin Panel Features
 
 - Platform stats overview.
 - User search and filtering.
@@ -148,7 +157,7 @@
 - Audit log viewing.
 - Navigation path back to normal app area from admin panel.
 
-## 14. User Activity Logging
+## 15. User Activity Logging
 
 - Client activity event reporting endpoint.
 - Server request activity logging middleware.
@@ -157,7 +166,7 @@
 - Grouped-by-user activity summary mode.
 - Private analytics endpoints protected by API key.
 
-## 15. Security and Reliability Features
+## 16. Security and Reliability Features
 
 - JWT auth guards on protected routes.
 - Role-based middleware for restricted resources.
@@ -167,7 +176,7 @@
 - Cloudinary asset cleanup on content deletion.
 - PWA manifest + service worker for offline fallback.
 
-## 16. Guest vs Authenticated Differences
+## 17. Guest vs Authenticated Differences
 
 - Guests can browse marketplace, social, lost/found, and legal pages.
 - Guests cannot perform protected actions like chat start, posting, saving, pinning, or account operations.

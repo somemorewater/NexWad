@@ -88,6 +88,9 @@ Base URL prefix: `/api`
 - `POST /chat/:chatId/messages`
 - `PUT /chat/:chatId/read`
 - `POST /chat/support`
+- `GET /chat/support/inbox`
+- `POST /chat/support/:chatId/accept`
+- `POST /chat/support/:chatId/end`
 
 ## Subscriptions (`/subscriptions`)
 

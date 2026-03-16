@@ -35,12 +35,17 @@ Protected routes include:
 - `/home`
 - seller routes (`/dashboard`, `/profile/seller-tools`)
 - `/chat`, `/notifications`
+- `/cs-chat`
 - profile management pages
 
 Admin-protected routes:
 
 - `/admin/*`
 - `/super-admin/*`
+
+Support role routes:
+
+- `/cs` (CS desk)
 
 ## Major Page Modules
 
@@ -51,7 +56,8 @@ Admin-protected routes:
 - `Profile.jsx`: user/seller profile, edit modal, social actions
 - `Dashboard.jsx`: seller analytics + pin management
 - `BuyerHub.jsx`: buyer shortcuts, previews, premium actions
-- `CSChat.jsx`: customer care chat page
+- `CSChat.jsx`: customer care chat page for users
+- `CSDesk.jsx`: customer support desk inbox for CS agents
 
 ## Shared UI Components
 

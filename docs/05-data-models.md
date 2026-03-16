@@ -23,6 +23,26 @@ Behavioral methods:
 - `applyPlanAccess`
 - `checkSubscription` (handles expiry downgrade and related listing/pin changes)
 
+## Chat (`models/Chat.js`)
+
+Conversation + messages with optional support workflow.
+
+Key fields:
+
+- `participants[]`, `listing`
+- support flags: `support`, `supportStatus`, `supportAssignee`
+- support timestamps: `supportRequestedAt`, `supportAssignedAt`, `supportClosedAt`
+- `lastMessage`, `lastActivity`
+- `unreadCounts` map per participant
+- `deletedBy[]` for soft deletion
+
+Message fields:
+
+- `chat`, `sender`, `text`
+- `media`, `mediaPublicId`, `mediaType`
+- `readBy[]`, `deletedBy[]`
+- `edited`, `editedAt`
+
 ## Listing (`models/Listing.js`)
 
 Marketplace product listing.
