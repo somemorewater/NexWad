@@ -9,6 +9,7 @@ function buildFeatures(user) {
   const plan = String(user?.subscription?.plan || '').toLowerCase()
   const isSeller = role === 'seller'
   const isAdmin = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(role)
+  const isSupportRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(role)
   const hasPinAccess = canPinContent(user)
 
   const features = [
@@ -72,7 +73,35 @@ function buildFeatures(user) {
       ctaLabel: 'Open Notifications',
       to: '/notifications',
     },
+    {
+      id: 'messages',
+      title: 'Messages & Chats',
+      description: 'Chat with sellers, share media, and stay on top of unread messages.',
+      steps: [
+        'Open Messages from the sidebar.',
+        'Start a chat from any listing with Get Product.',
+        'Send text or media and track replies in real time.',
+      ],
+      ctaLabel: 'Open Messages',
+      to: '/chat',
+    },
   ]
+
+  if (!isSupportRole) {
+    features.push({
+      id: 'support-chat',
+      title: 'Customer Service Chat',
+      description: 'Reach NexWAD support for disputes, account help, or safety concerns.',
+      steps: [
+        'Tap the headset icon in the navbar to open support chat.',
+        'Explain your issue and attach screenshots if needed.',
+        'End the chat when resolved or wait for follow-up.',
+      ],
+      ctaLabel: 'Open Support Chat',
+      to: '/cs-chat',
+      badge: 'Support',
+    })
+  }
 
   if (hasPinAccess) {
     features.push({
@@ -134,6 +163,22 @@ function buildFeatures(user) {
       ctaLabel: 'Open Admin Panel',
       to: role === 'superadmin' || role === 'super_admin' ? '/super-admin' : '/admin',
       badge: 'Admin',
+    })
+  }
+
+  if (role === 'cs') {
+    features.push({
+      id: 'cs-desk',
+      title: 'Customer Support Desk',
+      description: 'Manage incoming support chats, accept assignments, and log complaints.',
+      steps: [
+        'Open CS Desk from the sidebar.',
+        'Accept a pending chat and respond with text or media.',
+        'Log complaints with priority and status updates.',
+      ],
+      ctaLabel: 'Open CS Desk',
+      to: '/cs',
+      badge: 'CS',
     })
   }
 
