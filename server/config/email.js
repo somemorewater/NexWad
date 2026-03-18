@@ -108,6 +108,30 @@ const templates = {
     `),
   }),
 
+  subscriptionExpiring: ({ name, plan, expiresAt, daysLeft }) => ({
+    subject: `Your NexWAD subscription expires in ${daysLeft} days`,
+    html: wrapEmail(`
+      <h1>Subscription expiring soon</h1>
+      <p>Hi ${name}, your <strong>${plan}</strong> subscription expires in <strong>${daysLeft} days</strong>.</p>
+      <div class="highlight">Renew now to keep your premium benefits and listings active.</div>
+      <div class="receipt-row"><span>Plan</span><span>${plan}</span></div>
+      <div class="receipt-row"><span>Expires on</span><span>${new Date(expiresAt).toLocaleDateString('en-NG', { dateStyle: 'long' })}</span></div>
+      <div class="divider"></div>
+      <a class="btn" href="${process.env.CLIENT_URL}/profile/subscription">Renew Subscription →</a>
+    `),
+  }),
+
+  subscriptionExpired: ({ name, plan, expiresAt }) => ({
+    subject: 'Your NexWAD subscription has expired',
+    html: wrapEmail(`
+      <h1>Subscription expired</h1>
+      <p>Hi ${name}, your <strong>${plan}</strong> subscription expired on <strong>${new Date(expiresAt).toLocaleDateString('en-NG', { dateStyle: 'long' })}</strong>.</p>
+      <div class="highlight">Renew now to restore your premium benefits and listing visibility.</div>
+      <div class="divider"></div>
+      <a class="btn" href="${process.env.CLIENT_URL}/profile/subscription">Renew Subscription →</a>
+    `),
+  }),
+
   sellerApplicationApproved: ({ name, plan, expiresAt }) => ({
     subject: 'Your NexWAD seller application has been approved ✓',
     html: wrapEmail(`

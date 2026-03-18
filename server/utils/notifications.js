@@ -106,6 +106,15 @@ function notifySubscriptionExpiring(userId, daysLeft) {
   })
 }
 
+function notifySubscriptionExpired(userId) {
+  return notify(userId, {
+    type: 'system',
+    title: 'Your subscription has expired',
+    body: 'Renew now to restore your premium benefits',
+    link: '/profile/subscription',
+  })
+}
+
 module.exports = {
   notify,
   getNotifications,
@@ -116,4 +125,5 @@ module.exports = {
   notifyListingInterest,
   notifyLostFoundClaim,
   notifySubscriptionExpiring,
+  notifySubscriptionExpired,
 }

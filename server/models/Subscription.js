@@ -34,6 +34,9 @@ const subscriptionSchema = new mongoose.Schema({
 
   cancelledAt: { type: Date },
   cancelReason: { type: String },
+
+  expiringNoticeSentAt: { type: Date },
+  expiredNoticeSentAt: { type: Date },
 }, { timestamps: true })
 
 subscriptionSchema.index({ user: 1, status: 1 })
