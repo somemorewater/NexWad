@@ -15,5 +15,11 @@ export default defineConfig(({ mode }) => {
         '@': '/src',
       },
     },
+    test: {
+      environment: 'jsdom',
+      setupFiles: '/src/test/setup.js',
+      globals: true,
+      clearMocks: true,
+    },
   }
 })
