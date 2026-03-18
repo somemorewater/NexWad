@@ -11,9 +11,14 @@ const { notifyNewMessage } = require('../utils/notifications')
 const { queueUserLog, buildRequestLog } = require('../utils/userLogs')
 
 const SUPPORT_ROLES = new Set(['cs', 'moderator', 'admin', 'superadmin', 'super_admin'])
+const SUPPORT_AGENT_ROLES = new Set(['cs', 'moderator'])
 const SUPPORT_ROLE_REGEX = new RegExp(`^(${Array.from(SUPPORT_ROLES).join('|')})$`, 'i')
 
 const normalizeRole = (role) => String(role || '').toLowerCase()
+const isSuperAdmin = (user) => {
+  const role = normalizeRole(user?.role)
+  return role === 'superadmin' || role === 'super_admin'
+}
 const toObjectIdString = (value) => {
   if (!value) return null
   const raw = value?._id || value?.id || value
@@ -23,6 +28,7 @@ const toObjectIdString = (value) => {
   return new mongoose.Types.ObjectId(str).toString()
 }
 const isSupportUser = (user) => SUPPORT_ROLES.has(normalizeRole(user?.role))
+const isSupportAgent = (user) => SUPPORT_AGENT_ROLES.has(normalizeRole(user?.role))
 const isSupportChat = (chat) =>
   chat?.support
   || chat?.supportStatus
@@ -184,7 +190,7 @@ router.post('/support/:chatId/end', protectAllowBanned, async (req, res, next) =
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
-    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+    if (isSupportUser(req.user) && !isSuperAdmin(req.user) && !canAccessSupportChat(chat, req.user)) {
       return res.status(403).json({ error: 'Chat assigned to another agent' })
     }
     if (!isSupportChat(chat)) {
@@ -208,7 +214,7 @@ router.post('/support/:chatId/end', protectAllowBanned, async (req, res, next) =
 // ─── POST /api/chat/support ───────────────────
 router.post('/support', protectAllowBanned, async (req, res, next) => {
   try {
-    if (isSupportUser(req.user)) {
+    if (isSupportAgent(req.user)) {
       return res.status(403).json({
         error: 'Support agents must use the CS desk',
         role: req.user?.role || null,
@@ -342,7 +348,7 @@ router.get('/:chatId/messages', protectAllowBanned, paginationRules, validate, a
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
-    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+    if (isSupportUser(req.user) && !isSuperAdmin(req.user) && !canAccessSupportChat(chat, req.user)) {
       return res.status(403).json({ error: 'Chat assigned to another agent' })
     }
     if (req.user.banned && !isSupportChat(chat)) {
@@ -385,7 +391,7 @@ router.post('/:chatId/messages', protectAllowBanned, handleUpload(uploadChatMedi
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
-    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+    if (isSupportUser(req.user) && !isSuperAdmin(req.user) && !canAccessSupportChat(chat, req.user)) {
       return res.status(403).json({ error: 'Chat assigned to another agent' })
     }
     if (req.user.banned && !isSupportChat(chat)) {
@@ -479,7 +485,7 @@ router.put('/:chatId/read', protectAllowBanned, async (req, res, next) => {
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
-    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+    if (isSupportUser(req.user) && !isSuperAdmin(req.user) && !canAccessSupportChat(chat, req.user)) {
       return res.status(403).json({ error: 'Chat assigned to another agent' })
     }
     if (req.user.banned && !isSupportChat(chat)) {
@@ -506,7 +512,7 @@ router.delete('/:chatId', protectAllowBanned, async (req, res, next) => {
     if (!isParticipant(chat, req.user._id.toString())) {
       return res.status(403).json({ error: 'Not a participant' })
     }
-    if (isSupportUser(req.user) && !canAccessSupportChat(chat, req.user)) {
+    if (isSupportUser(req.user) && !isSuperAdmin(req.user) && !canAccessSupportChat(chat, req.user)) {
       return res.status(403).json({ error: 'Chat assigned to another agent' })
     }
     if (req.user.banned && !isSupportChat(chat)) {
