@@ -378,10 +378,18 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
     const selectedFiles = Array.from(e.target.files || [])
     if (selectedFiles.length === 0) return
 
-    if (selectedFiles.length > MAX_LISTING_IMAGES) {
+    const existingCount = form.images.length
+    const remainingSlots = MAX_LISTING_IMAGES - existingCount
+    if (remainingSlots <= 0) {
       toast.error(`You can upload up to ${MAX_LISTING_IMAGES} images per listing`)
+      e.target.value = ''
+      return
     }
-    const files = selectedFiles.slice(0, MAX_LISTING_IMAGES)
+
+    if (selectedFiles.length > remainingSlots) {
+      toast.error(`Only ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'} allowed`)
+    }
+    const files = selectedFiles.slice(0, remainingSlots)
 
     const invalidType = files.find((file) => !isSupportedImageFile(file))
     if (invalidType) {
@@ -416,12 +424,14 @@ function CreateListingModal({ isOpen, onClose, onCreated }) {
         toast.error(`${compressionFailures} image(s) could not be compressed. Uploading original for those files.`)
       }
 
-      setForm((prev) => ({ ...prev, images: processedFiles }))
-      setImagePreviews(processedFiles.map((file) => URL.createObjectURL(file)))
+      const nextPreviews = processedFiles.map((file) => URL.createObjectURL(file))
+      setForm((prev) => ({ ...prev, images: [...prev.images, ...processedFiles] }))
+      setImagePreviews((prev) => [...prev, ...nextPreviews])
     } catch (err) {
       toast.error(err?.message || 'Image compression failed')
     } finally {
       setCompressing(false)
+      e.target.value = ''
     }
   }
 
