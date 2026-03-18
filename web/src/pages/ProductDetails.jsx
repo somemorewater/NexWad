@@ -10,6 +10,7 @@ import { resetSocialMeta, setSocialMeta, shareLink } from '../utils/socialMeta'
 import { useAuth } from '../hooks/useAuth'
 import { getUserPath } from '../utils/userPath'
 import ReportActionMenu from '../components/ReportActionMenu'
+import { useModal } from '../context/ModalContext'
 
 export default function ProductDetails() {
   const { listingId } = useParams()
@@ -25,6 +26,7 @@ export default function ProductDetails() {
   const [editForm, setEditForm] = useState({ title: '', price: '', description: '' })
   const [editExistingImages, setEditExistingImages] = useState([])
   const [editNewImages, setEditNewImages] = useState([])
+  const { confirm } = useModal()
   const MAX_LISTING_IMAGES = 4
 
   useEffect(() => {
@@ -168,7 +170,13 @@ export default function ProductDetails() {
 
   const deleteListing = async () => {
     if (!listing?._id || !isOwner || deletingListing) return
-    if (!window.confirm('Delete this listing?')) return
+    const confirmed = await confirm({
+      title: 'Delete Listing',
+      message: 'Delete this listing?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
 
     setDeletingListing(true)
     try {

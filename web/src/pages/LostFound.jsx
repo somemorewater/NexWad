@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth'
 import { formatPinTimeLeft } from '../utils/pins'
 import ReportActionMenu from '../components/ReportActionMenu'
 import { LOST_FOUND_CATEGORIES, lostFoundCategoryIcon } from '../constants/categories'
+import { useModal } from '../context/ModalContext'
 
 const TABS = ['All', 'Lost', 'Found', 'Resolved']
 const LOCATIONS = ['Main Building', 'Hostel A', 'Hostel B', 'Hostel C', 'Sports Complex', 'Library', 'Cafeteria', 'Car Park', 'Other']
@@ -192,6 +193,7 @@ function LFCard({ item, delay }) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ title: '', location: '', description: '', category: '' })
   const [deleting, setDeleting] = useState(false)
+  const { confirm } = useModal()
   const isLost = item.type === 'lost'
   const isResolved = item.status === 'resolved'
   const isOwner = Boolean(user?._id && item.reporter?._id && user._id === item.reporter._id)
@@ -240,7 +242,13 @@ function LFCard({ item, delay }) {
 
   const deleteReport = async () => {
     if (!isOwner || deleting) return
-    if (!window.confirm('Delete this lost/found report?')) return
+    const confirmed = await confirm({
+      title: 'Delete Report',
+      message: 'Delete this lost/found report?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
     setDeleting(true)
     try {
       await lostFoundAPI.delete(item._id)

@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { SocketProvider } from './context/SocketContext'
 import { LayoutProvider } from './context/LayoutContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { ModalProvider } from './context/ModalContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
 import Home from './pages/Home'
@@ -78,23 +79,24 @@ function AppContent() {
         </div>
       )}
       <ThemeProvider>
-        <AuthProvider>
-          <LayoutProvider>
-            <SocketProvider>
-              <CSAccessGuard />
-              <ActivityTracker />
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  style: {
-                    fontFamily: 'var(--font-body)',
-                    borderRadius: 'var(--radius-lg)',
-                    fontSize: '0.9rem',
-                    boxShadow: 'var(--shadow-lg)',
-                  },
-                }}
-              />
-              <Routes>
+        <ModalProvider>
+          <AuthProvider>
+            <LayoutProvider>
+              <SocketProvider>
+                <CSAccessGuard />
+                <ActivityTracker />
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
+                    style: {
+                      fontFamily: 'var(--font-body)',
+                      borderRadius: 'var(--radius-lg)',
+                      fontSize: '0.9rem',
+                      boxShadow: 'var(--shadow-lg)',
+                    },
+                  }}
+                />
+                <Routes>
               {/* Public */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -151,10 +153,11 @@ function AppContent() {
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </SocketProvider>
-          </LayoutProvider>
-        </AuthProvider>
+                </Routes>
+              </SocketProvider>
+            </LayoutProvider>
+          </AuthProvider>
+        </ModalProvider>
       </ThemeProvider>
     </>
   )

@@ -4,6 +4,7 @@ import { chatAPI, listingsAPI, pinsAPI, postsAPI } from '../api/endpoints'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
+import { useModal } from '../context/ModalContext'
 import { canPinContent, formatPinTimeLeft } from '../utils/pins'
 import { getUserPath } from '../utils/userPath'
 import { getVerificationBadge } from '../utils/verification'
@@ -30,6 +31,7 @@ const MAX_LISTING_IMAGES = 4
 export function ListingCard({ listing, onUpdated, onDeleted, showGetProduct = false }) {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
+  const { confirm } = useModal()
   const [listingData, setListingData] = useState(listing)
   const [deleted, setDeleted] = useState(false)
   const [saved, setSaved] = useState(listing.isSaved ?? false)
@@ -229,7 +231,13 @@ export function ListingCard({ listing, onUpdated, onDeleted, showGetProduct = fa
   const deleteListing = async (e) => {
     e.stopPropagation()
     if (!isOwner || deletingListing) return
-    if (!window.confirm('Delete this listing?')) return
+    const confirmed = await confirm({
+      title: 'Delete Listing',
+      message: 'Delete this listing?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
 
     setDeletingListing(true)
     try {
@@ -440,6 +448,7 @@ export function ListingCard({ listing, onUpdated, onDeleted, showGetProduct = fa
 export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
+  const { confirm } = useModal()
   const [postData, setPostData] = useState(post)
   const [deleted, setDeleted] = useState(false)
   const [liked, setLiked] = useState(post.isLiked ?? false)
@@ -531,7 +540,13 @@ export function PostCard({ post, onLike, onComment, onUpdated, onDeleted }) {
   const deletePost = async (event) => {
     event.stopPropagation()
     if (!isOwner || deletingPost) return
-    if (!window.confirm('Delete this post?')) return
+    const confirmed = await confirm({
+      title: 'Delete Post',
+      message: 'Delete this post?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
 
     setDeletingPost(true)
     try {

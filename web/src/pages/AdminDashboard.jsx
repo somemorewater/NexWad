@@ -6,6 +6,7 @@ import { adminAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
+import { useModal } from '../context/ModalContext'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -132,6 +133,7 @@ function AdminUsers({ isSuperAdmin }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
+  const { confirm, prompt } = useModal()
 
   useEffect(() => {
     setLoading(true)
@@ -142,7 +144,13 @@ function AdminUsers({ isSuperAdmin }) {
   }, [q])
 
   const ban = async (userId, name) => {
-    if (!confirm(`Ban ${name}?`)) return
+    const confirmed = await confirm({
+      title: 'Ban User',
+      message: `Ban ${name}?`,
+      confirmLabel: 'Ban',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
     try { await adminAPI.banUser(userId, 'Admin action'); setUsers(p => p.map(u => u._id === userId ? { ...u, banned: true } : u)); toast.success('User banned') }
     catch { toast.error('Failed') }
   }
@@ -153,7 +161,14 @@ function AdminUsers({ isSuperAdmin }) {
   }
 
   const warn = async (userId, name) => {
-    const reason = window.prompt(`Warning reason for ${name}:`, 'Please follow community guidelines.')
+    const reason = await prompt({
+      title: 'Warn User',
+      message: `Warning reason for ${name}:`,
+      defaultValue: 'Please follow community guidelines.',
+      confirmLabel: 'Send Warning',
+      cancelLabel: 'Cancel',
+      required: true,
+    })
     if (!reason) return
     try {
       const { data } = await adminAPI.warnUser(userId, reason)
@@ -240,6 +255,7 @@ function AdminSellerApplications() {
   const [status, setStatus] = useState('pending')
   const [actingId, setActingId] = useState(null)
   const [selectedApp, setSelectedApp] = useState(null)
+  const { prompt } = useModal()
 
   const load = async () => {
     setLoading(true)
@@ -271,7 +287,13 @@ function AdminSellerApplications() {
   }
 
   const reject = async (id) => {
-    const reason = window.prompt('Reason for rejection (optional):', 'Application rejected by admin') || 'Application rejected by admin'
+    const reason = await prompt({
+      title: 'Reject Application',
+      message: 'Reason for rejection (optional):',
+      defaultValue: 'Application rejected by admin',
+      confirmLabel: 'Reject',
+      cancelLabel: 'Cancel',
+    }) || 'Application rejected by admin'
     setActingId(id)
     try {
       await adminAPI.rejectSellerApplication(id, reason)

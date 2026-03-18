@@ -7,9 +7,11 @@ import { listingsAPI, usersAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import { shareLink } from '../utils/socialMeta'
 import { getUserPath } from '../utils/userPath'
+import { useModal } from '../context/ModalContext'
 
 export default function SellerTools() {
   const { user, updateUser } = useAuth()
+  const { confirm } = useModal()
   const navigate = useNavigate()
   const POSTER_FEATURE_ENABLED = false
   const [listings, setListings] = useState([])
@@ -96,7 +98,13 @@ export default function SellerTools() {
       toast.error('No poster to delete')
       return
     }
-    if (!window.confirm('Delete current brand poster? You can generate a new one anytime.')) return
+    const confirmed = await confirm({
+      title: 'Delete Brand Poster',
+      message: 'Delete current brand poster? You can generate a new one anytime.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+    })
+    if (!confirmed) return
 
     setPosterLoading(true)
     try {

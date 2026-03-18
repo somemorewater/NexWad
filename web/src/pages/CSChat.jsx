@@ -6,9 +6,11 @@ import { useAuth } from '../hooks/useAuth'
 import { chatAPI } from '../api/endpoints'
 import toast from 'react-hot-toast'
 import { SocketContext } from '../context/SocketContext'
+import { useModal } from '../context/ModalContext'
 
 export default function CSChat() {
   const { user } = useAuth()
+  const { confirm } = useModal()
   const { emit, on, markSupportRead } = useContext(SocketContext)
   const navigate = useNavigate()
   const [supportChat, setSupportChat] = useState(null)
@@ -102,7 +104,12 @@ export default function CSChat() {
 
   const handleEndChat = async () => {
     if (!supportChat?._id) return
-    const confirmed = window.confirm('End this support chat? This will close the conversation for both sides.')
+    const confirmed = await confirm({
+      title: 'End Support Chat',
+      message: 'End this support chat? This will close the conversation for both sides.',
+      confirmLabel: 'End Chat',
+      cancelLabel: 'Cancel',
+    })
     if (!confirmed) return
     try {
       await chatAPI.endSupportChat(supportChat._id)

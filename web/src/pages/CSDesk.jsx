@@ -5,6 +5,7 @@ import { chatAPI } from '../api/endpoints'
 import { SocketContext } from '../context/SocketContext'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useModal } from '../context/ModalContext'
 
 function SendIcon() {
   return (
@@ -27,6 +28,7 @@ const DEFAULT_COMPLAINTS = []
 
 export default function CSDesk() {
   const { user } = useAuth()
+  const { confirm } = useModal()
   const { emit, on } = useContext(SocketContext)
   const [chats, setChats] = useState([])
   const [activeChatId, setActiveChatId] = useState(null)
@@ -316,18 +318,24 @@ export default function CSDesk() {
                     disabled={!isAssignedToMe}
                     onClick={() => {
                       if (!activeChat?._id) return
-                      const confirmed = window.confirm('End this support chat? This will close the conversation for both sides.')
-                      if (!confirmed) return
-                      chatAPI.endSupportChat(activeChat._id)
-                        .then(() => {
-                          setChats(prev => prev.filter(c => c._id !== activeChat._id))
-                          setActiveChatId(null)
-                          setMessages([])
-                          toast.success('Chat closed')
-                        })
-                        .catch((err) => {
-                          toast.error(err?.error || 'Could not end chat')
-                        })
+                      confirm({
+                        title: 'End Support Chat',
+                        message: 'End this support chat? This will close the conversation for both sides.',
+                        confirmLabel: 'End Chat',
+                        cancelLabel: 'Cancel',
+                      }).then((confirmed) => {
+                        if (!confirmed) return
+                        chatAPI.endSupportChat(activeChat._id)
+                          .then(() => {
+                            setChats(prev => prev.filter(c => c._id !== activeChat._id))
+                            setActiveChatId(null)
+                            setMessages([])
+                            toast.success('Chat closed')
+                          })
+                          .catch((err) => {
+                            toast.error(err?.error || 'Could not end chat')
+                          })
+                      })
                     }}
                   >
                     End Chat
