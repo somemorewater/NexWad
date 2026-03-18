@@ -71,7 +71,7 @@ export function AuthProvider({ children }) {
   }
 
   const isAuthenticated = Boolean(user)
-  const isAdmin = user?.role && ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(user.role)
+  const isAdmin = user?.role && ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(user.role)
   const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super_admin'
 
   return (

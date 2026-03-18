@@ -200,7 +200,7 @@ router.get('/current', protect, async (req, res, next) => {
 
     const sub = await Subscription.findOne({ user: req.user._id, status: 'active', expiresAt: { $gt: now } })
       .sort({ createdAt: -1 })
-    const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
+    const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(req.user.role)
     if (!sub && !isAdminRole) {
       await Promise.all([
         Listing.updateMany(
@@ -293,7 +293,7 @@ router.post('/',
 
       // Update user subscription snapshot
       const access = PLAN_ACCESS[planId] || PLAN_ACCESS.basic
-      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
+      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(req.user.role)
       await User.findByIdAndUpdate(req.user._id, {
         role: isAdminRole ? req.user.role : access.role,
         buyerType: access.buyerType,
@@ -381,7 +381,7 @@ router.post('/apply-seller',
       const plan = PLANS.find(p => p._id === planId)
       if (!plan) return res.status(404).json({ error: 'Plan not found' })
 
-      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)
+      const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(req.user.role)
       if (isAdminRole) return res.status(403).json({ error: 'Admin roles cannot apply for seller plans' })
       const existingApplication = await SellerApplication.findOne({ user: req.user._id })
       if (existingApplication?.status === 'approved') {

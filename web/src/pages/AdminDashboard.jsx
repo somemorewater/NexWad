@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, NavLink } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Modal from '../components/Modal'
 import { adminAPI } from '../api/endpoints'
@@ -11,15 +11,19 @@ import { useModal } from '../context/ModalContext'
 export default function AdminDashboard() {
   const { user } = useAuth()
   const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super_admin'
-  const basePath = isSuperAdmin ? '/super-admin' : '/admin'
-  const adminNavItems = [
-    { to: basePath, label: 'Overview', end: true },
-    { to: `${basePath}/users`, label: 'Users' },
-    { to: `${basePath}/applications`, label: 'Seller Applications' },
-    { to: `${basePath}/listings`, label: 'Listings' },
-    { to: `${basePath}/reports`, label: 'Reports' },
-    { to: `${basePath}/logs`, label: 'Audit Logs' },
-  ]
+  const isDeveloper = user?.role === 'developer'
+  const basePath = isDeveloper ? '/developer' : (isSuperAdmin ? '/super-admin' : '/admin')
+  const adminNavItems = isDeveloper
+    ? [{ to: `${basePath}/performance`, label: 'Performance' }]
+    : [
+      { to: basePath, label: 'Overview', end: true },
+      { to: `${basePath}/performance`, label: 'Performance' },
+      { to: `${basePath}/users`, label: 'Users' },
+      { to: `${basePath}/applications`, label: 'Seller Applications' },
+      { to: `${basePath}/listings`, label: 'Listings' },
+      { to: `${basePath}/reports`, label: 'Reports' },
+      { to: `${basePath}/logs`, label: 'Audit Logs' },
+    ]
 
   return (
     <div>
@@ -27,7 +31,7 @@ export default function AdminDashboard() {
       <div className="admin-layout admin-dashboard-layout">
         <aside className="admin-layout__sidebar admin-dashboard-sidebar">
           <div className="admin-sidebar-heading">
-            {isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel'}
+            {isDeveloper ? 'Developer Panel' : (isSuperAdmin ? 'Super Admin Panel' : 'Admin Panel')}
           </div>
           <div className="admin-sidebar-nav">
             {adminNavItems.map(item => (
@@ -58,12 +62,17 @@ export default function AdminDashboard() {
         </aside>
         <main className="admin-layout__main admin-dashboard-main">
           <Routes>
-            <Route path="/" element={<AdminOverview />} />
-            <Route path="/users" element={<AdminUsers isSuperAdmin={isSuperAdmin} />} />
-            <Route path="/applications" element={<AdminSellerApplications />} />
-            <Route path="/listings" element={<AdminListings />} />
-            <Route path="/reports" element={<AdminReports />} />
-            <Route path="/logs" element={<AdminLogs />} />
+            <Route path="/" element={isDeveloper ? <Navigate to="performance" replace /> : <AdminOverview />} />
+            <Route path="/performance" element={<AdminPerformance />} />
+            {!isDeveloper && (
+              <>
+                <Route path="/users" element={<AdminUsers isSuperAdmin={isSuperAdmin} />} />
+                <Route path="/applications" element={<AdminSellerApplications />} />
+                <Route path="/listings" element={<AdminListings />} />
+                <Route path="/reports" element={<AdminReports />} />
+                <Route path="/logs" element={<AdminLogs />} />
+              </>
+            )}
           </Routes>
         </main>
       </div>
@@ -83,9 +92,74 @@ function StatCard({ iconClass, label, value, color, textColor }) {
   )
 }
 
+function buildLinePath(points = []) {
+  if (!points.length) return ''
+  const [first, ...rest] = points
+  return `M ${first.x} ${first.y} ${rest.map(p => `L ${p.x} ${p.y}`).join(' ')}`
+}
+
+function LineChart({ series = [], height = 160, yMaxOverride }) {
+  const width = 600
+  const padding = { top: 12, right: 16, bottom: 24, left: 36 }
+  const plotWidth = width - padding.left - padding.right
+  const plotHeight = height - padding.top - padding.bottom
+  const allValues = series.flatMap(s => s.data.map(d => d.value || 0))
+  const maxValue = yMaxOverride || Math.max(1, ...allValues)
+  const gridLines = 4
+
+  const toPoint = (value, index, total) => {
+    const x = padding.left + (total <= 1 ? 0 : (index / (total - 1)) * plotWidth)
+    const y = padding.top + (plotHeight - (value / maxValue) * plotHeight)
+    return { x, y }
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} role="img" aria-label="Line chart">
+      <rect x="0" y="0" width={width} height={height} fill="transparent" />
+      {[...Array(gridLines + 1)].map((_, i) => {
+        const y = padding.top + (plotHeight / gridLines) * i
+        return <line key={i} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--nw-gray-100)" strokeWidth="1" />
+      })}
+      {series.map((s, idx) => {
+        const points = s.data.map((d, i) => toPoint(d.value || 0, i, s.data.length))
+        return (
+          <g key={s.label || idx}>
+            <path d={buildLinePath(points)} fill="none" stroke={s.color} strokeWidth="2.5" />
+            {points.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={s.color} />
+            ))}
+          </g>
+        )
+      })}
+      {series[0]?.data?.map((d, i) => {
+        const x = padding.left + (series[0].data.length <= 1 ? 0 : (i / (series[0].data.length - 1)) * plotWidth)
+        return (
+          <text key={i} x={x} y={height - 8} textAnchor="middle" fontSize="10" fill="var(--nw-gray-500)">
+            {d.label}
+          </text>
+        )
+      })}
+      <text x={padding.left} y={padding.top - 2} fontSize="10" fill="var(--nw-gray-500)">
+        {Math.round(maxValue)}
+      </text>
+      <text x={padding.left} y={height - padding.bottom + 2} fontSize="10" fill="var(--nw-gray-500)">
+        0
+      </text>
+    </svg>
+  )
+}
+
 function AdminOverview() {
   const [stats, setStats] = useState(null)
   useEffect(() => { adminAPI.getStats().then(({ data }) => setStats(data)).catch(() => {}) }, [])
+  const planEntries = Object.entries(stats?.planBreakdown || {}).sort((a, b) => b[1] - a[1])
+  const postsSeries = stats?.postsDailySeries || []
+  const listingsSeries = stats?.listingsDailySeries || []
+  const maxSeriesValue = Math.max(
+    1,
+    ...postsSeries.map(p => p.count || 0),
+    ...listingsSeries.map(l => l.count || 0)
+  )
 
   return (
     <div>
@@ -101,6 +175,57 @@ function AdminOverview() {
             <StatCard iconClass="fa-solid fa-flag" label="Open Reports" value={stats.openReports} color="var(--nw-red-light)" textColor="var(--nw-red)" />
             <StatCard iconClass="fa-solid fa-star" label="Premium Users" value={stats.premiumUsers} color="var(--nw-gold-light)" textColor="#92400e" />
             <StatCard iconClass="fa-solid fa-magnifying-glass" label="Active Lost Items" value={stats.activeLostFound} color="var(--nw-gray-100)" textColor="var(--nw-gray-600)" />
+          </div>
+          <div className="grid-3" style={{ marginBottom: 'var(--space-8)' }}>
+            <StatCard iconClass="fa-solid fa-signal" label="Current Active Users" value={stats.currentActiveUsers?.toLocaleString()} color="var(--nw-primary-light)" textColor="var(--nw-primary)" />
+            <StatCard iconClass="fa-solid fa-user-check" label="Daily Active Users" value={stats.dailyActiveUsers?.toLocaleString()} color="var(--nw-green-light)" textColor="var(--nw-green)" />
+            <StatCard iconClass="fa-solid fa-message" label="Total Posts" value={stats.totalPosts?.toLocaleString()} color="var(--nw-accent-light)" textColor="var(--nw-accent)" />
+            <StatCard iconClass="fa-solid fa-calendar-day" label="Posts Today" value={stats.postsToday?.toLocaleString()} color="var(--nw-gold-light)" textColor="#92400e" />
+            <StatCard iconClass="fa-solid fa-chart-line" label="Avg Listings / Day (7d)" value={(stats.avgListingsPerDay || 0).toFixed(1)} color="var(--nw-gray-100)" textColor="var(--nw-gray-600)" />
+            <StatCard iconClass="fa-solid fa-layer-group" label="Plans Tracked" value={planEntries.length} color="var(--nw-red-light)" textColor="var(--nw-red)" />
+          </div>
+          <div className="grid-2" style={{ marginBottom: 'var(--space-8)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-6)' }}>
+            <div className="card" style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>Plan Breakdown</div>
+                <div className="caption">Verified users by subscription plan.</div>
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {planEntries.length === 0 ? (
+                  <div className="caption">No plan data yet.</div>
+                ) : planEntries.map(([plan, count]) => (
+                  <div key={plan} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 8, background: 'var(--nw-gray-50)' }}>
+                    <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{String(plan).replace('_', ' ')}</span>
+                    <span className="badge badge-primary">{count.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 'var(--space-5)' }}>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>Performance Trends</div>
+                <div className="caption">Posts vs listings for the last 7 days.</div>
+              </div>
+              <LineChart
+                series={[
+                  {
+                    label: 'Posts',
+                    color: 'var(--nw-accent)',
+                    data: postsSeries.map(p => ({ label: p.date.slice(5), value: p.count })),
+                  },
+                  {
+                    label: 'Listings',
+                    color: 'var(--nw-primary)',
+                    data: listingsSeries.map(p => ({ label: p.date.slice(5), value: p.count })),
+                  },
+                ]}
+                yMaxOverride={maxSeriesValue}
+              />
+              <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--nw-gray-600)', marginTop: 8 }}>
+                <span><span style={{ display: 'inline-block', width: 10, height: 2, background: 'var(--nw-accent)', marginRight: 6 }} />Posts</span>
+                <span><span style={{ display: 'inline-block', width: 10, height: 2, background: 'var(--nw-primary)', marginRight: 6 }} />Listings</span>
+              </div>
+            </div>
           </div>
           <div className="card" style={{ overflow: 'hidden' }}>
             <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '1px solid var(--nw-gray-100)' }}>
@@ -124,6 +249,85 @@ function AdminOverview() {
             </div>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+function AdminPerformance() {
+  const [stats, setStats] = useState(null)
+  useEffect(() => { adminAPI.getStats().then(({ data }) => setStats(data)).catch(() => {}) }, [])
+  const perfSeries = stats?.performanceDailySeries || []
+  const perfSummary = stats?.performanceSummary || {}
+  const maxPerfValue = Math.max(1, ...perfSeries.map(p => p.avgDurationMs || 0))
+
+  return (
+    <div>
+      <h1 className="admin-page-title">Performance Analytics</h1>
+      {!stats ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="spinner" style={{ width: 32, height: 32 }} /></div>
+      ) : (
+        <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-6)' }}>
+          <div className="card" style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>API Performance</div>
+              <div className="caption">Response time and errors in the last {perfSummary.windowHours || 24} hours.</div>
+            </div>
+            <div className="grid-3" style={{ gap: 'var(--space-4)' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{Math.round(perfSummary.avgDurationMs || 0)} ms</div>
+                <div className="caption">Avg response</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{Math.round(perfSummary.p95DurationMs || 0)} ms</div>
+                <div className="caption">P95 latency</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{Math.round(perfSummary.p99DurationMs || 0)} ms</div>
+                <div className="caption">P99 latency</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{perfSummary.totalRequests?.toLocaleString?.() || 0}</div>
+                <div className="caption">Requests</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{((perfSummary.errorRate || 0) * 100).toFixed(1)}%</div>
+                <div className="caption">Error rate</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <div className="caption" style={{ marginBottom: 8 }}>Slowest routes</div>
+              {perfSummary.slowestRoutes?.length ? (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {perfSummary.slowestRoutes.map((route) => (
+                    <div key={`${route.method}-${route.route}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--nw-gray-50)', borderRadius: 8 }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--nw-gray-600)' }}>{route.method} {route.route}</div>
+                      <div style={{ fontWeight: 600 }}>{Math.round(route.avgDurationMs || 0)} ms</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="caption">No performance data yet.</div>
+              )}
+            </div>
+          </div>
+          <div className="card" style={{ padding: 'var(--space-5)' }}>
+            <div style={{ marginBottom: 'var(--space-4)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>Avg Response Time (7d)</div>
+              <div className="caption">Average API duration per day.</div>
+            </div>
+            <LineChart
+              series={[
+                {
+                  label: 'Avg Response (ms)',
+                  color: 'var(--nw-primary)',
+                  data: perfSeries.map(p => ({ label: p.date.slice(5), value: p.avgDurationMs })),
+                },
+              ]}
+              yMaxOverride={maxPerfValue}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
@@ -224,7 +428,7 @@ function AdminUsers({ isSuperAdmin }) {
                         disabled={!isSuperAdmin}
                         style={{ border: '1px solid var(--nw-gray-200)', borderRadius: 6, padding: '4px 8px', fontSize: '0.8125rem', fontFamily: 'var(--font-body)', cursor: isSuperAdmin ? 'pointer' : 'not-allowed', outline: 'none', opacity: isSuperAdmin ? 1 : 0.7 }}
                       >
-                        {['user', 'cs', 'moderator', 'admin', 'super_admin'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                        {['user', 'cs', 'moderator', 'admin', 'developer', 'super_admin'].map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                       </select>
                     </td>
                     <td data-label="Plan"><span className="badge badge-primary">{u.subscription?.plan || 'basic'}</span></td>

@@ -8,7 +8,7 @@ function buildFeatures(user) {
   const role = String(user?.role || '').toLowerCase()
   const plan = String(user?.subscription?.plan || '').toLowerCase()
   const isSeller = role === 'seller'
-  const isAdmin = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(role)
+  const isAdmin = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(role)
   const isSupportRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(role)
   const hasPinAccess = canPinContent(user)
 

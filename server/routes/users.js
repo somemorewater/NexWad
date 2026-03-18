@@ -223,7 +223,7 @@ router.put('/me/password', protect,
 // ─── POST /api/users/me/upgrade-seller ───────
 router.post('/me/upgrade-seller', protect, async (req, res, next) => {
   try {
-    if (['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(req.user.role)) {
+    if (['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(req.user.role)) {
       return res.status(400).json({ error: 'Admin roles cannot be converted to seller' })
     }
 

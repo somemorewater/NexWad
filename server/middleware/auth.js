@@ -99,6 +99,7 @@ function requireRole(...roles) {
 const requireAdmin = requireRole('admin', 'superadmin', 'super_admin')
 const requireModerator = requireRole('moderator', 'admin', 'superadmin', 'super_admin')
 const requireCS = requireRole('cs', 'moderator', 'admin', 'superadmin', 'super_admin')
+const requireAnalytics = requireRole('developer', 'admin', 'superadmin', 'super_admin')
 
 // ─── Verified user ────────────────────────────
 function requireVerified(req, res, next) {
@@ -108,4 +109,4 @@ function requireVerified(req, res, next) {
   next()
 }
 
-module.exports = { protect, protectAllowBanned, optionalAuth, requireRole, requireAdmin, requireModerator, requireCS, requireVerified }
+module.exports = { protect, protectAllowBanned, optionalAuth, requireRole, requireAdmin, requireModerator, requireCS, requireAnalytics, requireVerified }

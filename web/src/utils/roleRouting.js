@@ -24,6 +24,10 @@ export function isCSRole(role) {
   return normalizeRole(role) === 'cs'
 }
 
+export function isDeveloperRole(role) {
+  return normalizeRole(role) === 'developer'
+}
+
 export function isPremiumBuyer(user) {
   const plan = String(user?.subscription?.plan || '').toLowerCase()
   return plan === 'premium_buyer' || plan === 'premium'
@@ -33,6 +37,7 @@ export function getDefaultRouteForUser(user) {
   const role = normalizeRole(user?.role)
   if (isSuperAdminRole(role)) return '/super-admin'
   if (isAdminRole(role)) return '/admin'
+  if (isDeveloperRole(role)) return '/developer'
   if (isModeratorRole(role)) return '/moderator'
   if (isCSRole(role)) return '/cs'
   if (isSellerRole(role)) return '/dashboard'
@@ -43,6 +48,7 @@ export function getPrimaryNavForUser(user) {
   const role = normalizeRole(user?.role)
   if (isSuperAdminRole(role)) return { label: 'Admin Panel', to: '/super-admin' }
   if (isAdminRole(role)) return { label: 'Admin Panel', to: '/admin' }
+  if (isDeveloperRole(role)) return { label: 'Developer Panel', to: '/developer' }
   if (isModeratorRole(role)) return { label: 'Moderator', to: '/moderator' }
   if (isCSRole(role)) return { label: 'CS Desk', to: '/cs' }
   if (isSellerRole(role)) return { label: 'Dashboard', to: '/dashboard' }

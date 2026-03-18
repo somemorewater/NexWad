@@ -41,7 +41,7 @@ export default function Sidebar({ messageBadge = 0 }) {
   const [installed, setInstalled] = useState(isInstalled())
   const isGuest = !user
   const normalizedRole = normalizeRole(user?.role)
-  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizedRole)
+  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(normalizedRole)
   const primaryNav = getPrimaryNavForUser(user)
   const supportLinks = []
   if (normalizedRole === 'cs') supportLinks.push({ to: '/cs', label: 'CS Desk', icon: ChatIcon })

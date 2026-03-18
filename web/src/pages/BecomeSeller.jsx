@@ -36,7 +36,7 @@ export default function BecomeSeller() {
     () => plans.find(p => p._id === selectedPlan) || plans[0],
     [plans, selectedPlan]
   )
-  const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(normalizeRole(user?.role))
+  const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(normalizeRole(user?.role))
   const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
   const hasPriorSellerApproval = application?.status === 'approved'
 

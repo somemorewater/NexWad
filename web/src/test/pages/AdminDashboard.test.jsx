@@ -30,7 +30,35 @@ vi.mock('../../api/endpoints', () => ({
 describe('AdminDashboard', () => {
   it('renders admin overview', async () => {
     mockUseAuth.mockReturnValue({ user: { name: 'Admin', role: 'admin' } })
-    mockAdminAPI.getStats.mockResolvedValue({ data: { totalUsers: 10, totalListings: 2, totalPosts: 1, totalLostFound: 1, totalReports: 0, totalSales: 0 } })
+    mockAdminAPI.getStats.mockResolvedValue({
+      data: {
+        totalUsers: 10,
+        activeListings: 2,
+        totalRevenue: 0,
+        openReports: 0,
+        premiumUsers: 1,
+        activeLostFound: 1,
+        currentActiveUsers: 3,
+        dailyActiveUsers: 6,
+        totalPosts: 12,
+        postsToday: 2,
+        avgListingsPerDay: 1.2,
+        planBreakdown: { basic: 8, premium: 2 },
+        postsDailySeries: [{ date: '2026-03-12', count: 1 }],
+        listingsDailySeries: [{ date: '2026-03-12', count: 1 }],
+        performanceSummary: {
+          windowHours: 24,
+          totalRequests: 100,
+          avgDurationMs: 120,
+          p95DurationMs: 240,
+          p99DurationMs: 400,
+          errorRate: 0.02,
+          slowestRoutes: [{ route: '/api/posts', method: 'GET', avgDurationMs: 220, count: 12 }],
+        },
+        performanceDailySeries: [{ date: '2026-03-12', avgDurationMs: 120, errorRate: 0.01 }],
+        recentUsers: [],
+      },
+    })
 
     render(
       <MemoryRouter initialEntries={['/admin']}>

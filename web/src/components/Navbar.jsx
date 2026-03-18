@@ -114,7 +114,7 @@ export default function Navbar() {
   const canSell = isSellerRole(user?.role)
   const defaultRoute = isAuthenticated ? getDefaultRouteForUser(user) : '/'
   const primaryNav = getPrimaryNavForUser(user)
-  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs'].includes(String(user?.role || '').toLowerCase())
+  const isAdminAccount = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(String(user?.role || '').toLowerCase())
 
   const isPublicPage = ['/', '/login', '/signup'].includes(location.pathname)
   const hasGuestSidebar = location.pathname === '/marketplace'

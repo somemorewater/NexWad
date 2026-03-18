@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 const { LISTING_CATEGORIES } = require('../constants/categories')
 
-const ADMIN_ROLES = new Set(['admin', 'superadmin', 'super_admin', 'moderator', 'cs'])
+const ADMIN_ROLES = new Set(['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'])
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 100 },
@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ['buyer', 'seller', 'admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'user'],
+    enum: ['buyer', 'seller', 'admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer', 'user'],
     default: 'buyer',
   },
   buyerType: {

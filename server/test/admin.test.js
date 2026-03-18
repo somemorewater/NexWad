@@ -21,4 +21,14 @@ describe('Admin', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('totalUsers')
   })
+
+  it('allows developer access to stats', async () => {
+    const developer = await createUser({ role: 'developer', verified: true, email: 'dev@example.com' })
+    const res = await request(app)
+      .get('/api/admin/stats')
+      .set('Authorization', authHeader(developer))
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('totalUsers')
+  })
 })

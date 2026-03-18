@@ -143,6 +143,9 @@ function AppContent() {
               <Route element={<ProtectedRoute requiredRole={['superadmin', 'super_admin']} fallbackTo="/admin" />}>
                 <Route path="/super-admin/*" element={<AdminDashboard />} />
               </Route>
+              <Route element={<ProtectedRoute requiredRole="developer" />}>
+                <Route path="/developer/*" element={<AdminDashboard />} />
+              </Route>
 
               {/* Moderator + CS */}
               <Route element={<ProtectedRoute requiredRole="moderator" />}>

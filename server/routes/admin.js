@@ -7,7 +7,8 @@ const LostFound = require('../models/LostFound')
 const Subscription = require('../models/Subscription')
 const SellerApplication = require('../models/SellerApplication')
 const AdminLog = require('../models/AdminLog')
-const { protect, requireAdmin, requireModerator, requireCS } = require('../middleware/auth')
+const UserLog = require('../models/UserLog')
+const { protect, requireAdmin, requireModerator, requireCS, requireAnalytics } = require('../middleware/auth')
 const { body, validate, paginationRules } = require('../middleware/validate')
 const { sendEmail } = require('../config/email')
 const { notify } = require('../utils/notifications')
@@ -52,16 +53,102 @@ async function issueWarning(req, userId, reason) {
   return user
 }
 
-// All admin routes require at minimum CS role
+// All admin routes require authentication
 router.use(protect)
-router.use(requireCS)
 
 // ─── GET /api/admin/stats ─────────────────────
-router.get('/stats', requireAdmin, async (req, res, next) => {
+router.get('/stats', requireAnalytics, async (req, res, next) => {
   try {
+    const now = new Date()
+    const startOfToday = new Date(now)
+    startOfToday.setHours(0, 0, 0, 0)
+    const startOfRange = new Date(startOfToday)
+    const rangeDays = 7
+    startOfRange.setDate(startOfRange.getDate() - (rangeDays - 1))
+    const perfWindowHours = 24
+    const perfWindowStart = new Date(now.getTime() - (perfWindowHours * 60 * 60 * 1000))
+
+    const buildDailySeries = async (Model, days, extraMatch = {}) => {
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      const raw = await Model.aggregate([
+        { $match: { createdAt: { $gte: startOfRange, $lte: end }, ...extraMatch } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      const map = new Map(raw.map(row => [row._id, row.count]))
+      const series = []
+      for (let i = 0; i < days; i += 1) {
+        const day = new Date(startOfRange)
+        day.setDate(startOfRange.getDate() + i)
+        const key = day.toISOString().slice(0, 10)
+        series.push({ date: key, count: map.get(key) || 0 })
+      }
+      return series
+    }
+
+    const buildPerformanceSeries = async (days) => {
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      const raw = await UserLog.aggregate([
+        {
+          $match: {
+            source: 'server',
+            action: 'api_request',
+            occurredAt: { $gte: startOfRange, $lte: end },
+            'metadata.durationMs': { $type: 'number' },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$occurredAt' },
+            },
+            avgDurationMs: { $avg: '$metadata.durationMs' },
+            total: { $sum: 1 },
+            errors: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$statusCode', 400] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      const map = new Map(raw.map(row => [row._id, row]))
+      const series = []
+      for (let i = 0; i < days; i += 1) {
+        const day = new Date(startOfRange)
+        day.setDate(startOfRange.getDate() + i)
+        const key = day.toISOString().slice(0, 10)
+        const row = map.get(key)
+        series.push({
+          date: key,
+          avgDurationMs: row?.avgDurationMs || 0,
+          errorRate: row?.total ? (row.errors / row.total) : 0,
+        })
+      }
+      return series
+    }
+
     const [
       totalUsers, activeListings, openReports, premiumUsers,
       activeLostFound, totalRevenue, recentUsers,
+      currentActiveUsers, dailyActiveUsers,
+      totalPosts, postsToday,
+      planCounts, postsDailySeries, listingsDailySeries,
+      performanceDailySeries,
     ] = await Promise.all([
       User.countDocuments({ verified: true }),
       Listing.countDocuments({ status: 'active' }),
@@ -75,14 +162,115 @@ router.get('/stats', requireAdmin, async (req, res, next) => {
       User.find({ verified: true })
         .sort({ createdAt: -1 }).limit(10)
         .select('name email department subscription createdAt'),
+      User.countDocuments({ verified: true, online: true }),
+      User.countDocuments({ verified: true, lastSeen: { $gte: new Date(now.getTime() - (24 * 60 * 60 * 1000)) } }),
+      Post.countDocuments({}),
+      Post.countDocuments({ createdAt: { $gte: startOfToday } }),
+      User.aggregate([
+        { $match: { verified: true } },
+        {
+          $group: {
+            _id: { $ifNull: ['$subscription.plan', 'basic'] },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      buildDailySeries(Post, rangeDays),
+      buildDailySeries(Listing, rangeDays),
+      buildPerformanceSeries(rangeDays),
     ])
+
+    const planBreakdown = planCounts.reduce((acc, row) => {
+      acc[row._id] = row.count
+      return acc
+    }, {})
+    const totalListingsInRange = listingsDailySeries.reduce((acc, row) => acc + row.count, 0)
+    const avgListingsPerDay = rangeDays ? (totalListingsInRange / rangeDays) : 0
+
+    const perfMatch = {
+      source: 'server',
+      action: 'api_request',
+      occurredAt: { $gte: perfWindowStart },
+      'metadata.durationMs': { $type: 'number' },
+    }
+
+    const [perfAgg, perfDurations, slowRoutes] = await Promise.all([
+      UserLog.aggregate([
+        { $match: perfMatch },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            avgDurationMs: { $avg: '$metadata.durationMs' },
+            errorCount: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$statusCode', 400] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      UserLog.find(perfMatch, { 'metadata.durationMs': 1, _id: 0 })
+        .sort({ 'metadata.durationMs': 1 })
+        .limit(5000)
+        .lean(),
+      UserLog.aggregate([
+        { $match: perfMatch },
+        {
+          $group: {
+            _id: { route: '$route', method: '$method' },
+            avgDurationMs: { $avg: '$metadata.durationMs' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { avgDurationMs: -1 } },
+        { $limit: 5 },
+      ]),
+    ])
+
+    const durations = perfDurations.map(d => d?.metadata?.durationMs || 0).filter(n => typeof n === 'number')
+    const percentile = (arr, p) => {
+      if (!arr.length) return 0
+      const idx = Math.min(arr.length - 1, Math.ceil(p * arr.length) - 1)
+      return arr[idx]
+    }
+    const perfSummary = perfAgg[0] || { total: 0, avgDurationMs: 0, errorCount: 0 }
+    const performanceSummary = {
+      windowHours: perfWindowHours,
+      totalRequests: perfSummary.total || 0,
+      avgDurationMs: perfSummary.avgDurationMs || 0,
+      p95DurationMs: percentile(durations, 0.95),
+      p99DurationMs: percentile(durations, 0.99),
+      errorRate: perfSummary.total ? (perfSummary.errorCount / perfSummary.total) : 0,
+      slowestRoutes: slowRoutes.map(row => ({
+        route: row?._id?.route || '',
+        method: row?._id?.method || '',
+        avgDurationMs: row?.avgDurationMs || 0,
+        count: row?.count || 0,
+      })),
+    }
 
     res.json({
       totalUsers, activeListings, openReports, premiumUsers,
       activeLostFound, totalRevenue, recentUsers,
+      currentActiveUsers, dailyActiveUsers,
+      totalPosts, postsToday,
+      planBreakdown,
+      avgListingsPerDay,
+      postsDailySeries,
+      listingsDailySeries,
+      performanceSummary,
+      performanceDailySeries,
     })
   } catch (err) { next(err) }
 })
+
+// All other admin routes require at minimum CS role
+router.use(requireCS)
 
 // ─── GET /api/admin/users ─────────────────────
 router.get('/users', async (req, res, next) => {
@@ -108,7 +296,7 @@ router.get('/users', async (req, res, next) => {
 
 // ─── PUT /api/admin/users/:id/role ───────────
 router.put('/users/:id/role', requireAdmin,
-  [body('role').isIn(['buyer', 'seller', 'user', 'cs', 'moderator', 'admin', 'superadmin', 'super_admin'])], validate,
+  [body('role').isIn(['buyer', 'seller', 'user', 'cs', 'moderator', 'admin', 'superadmin', 'super_admin', 'developer'])], validate,
   async (req, res, next) => {
     try {
       const isSuperAdmin = ['superadmin', 'super_admin'].includes(req.user.role)
