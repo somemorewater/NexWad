@@ -15,6 +15,19 @@ const { sendEmail } = require('../config/email')
 const { notify } = require('../utils/notifications')
 const logger = require('../utils/logger')
 
+const isTrialEnabled = () => String(process.env.FREE_TRIAL_ENABLED ?? 'false').toLowerCase() === 'true'
+const getTrialDurationDays = () => {
+  const raw = String(process.env.FREE_TRIAL_DURATION ?? '2months').toLowerCase().trim()
+  const match = raw.match(/^(\d+)\s*(day|days|week|weeks|month|months)$/)
+  if (!match) return 60
+  const value = Number.parseInt(match[1], 10)
+  const unit = match[2]
+  if (unit.startsWith('day')) return Math.max(1, value)
+  if (unit.startsWith('week')) return Math.max(1, value) * 7
+  return Math.max(1, value) * 30
+}
+const isSellerTrialEligible = (planId) => isTrialEnabled() && ['seller_basic', 'seller_pro'].includes(planId)
+
 // ─── Audit log helper ─────────────────────────
 async function auditLog(req, action, target, details, targetId = null, targetModel = null) {
   try {
@@ -338,7 +351,8 @@ router.put('/seller-applications/:id/approve', requireAdmin, async (req, res, ne
     if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending' })
 
     const now = new Date()
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000)
+    const durationDays = isSellerTrialEligible(application.plan) ? getTrialDurationDays() : 30
+    const expiresAt = new Date(now.getTime() + durationDays * 24 * 3600 * 1000)
     const tier = application.plan === 'seller_elite' ? 'elite'
       : application.plan === 'seller_pro' ? 'pro'
         : 'basic'

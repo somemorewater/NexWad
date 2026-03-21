@@ -15,6 +15,20 @@ const logger = require('../utils/logger')
 const { nanoid } = require('nanoid')
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const isTrialEnabled = () => String(process.env.FREE_TRIAL_ENABLED ?? 'false').toLowerCase() === 'true'
+const getTrialDurationDays = () => {
+  const raw = String(process.env.FREE_TRIAL_DURATION ?? '2months').toLowerCase().trim()
+  const match = raw.match(/^(\d+)\s*(day|days|week|weeks|month|months)$/)
+  if (!match) return 60
+  const value = Number.parseInt(match[1], 10)
+  const unit = match[2]
+  if (unit.startsWith('day')) return Math.max(1, value)
+  if (unit.startsWith('week')) return Math.max(1, value) * 7
+  return Math.max(1, value) * 30
+}
+
+const isSellerTrialEligible = (planId) => isTrialEnabled() && ['seller_basic', 'seller_pro'].includes(planId)
+
 async function verifyPaystackPayment(reference, expectedAmountNaira) {
   const secret = process.env.PAYSTACK_SECRET_KEY
   if (!secret) {
@@ -343,7 +357,7 @@ router.post('/apply-seller',
   handleUpload(uploadSellerId),
   [
     body('planId').isIn(['seller_basic', 'seller_pro', 'seller_elite']),
-    body('paymentReference').trim().notEmpty(),
+    body('paymentReference').optional().trim(),
     body('fullName').trim().notEmpty().isLength({ max: 120 }),
     body('storeName').trim().notEmpty().isLength({ max: 120 }),
     body('idType').optional().isIn(['matric', 'nin']),
@@ -391,18 +405,29 @@ router.post('/apply-seller',
         return res.status(409).json({ error: 'You already have a pending seller application' })
       }
 
-      const paymentCheck = await verifyPaystackPayment(paymentReference, plan.price)
-      if (!paymentCheck.ok) {
-        return res.status(400).json({ error: paymentCheck.reason || 'Unable to verify payment' })
+      const isTrial = isSellerTrialEligible(planId)
+      const chargeAmount = isTrial ? 0 : plan.price
+      const resolvedPaymentReference = paymentReference || (isTrial ? `TRIAL-${nanoid(10).toUpperCase()}` : '')
+      const resolvedPaymentMethod = isTrial ? 'trial' : paymentMethod
+
+      if (!isTrial && !resolvedPaymentReference) {
+        return res.status(400).json({ error: 'Payment reference required' })
+      }
+
+      if (chargeAmount > 0) {
+        const paymentCheck = await verifyPaystackPayment(resolvedPaymentReference, chargeAmount)
+        if (!paymentCheck.ok) {
+          return res.status(400).json({ error: paymentCheck.reason || 'Unable to verify payment' })
+        }
       }
 
       let app
       if (existingApplication) {
         existingApplication.plan = planId
-        existingApplication.amount = plan.price
+        existingApplication.amount = chargeAmount
         existingApplication.currency = plan.currency
-        existingApplication.paymentReference = paymentReference
-        existingApplication.paymentMethod = paymentMethod
+        existingApplication.paymentReference = resolvedPaymentReference
+        existingApplication.paymentMethod = resolvedPaymentMethod
         existingApplication.application = {
           fullName,
           storeName,
@@ -427,10 +452,10 @@ router.post('/apply-seller',
         app = await SellerApplication.create({
           user: req.user._id,
           plan: planId,
-          amount: plan.price,
+          amount: chargeAmount,
           currency: plan.currency,
-          paymentReference,
-          paymentMethod,
+          paymentReference: resolvedPaymentReference,
+          paymentMethod: resolvedPaymentMethod,
           application: {
             fullName,
             storeName,

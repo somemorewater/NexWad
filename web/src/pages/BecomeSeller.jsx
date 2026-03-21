@@ -39,6 +39,9 @@ export default function BecomeSeller() {
   const isAdminRole = ['admin', 'superadmin', 'super_admin', 'moderator', 'cs', 'developer'].includes(normalizeRole(user?.role))
   const paystackKey = String(import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '').trim()
   const hasPriorSellerApproval = application?.status === 'approved'
+  const freeTrialEnabled = String(import.meta.env.VITE_FREE_TRIAL_ENABLED ?? 'false').toLowerCase() === 'true'
+  const freeTrialDuration = String(import.meta.env.VITE_FREE_TRIAL_DURATION ?? '2months')
+  const isTrialPlan = !hasPriorSellerApproval && freeTrialEnabled && ['seller_basic', 'seller_pro'].includes(selectedPlan)
 
   const load = async () => {
     setLoading(true)
@@ -103,8 +106,12 @@ export default function BecomeSeller() {
 
   const submitApplication = async (paymentReference) => {
     if (!selected?._id) return
-    if (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !paymentReference || !form.schoolIdImage) {
+    if (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage) {
       toast.error('Please fill all required fields')
+      return
+    }
+    if (!isTrialPlan && !paymentReference) {
+      toast.error('Payment reference missing')
       return
     }
     setSubmitting(true)
@@ -119,7 +126,7 @@ export default function BecomeSeller() {
       fd.append('phone', form.phone.trim())
       fd.append('experience', form.experience.trim())
       fd.append('reason', form.reason.trim())
-      fd.append('paymentReference', paymentReference)
+      if (paymentReference) fd.append('paymentReference', paymentReference)
       fd.append('schoolIdImage', form.schoolIdImage)
 
       await subscriptionsAPI.applySeller(fd)
@@ -159,6 +166,10 @@ export default function BecomeSeller() {
 
   const proceedToPayment = () => {
     if (!selected?._id) return
+    if (isTrialPlan) {
+      submitApplication()
+      return
+    }
     if (!paystackReady || !window.PaystackPop) {
       toast.error('Payment gateway not ready yet')
       return
@@ -218,6 +229,7 @@ export default function BecomeSeller() {
   const missingRequired = !hasPriorSellerApproval && (!form.fullName.trim() || !form.storeName.trim() || !form.idNumber.trim() || !form.productDetails.trim() || !form.phone.trim() || !form.schoolIdImage)
   const amountToPay = useMemo(() => {
     if (!selected) return 0
+    if (!hasPriorSellerApproval && freeTrialEnabled && ['seller_basic', 'seller_pro'].includes(selected._id)) return 0
     if (!hasPriorSellerApproval) return Number(selected.price || 0)
 
     const isActiveSellerSub = currentSub?.status === 'active' && ['seller_basic', 'seller_pro', 'seller_elite'].includes(currentSub?.plan)
@@ -247,11 +259,11 @@ export default function BecomeSeller() {
       ? 'You already have a pending seller application.'
       : !selected
         ? 'No seller plan available. Reload and try again.'
-        : loading
-          ? 'Loading seller plans...'
-          : missingRequired
-            ? 'Complete all required fields before payment.'
-            : ''
+          : loading
+            ? 'Loading seller plans...'
+            : missingRequired
+              ? (freeTrialEnabled ? 'Complete all required fields before submission.' : 'Complete all required fields before payment.')
+              : ''
 
   return (
     <div>
@@ -261,7 +273,11 @@ export default function BecomeSeller() {
         <main className="page-main">
           <div className="page-header">
             <h1 className="page-header__title">Become a Seller</h1>
-            <p className="page-header__sub">Choose a seller tier, pay, and submit for admin approval.</p>
+            <p className="page-header__sub">
+              {freeTrialEnabled
+                ? 'Choose a seller tier and submit for admin approval. Eligible tiers start with a free trial.'
+                : 'Choose a seller tier, pay, and submit for admin approval.'}
+            </p>
           </div>
 
           {isAdminRole && (
@@ -308,7 +324,9 @@ export default function BecomeSeller() {
             <div className="caption" style={{ marginBottom: 'var(--space-4)' }}>
               {hasPriorSellerApproval
                 ? 'You already have seller approval. Select a tier and proceed to payment to renew or upgrade.'
-                : 'Complete this form, select tier, then proceed to Paystack payment. Your account remains Buyer until admin approval.'}
+                : freeTrialEnabled
+                  ? `Complete this form and submit for approval. Eligible tiers start with a free ${freeTrialDuration} trial.`
+                  : 'Complete this form, select tier, then proceed to Paystack payment. Your account remains Buyer until admin approval.'}
             </div>
             {!hasPriorSellerApproval && (
               <>
@@ -327,6 +345,9 @@ export default function BecomeSeller() {
               </select>
               <div className="caption" style={{ marginTop: 6 }}>
                 {selected?.features?.slice(0, 2).join(' • ')}
+                {freeTrialEnabled && ['seller_basic', 'seller_pro'].includes(selectedPlan) && (
+                  <span> · Free {freeTrialDuration} trial</span>
+                )}
               </div>
             </div>
             <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
@@ -453,7 +474,9 @@ export default function BecomeSeller() {
                     ? amountToPay > 0
                       ? `Pay & Activate Plan (₦${amountToPay.toLocaleString()})`
                       : 'Activate Plan (No Charge)'
-                    : `Proceed to Payment (₦${selected?.price?.toLocaleString() || 0})`}
+                    : (freeTrialEnabled && ['seller_basic', 'seller_pro'].includes(selectedPlan))
+                      ? `Start Free Trial (${freeTrialDuration})`
+                      : `Proceed to Payment (₦${selected?.price?.toLocaleString() || 0})`}
             </button>
             {actionDisabledReason && (
               <div className="caption" style={{ marginTop: 8 }}>
@@ -462,8 +485,9 @@ export default function BecomeSeller() {
             )}
             {!actionDisabledReason && (
               <div className="what-this-means">
-                <strong>What this means:</strong> Clicking this button opens secure payment. After successful payment, your subscription is activated
-                immediately or your application is submitted for approval.
+                <strong>What this means:</strong> {freeTrialEnabled && ['seller_basic', 'seller_pro'].includes(selectedPlan)
+                  ? 'Your application will be submitted for approval and, once approved, your free trial begins.'
+                  : 'Clicking this button opens secure payment. After successful payment, your subscription is activated immediately or your application is submitted for approval.'}
               </div>
             )}
           </div>
