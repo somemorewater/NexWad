@@ -6,6 +6,7 @@ const Post = require('../models/Post')
 const LostFound = require('../models/LostFound')
 const Subscription = require('../models/Subscription')
 const SellerApplication = require('../models/SellerApplication')
+const WaitlistEntry = require('../models/WaitlistEntry')
 const AdminLog = require('../models/AdminLog')
 const UserLog = require('../models/UserLog')
 const { protect, requireAdmin, requireModerator, requireCS, requireAnalytics } = require('../middleware/auth')
@@ -433,6 +434,76 @@ router.put('/seller-applications/:id/reject', requireAdmin,
     } catch (err) { next(err) }
   }
 )
+
+// ─── GET /api/admin/waitlist ─────────────────
+router.get('/waitlist', requireAdmin, async (req, res, next) => {
+  try {
+    const { q, role, status, page = 1, limit = 30 } = req.query
+    const query = {}
+    if (q) {
+      query.$or = [
+        { fullName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { campus: { $regex: q, $options: 'i' } },
+      ]
+    }
+    if (role) query.role = role
+    if (status) query.status = status
+
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+    const [entries, total] = await Promise.all([
+      WaitlistEntry.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      WaitlistEntry.countDocuments(query),
+    ])
+
+    res.json({ entries, total, hasMore: total > skip + entries.length })
+  } catch (err) { next(err) }
+})
+
+// ─── GET /api/admin/waitlist/export ──────────
+router.get('/waitlist/export', requireAdmin, async (req, res, next) => {
+  try {
+    const { q, role, status } = req.query
+    const query = {}
+    if (q) {
+      query.$or = [
+        { fullName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { campus: { $regex: q, $options: 'i' } },
+      ]
+    }
+    if (role) query.role = role
+    if (status) query.status = status
+
+    const entries = await WaitlistEntry.find(query).sort({ createdAt: -1 })
+
+    const csvEscape = (value) => {
+      if (value === null || value === undefined) return ''
+      const str = String(value)
+      if (/["\n,]/.test(str)) return `"${str.replace(/"/g, '""')}"`
+      return str
+    }
+
+    const header = ['Full Name', 'Email', 'Campus', 'Role', 'Status', 'Submitted At']
+    const rows = entries.map((entry) => ([
+      entry.fullName,
+      entry.email,
+      entry.campus || '',
+      entry.role,
+      entry.status,
+      entry.createdAt ? entry.createdAt.toISOString() : '',
+    ]))
+    const csv = [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\n')
+
+    const fileDate = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename=\"waitlist-${fileDate}.csv\"`)
+    res.send(csv)
+  } catch (err) { next(err) }
+})
 
 // ─── POST /api/admin/users/:id/ban ───────────
 router.post('/users/:id/ban', requireModerator,

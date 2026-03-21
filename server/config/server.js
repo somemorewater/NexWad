@@ -85,6 +85,7 @@ app.use('/api/pins', require('../routes/pins'))
 app.use('/api/user-logs', require('../routes/userLogs'))
 app.use('/api/notifications', require('../routes/notifications'))
 app.use('/api/admin', require('../routes/admin'))
+app.use('/api/waitlist', require('../routes/waitlist'))
 
 // ─── Social preview (pre-rendered meta tags) ───
 app.use('/', require('../routes/meta'))

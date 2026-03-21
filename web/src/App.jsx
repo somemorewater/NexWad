@@ -34,6 +34,7 @@ import ModeratorDashboard from './pages/ModeratorDashboard'
 import Legal from './pages/Legal'
 import SearchResults from './pages/SearchResults'
 import Notifications from './pages/Notifications'
+import Waitlist from './pages/Waitlist'
 import ActivityTracker from './components/ActivityTracker'
 import nexwadLogo from './assets/images/nexwad-logo.png'
 import { normalizeRole } from './utils/roleRouting'
@@ -58,6 +59,7 @@ function AppContent() {
   const location = useLocation()
   const isFirstRoute = useRef(true)
   const [routeLoading, setRouteLoading] = useState(false)
+  const waitlistMode = String(import.meta.env.VITE_WAITLIST ?? import.meta.env.WAITLIST ?? 'false').toLowerCase() === 'true'
 
   useEffect(() => {
     if (isFirstRoute.current) {
@@ -78,6 +80,9 @@ function AppContent() {
           <span className="spinner route-loader__spinner" />
         </div>
       )}
+      {waitlistMode && location.pathname !== '/waitlist' ? (
+        <Navigate to="/waitlist" replace />
+      ) : (
       <ThemeProvider>
         <ModalProvider>
           <AuthProvider>
@@ -103,6 +108,7 @@ function AppContent() {
               <Route path="/signup" element={<Signup />} />
               <Route path="/banned" element={<Banned />} />
               <Route path="/legal" element={<Legal />} />
+              <Route path="/waitlist" element={<Waitlist />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/:listingId" element={<ProductDetails />} />
               <Route path="/social" element={<Social />} />
@@ -162,6 +168,7 @@ function AppContent() {
           </AuthProvider>
         </ModalProvider>
       </ThemeProvider>
+      )}
     </>
   )
 }

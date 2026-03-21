@@ -20,6 +20,7 @@ export default function AdminDashboard() {
       { to: `${basePath}/performance`, label: 'Performance' },
       { to: `${basePath}/users`, label: 'Users' },
       { to: `${basePath}/applications`, label: 'Seller Applications' },
+      { to: `${basePath}/waitlist`, label: 'Waitlist' },
       { to: `${basePath}/listings`, label: 'Listings' },
       { to: `${basePath}/reports`, label: 'Reports' },
       { to: `${basePath}/logs`, label: 'Audit Logs' },
@@ -68,6 +69,7 @@ export default function AdminDashboard() {
               <>
                 <Route path="/users" element={<AdminUsers isSuperAdmin={isSuperAdmin} />} />
                 <Route path="/applications" element={<AdminSellerApplications />} />
+                <Route path="/waitlist" element={<AdminWaitlist />} />
                 <Route path="/listings" element={<AdminListings />} />
                 <Route path="/reports" element={<AdminReports />} />
                 <Route path="/logs" element={<AdminLogs />} />
@@ -650,6 +652,155 @@ function Detail({ label, value }) {
     <div>
       <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--nw-gray-600)', marginBottom: 4 }}>{label}</div>
       <div style={{ color: 'var(--nw-ink)', wordBreak: 'break-word' }}>{value || 'N/A'}</div>
+    </div>
+  )
+}
+
+function AdminWaitlist() {
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [q, setQ] = useState('')
+  const [role, setRole] = useState('')
+  const [status, setStatus] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [total, setTotal] = useState(0)
+  const limit = 30
+
+  useEffect(() => {
+    setLoading(true)
+    const t = setTimeout(() => {
+      adminAPI.getWaitlist({ q, role, status, page, limit })
+        .then(({ data }) => {
+          setEntries(data.entries || [])
+          setTotal(data.total || 0)
+          setHasMore(Boolean(data.hasMore))
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [q, role, status, page])
+
+  const exportCsv = async () => {
+    try {
+      const response = await adminAPI.exportWaitlist({ q, role, status })
+      const blob = response.data
+      const disposition = response.headers?.['content-disposition'] || ''
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i)
+      const filename = match?.[1] || `waitlist-${new Date().toISOString().slice(0, 10)}.csv`
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Export ready')
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Export failed')
+    }
+  }
+
+  const badgeForStatus = (value) => {
+    if (value === 'converted') return 'badge-green'
+    if (value === 'invited') return 'badge-primary'
+    return 'badge-gray'
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="admin-page-title">Waitlist</h1>
+          <div className="caption">Total signups: {total.toLocaleString()}</div>
+        </div>
+        <button className="btn btn-secondary" onClick={exportCsv}>
+          Export CSV
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 180px 180px', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
+        <input
+          type="text"
+          className="form-input admin-search-input"
+          placeholder="Search by name, email, or campus…"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(1) }}
+        />
+        <select className="form-select" value={role} onChange={(e) => { setRole(e.target.value); setPage(1) }}>
+          <option value="">All roles</option>
+          <option value="student">Student</option>
+          <option value="seller">Seller</option>
+          <option value="community">Community Lead</option>
+          <option value="brand">Brand Partner</option>
+        </select>
+        <select className="form-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }}>
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="invited">Invited</option>
+          <option value="converted">Converted</option>
+        </select>
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
+            <div className="spinner" />
+          </div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Campus</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--nw-gray-500)' }}>
+                      No waitlist signups yet.
+                    </td>
+                  </tr>
+                ) : entries.map((entry) => (
+                  <tr key={entry._id}>
+                    <td data-label="Name" style={{ fontWeight: 600 }}>{entry.fullName}</td>
+                    <td data-label="Email" style={{ color: 'var(--nw-gray-500)' }}>{entry.email}</td>
+                    <td data-label="Campus" style={{ color: 'var(--nw-gray-500)' }}>{entry.campus || '—'}</td>
+                    <td data-label="Role">
+                      <span className="badge badge-primary">{entry.role}</span>
+                    </td>
+                    <td data-label="Status">
+                      <span className={`badge ${badgeForStatus(entry.status)}`}>{entry.status}</span>
+                    </td>
+                    <td data-label="Joined" style={{ color: 'var(--nw-gray-500)' }}>
+                      {entry.createdAt ? formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true }) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-5)' }}>
+        <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+          Previous
+        </button>
+        <div className="caption">Page {page}</div>
+        <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p + 1)} disabled={!hasMore}>
+          Next
+        </button>
+      </div>
     </div>
   )
 }

@@ -40,6 +40,7 @@ const stats = [
 
 export default function Home() {
   const { isAuthenticated, user } = useAuth()
+  const waitlistEnabled = String(import.meta.env.VITE_WAITLIST ?? import.meta.env.WAITLIST ?? 'true').toLowerCase() !== 'false'
   if (isAuthenticated) return <Navigate to={getDefaultRouteForUser(user)} replace />
 
   return (
@@ -67,6 +68,11 @@ export default function Home() {
               <Link to="/login" className="btn btn-secondary btn-lg">
                 Sign In
               </Link>
+              {waitlistEnabled && (
+                <Link to="/waitlist" className="btn btn-ghost btn-lg">
+                  Join Waitlist
+                </Link>
+              )}
             </div>
           </div>
         </section>

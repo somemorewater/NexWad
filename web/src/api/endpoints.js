@@ -129,6 +129,11 @@ export const subscriptionsAPI = {
   getReceipt: (subId) => api.get(`/subscriptions/${subId}/receipt`, { responseType: 'blob' }),
 }
 
+// ─── Waitlist ────────────────────────────────
+export const waitlistAPI = {
+  join: (data) => api.post('/waitlist', data),
+}
+
 // ─── Pins ─────────────────────────────────────
 export const pinsAPI = {
   getPlans: () => api.get('/pins/plans'),
@@ -156,4 +161,6 @@ export const adminAPI = {
   getSellerApplications: (params) => api.get('/admin/seller-applications', { params }),
   approveSellerApplication: (id) => api.put(`/admin/seller-applications/${id}/approve`),
   rejectSellerApplication: (id, reason) => api.put(`/admin/seller-applications/${id}/reject`, { reason }),
+  getWaitlist: (params) => api.get('/admin/waitlist', { params }),
+  exportWaitlist: (params) => api.get('/admin/waitlist/export', { params, responseType: 'blob' }),
 }
