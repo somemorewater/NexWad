@@ -60,6 +60,7 @@ function AppContent() {
   const isFirstRoute = useRef(true)
   const [routeLoading, setRouteLoading] = useState(false)
   const waitlistMode = String(import.meta.env.VITE_WAITLIST ?? import.meta.env.WAITLIST ?? 'false').toLowerCase() === 'true'
+  const clickLockRef = useRef(new WeakMap())
 
   useEffect(() => {
     if (isFirstRoute.current) {
@@ -71,6 +72,29 @@ function AppContent() {
     const timer = window.setTimeout(() => setRouteLoading(false), 420)
     return () => window.clearTimeout(timer)
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    const CLICK_LOCK_MS = 800
+    const onClickCapture = (event) => {
+      const target = event.target
+      if (!target) return
+      const button = target.closest?.('button')
+      if (!button) return
+      if (button.dataset?.allowDoubleClick === 'true') return
+
+      const now = Date.now()
+      const lastClick = clickLockRef.current.get(button) || 0
+      if (now - lastClick < CLICK_LOCK_MS) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+      clickLockRef.current.set(button, now)
+    }
+
+    document.addEventListener('click', onClickCapture, true)
+    return () => document.removeEventListener('click', onClickCapture, true)
+  }, [])
 
   return (
     <>
