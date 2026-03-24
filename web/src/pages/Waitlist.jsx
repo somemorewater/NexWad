@@ -179,21 +179,21 @@ export default function Waitlist() {
                     name="email"
                     value={formState.email}
                     onChange={handleChange}
-                    placeholder="you@school.edu"
+                    placeholder="you@youdomain.com"
                     required
                     disabled={!waitlistEnabled}
                   />
                 </label>
 
                 <label className="form-group">
-                  <span className="form-label">Campus or city</span>
+                  <span className="form-label">City</span>
                   <input
                     className="form-input"
                     type="text"
                     name="campus"
                     value={formState.campus}
                     onChange={handleChange}
-                    placeholder="University of Lagos"
+                    placeholder="Kaduna"
                     disabled={!waitlistEnabled}
                   />
                 </label>
