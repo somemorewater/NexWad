@@ -41,25 +41,22 @@ export default function Social() {
   const loadFeed = async (reset = false) => {
     setLoading(true)
     try {
-      const { data } = await postsAPI.getFeed({ page: reset ? 1 : page, limit: 20 })
+      const targetPage = reset ? 1 : page
+      const { data } = await postsAPI.getFeed({ page: targetPage, limit: 20 })
       const received = Array.isArray(data?.posts) ? data.posts.length : 0
       const ranked = rankFeed(data.posts)
-      let added = 0
       setPosts(prev => {
         const merged = reset ? ranked : [...prev, ...ranked]
         const deduped = deduplicateFeed(merged)
-        added = reset ? deduped.length : deduped.length - prev.length
         return deduped
       })
       if (reset) {
         setPage(2)
         setHasMore(data.hasMore && received > 0)
-      } else if (received > 0 && added > 0) {
-        setPage(p => p + 1)
+      } else if (received > 0) {
+        setPage(targetPage + 1)
         setHasMore(data.hasMore)
-      } else {
-        setHasMore(false)
-      }
+      } else setHasMore(false)
     } catch (err) {
       toast.error(err?.error || err?.message || 'Could not load feed')
     } finally {
