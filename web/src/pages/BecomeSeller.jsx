@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+import Modal from '../components/Modal'
 import { subscriptionsAPI } from '../api/endpoints'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -31,6 +32,8 @@ export default function BecomeSeller() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [paystackReady, setPaystackReady] = useState(false)
+  const [showTrialModal, setShowTrialModal] = useState(false)
+  const [trialModalSeen, setTrialModalSeen] = useState(false)
 
   const selected = useMemo(
     () => plans.find(p => p._id === selectedPlan) || plans[0],
@@ -103,6 +106,14 @@ export default function BecomeSeller() {
   useEffect(() => {
     if (selectedPlan) setSearchParams({ plan: selectedPlan })
   }, [selectedPlan, setSearchParams])
+
+  useEffect(() => {
+    if (loading || trialModalSeen) return
+    if (freeTrialEnabled && !hasPriorSellerApproval) {
+      setShowTrialModal(true)
+      setTrialModalSeen(true)
+    }
+  }, [loading, freeTrialEnabled, hasPriorSellerApproval, trialModalSeen])
 
   const submitApplication = async (paymentReference) => {
     if (!selected?._id) return
@@ -279,6 +290,34 @@ export default function BecomeSeller() {
                 : 'Choose a seller tier, pay, and submit for admin approval.'}
             </p>
           </div>
+
+          {freeTrialEnabled && !hasPriorSellerApproval && (
+            <div
+              className="card card-body"
+              style={{
+                marginBottom: 'var(--space-6)',
+                border: '1px solid var(--nw-primary)',
+                background: 'var(--nw-primary-light)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                <div>
+                  <div className="badge badge-primary" style={{ marginBottom: 8 }}>Free Trial</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                    Start selling with a free {freeTrialDuration} trial on eligible tiers.
+                  </div>
+                  <div className="caption" style={{ marginTop: 6 }}>
+                    Submit your application today and your trial begins after admin approval.
+                  </div>
+                </div>
+                <div>
+                  <button type="button" className="btn btn-primary" onClick={() => setShowTrialModal(true)}>
+                    See trial details
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isAdminRole && (
             <div className="card card-body" style={{ marginBottom: 'var(--space-6)' }}>
@@ -493,6 +532,33 @@ export default function BecomeSeller() {
           </div>
         </main>
       </div>
+      {freeTrialEnabled && (
+        <Modal
+          isOpen={showTrialModal}
+          onClose={() => setShowTrialModal(false)}
+          title="Your Free Trial Details"
+          size="lg"
+          footer={(
+            <button type="button" className="btn btn-primary" onClick={() => setShowTrialModal(false)}>
+              Got it
+            </button>
+          )}
+        >
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            You can start selling with a free trial before paying for a subscription. Here is how it works:
+          </div>
+          <ul style={{ paddingLeft: 18, margin: 0 }}>
+            <li>Eligible tiers: Seller Basic and Seller Pro.</li>
+            <li>Trial length: {freeTrialDuration}.</li>
+            <li>No payment is required to submit your application for eligible tiers.</li>
+            <li>Your trial begins after admin approval.</li>
+            <li>Seller Elite is not part of the free trial and requires payment.</li>
+          </ul>
+          <div className="what-this-means" style={{ marginTop: 'var(--space-4)' }}>
+            <strong>Tip:</strong> Complete all required fields and upload a clear ID image to speed up approval.
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
