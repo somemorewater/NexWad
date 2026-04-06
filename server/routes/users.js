@@ -426,6 +426,80 @@ router.get('/:id/poster/image', optionalAuth, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ─── GET /api/users/:id/reviews ──────────────
+router.get('/:id/reviews', optionalAuth, async (req, res, next) => {
+  try {
+    const { query } = userIdentifierQuery(req.params.id)
+    const seller = await User.findOne({ $or: query }).select('_id role banned')
+    if (!seller || seller.banned) return res.status(404).json({ error: 'User not found' })
+    if (seller.role !== 'seller') return res.status(400).json({ error: 'User is not a seller' })
+
+    const limit = Math.min(Math.max(Number(req.query.limit || 12), 1), 50)
+    const reviews = await Review.find({ seller: seller._id })
+      .populate('reviewer', 'name username avatar')
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
+
+    let myReview = null
+    if (req.user?._id) {
+      myReview = await Review.findOne({ seller: seller._id, reviewer: req.user._id, listing: null })
+        .populate('reviewer', 'name username avatar')
+        .lean()
+    }
+
+    res.json({ reviews, myReview })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/users/:id/reviews ─────────────
+router.post('/:id/reviews', protect,
+  [
+    body('rating').notEmpty().isInt({ min: 1, max: 5 }),
+    body('comment').optional().trim().isLength({ max: 1000 }),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const { query } = userIdentifierQuery(req.params.id)
+      const seller = await User.findOne({ $or: query }).select('_id role banned')
+      if (!seller || seller.banned) return res.status(404).json({ error: 'User not found' })
+      if (seller.role !== 'seller') return res.status(400).json({ error: 'User is not a seller' })
+      if (seller._id.toString() === req.user._id.toString()) {
+        return res.status(400).json({ error: 'You cannot review yourself' })
+      }
+
+      const rating = Number(req.body.rating)
+      const comment = String(req.body.comment || '').trim()
+
+      let review = await Review.findOne({ seller: seller._id, reviewer: req.user._id, listing: null })
+      if (!review) {
+        review = new Review({
+          seller: seller._id,
+          reviewer: req.user._id,
+          rating,
+          comment,
+          listing: null,
+        })
+      } else {
+        review.rating = rating
+        review.comment = comment
+      }
+      await review.save()
+      await responseCacheInvalidate('users:public-profile')
+
+      const sellerStats = await User.findById(seller._id).select('rating ratingCount').lean()
+
+      res.json({
+        message: 'Review submitted',
+        review,
+        sellerRating: sellerStats?.rating || 0,
+        sellerRatingCount: sellerStats?.ratingCount || 0,
+      })
+    } catch (err) { next(err) }
+  }
+)
+
 // ─── POST /api/users/:id/report ──────────────
 router.post('/:id/report', protect,
   [body('reason').trim().notEmpty().isLength({ max: 500 })], validate,

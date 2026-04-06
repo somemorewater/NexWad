@@ -60,6 +60,12 @@ export default function Profile() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [followingAction, setFollowingAction] = useState(false)
   const [messagingAction, setMessagingAction] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [myReview, setMyReview] = useState(null)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -174,7 +180,7 @@ export default function Profile() {
     const currentProfile = profile || currentUser
     const sellerProfile = currentProfile?.role === 'seller'
     const tabs = sellerProfile
-      ? ['listings', 'posts', 'about', ...(isOwn ? ['saved'] : [])]
+      ? ['listings', 'posts', 'about', 'reviews', ...(isOwn ? ['saved'] : [])]
       : ['posts', 'about', ...(isOwn ? ['saved'] : [])]
     const defaultTab = sellerProfile ? 'listings' : 'posts'
     if (!tabs.includes(activeTab)) setActiveTab(defaultTab)
@@ -230,6 +236,34 @@ export default function Profile() {
       setMessagingAction(false)
     }
   }
+
+  const loadReviews = async (sellerId) => {
+    if (!sellerId) return
+    setReviewsLoading(true)
+    try {
+      const { data } = await usersAPI.getReviews(sellerId)
+      setReviews(data.reviews || [])
+      setMyReview(data.myReview || null)
+      if (data.myReview) {
+        setReviewRating(Number(data.myReview.rating || 0))
+        setReviewComment(data.myReview.comment || '')
+      } else {
+        setReviewRating(0)
+        setReviewComment('')
+      }
+    } catch {
+      setReviews([])
+      setMyReview(null)
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const currentProfile = profile || currentUser
+    if (!currentProfile?._id || currentProfile.role !== 'seller') return
+    loadReviews(currentProfile._id)
+  }, [profile, currentUser])
 
   const handleSaveEdit = async () => {
     setSavingEdit(true)
@@ -291,7 +325,7 @@ export default function Profile() {
   const verification = getVerificationBadge(p)
   const websiteHref = normalizeWebsiteUrl(p?.website)
   const profileTabs = isSellerProfile
-    ? ['listings', 'posts', 'about', ...(isOwn ? ['saved'] : [])]
+    ? ['listings', 'posts', 'about', 'reviews', ...(isOwn ? ['saved'] : [])]
     : ['posts', 'about', ...(isOwn ? ['saved'] : [])]
 
   const likePost = async (postId, wasLiked) => {
@@ -316,6 +350,31 @@ export default function Profile() {
     if (!currentUser?._id) throw new Error('Login required to report profiles')
     if (!p?._id) return
     await usersAPI.report(p._id, reason)
+  }
+
+  const submitReview = async () => {
+    if (!currentUser?._id) {
+      toast.error('Login required to leave a review')
+      navigate('/login')
+      return
+    }
+    if (!p?._id) return
+    if (!reviewRating) {
+      toast.error('Select a rating')
+      return
+    }
+    setReviewSubmitting(true)
+    try {
+      const { data } = await usersAPI.submitReview(p._id, { rating: reviewRating, comment: reviewComment })
+      setMyReview(data.review || null)
+      setProfile(prev => (prev ? { ...prev, rating: data.sellerRating, ratingCount: data.sellerRatingCount } : prev))
+      toast.success('Review submitted')
+      await loadReviews(p._id)
+    } catch (err) {
+      toast.error(err?.error || err?.message || 'Could not submit review')
+    } finally {
+      setReviewSubmitting(false)
+    }
   }
 
   const renderProfileActions = (buttonSize = 'btn-sm') => {
@@ -574,6 +633,102 @@ export default function Profile() {
                 ))}
               </div>
             )
+          )}
+
+          {activeTab === 'reviews' && isSellerProfile && (
+            <div style={{ display: 'grid', gap: 'var(--space-5)', maxWidth: 720 }}>
+              <div className="card card-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>Store Reviews</div>
+                    <div className="caption">
+                      {p?.rating ? `${Number(p.rating).toFixed(1)}★` : 'New'} · {p?.ratingCount || 0} reviews
+                    </div>
+                  </div>
+                </div>
+                {!isOwn && (
+                  <div style={{ marginTop: 'var(--space-4)', display: 'grid', gap: 'var(--space-3)' }}>
+                    <div style={{ fontWeight: 600 }}>{myReview ? 'Update your review' : 'Leave a review'}</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '6px 10px',
+                            color: star <= reviewRating ? '#f59e0b' : 'var(--nw-gray-400)',
+                          }}
+                          aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                        >
+                          <i className={star <= reviewRating ? 'fa-solid fa-star' : 'fa-regular fa-star'} aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      className="form-textarea"
+                      rows={3}
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Share a quick note about this seller (optional)"
+                    />
+                    <div>
+                      <button className="btn btn-primary" onClick={submitReview} disabled={reviewSubmitting}>
+                        {reviewSubmitting ? 'Submitting...' : (myReview ? 'Update Review' : 'Submit Review')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {isOwn && (
+                  <div className="caption" style={{ marginTop: 'var(--space-4)' }}>
+                    You cannot review your own store, but you can see what buyers are saying below.
+                  </div>
+                )}
+              </div>
+
+              <div className="card card-body">
+                <div style={{ fontWeight: 700, marginBottom: 'var(--space-4)' }}>Recent Reviews</div>
+                {reviewsLoading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+                    <div className="spinner" style={{ width: 24, height: 24 }} />
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <div className="empty-state" style={{ padding: 'var(--space-5)' }}>
+                    <div className="empty-state__title">No reviews yet</div>
+                    <div className="caption">Be the first to rate this seller.</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+                    {reviews.map((review) => (
+                      <div key={review._id} style={{ borderBottom: '1px solid var(--nw-gray-100)', paddingBottom: 'var(--space-4)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div className="avatar avatar-sm" style={{ width: 36, height: 36 }}>
+                            {review.reviewer?.avatar
+                              ? <img src={review.reviewer.avatar} alt={review.reviewer.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              : (review.reviewer?.name || 'U').slice(0, 1)}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>{review.reviewer?.name || 'User'}</div>
+                            <div className="caption">
+                              {new Date(review.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </div>
+                          </div>
+                          <div style={{ color: '#f59e0b', fontWeight: 700 }}>
+                            {Number(review.rating || 0).toFixed(1)}★
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <div style={{ marginTop: 10, color: 'var(--nw-gray-700)' }}>
+                            {review.comment}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'saved' && isOwn && (
