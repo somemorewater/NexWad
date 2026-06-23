@@ -4,6 +4,7 @@
   "description": "NexWAD backend — Express + MongoDB + Redis + Socket.io + Cloudinary",
   "main": "app.js",
   "scripts": {
+    "build": "echo \"No build step\"",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "seed": "node scripts/seed.js",
